@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talabat – Vendor Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root { --orange:#FF5900; --burgundy:#411517; --cream:#F4EDE3; --lime:#CFFF00; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Poppins',sans-serif; background:var(--cream); color:var(--burgundy); min-height:100vh; }
+
+    /* ── LOGIN PAGE ── */
+    #pg-login { min-height:100vh; background:var(--burgundy); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .login-wrap { width:100%; max-width:440px; }
+    .login-logo { font-size:38px; font-weight:900; color:var(--orange); letter-spacing:-1.5px; margin-bottom:4px; }
+    .login-tagline { font-size:13px; color:rgba(255,255,255,.5); margin-bottom:32px; font-weight:500; }
+    .login-card { background:#fff; border-radius:28px; padding:44px 40px; }
+    .login-title { font-size:22px; font-weight:800; color:var(--burgundy); margin-bottom:6px; }
+    .login-sub { font-size:14px; color:#888; margin-bottom:28px; line-height:1.6; }
+    .li-label { display:block; font-size:13px; font-weight:700; color:var(--burgundy); margin-bottom:7px; }
+    .li-field { margin-bottom:16px; }
+    .li-input { width:100%; border:1.5px solid #e0d8d0; border-radius:12px; padding:13px 16px; font-family:'Poppins',sans-serif; font-size:14px; color:var(--burgundy); outline:none; transition:border .18s; }
+    .li-input:focus { border-color:var(--orange); }
+    .li-pass-wrap { position:relative; }
+    .li-eye { position:absolute; right:14px; top:50%; transform:translateY(-50%); cursor:pointer; color:#aaa; font-size:16px; background:none; border:none; padding:4px; font-family:'Poppins',sans-serif; }
+    .li-error { color:#e74c3c; font-size:13px; font-weight:600; margin-bottom:12px; min-height:18px; }
+    .btn-login { width:100%; background:var(--orange); color:#fff; border:none; border-radius:14px; padding:17px; font-family:'Poppins',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all .2s; }
+    .btn-login:hover { background:#e64f00; transform:translateY(-2px); box-shadow:0 8px 24px rgba(255,89,0,.28); }
+
+    /* ── PORTAL HEADER ── */
+    .portal-header { background:var(--orange); height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 36px; position:sticky; top:0; z-index:300; }
+    .ph-left { display:flex; align-items:center; gap:14px; }
+    .ph-logo { color:#fff; font-size:26px; font-weight:900; letter-spacing:-1px; }
+    .ph-sep { color:rgba(255,255,255,.45); font-size:18px; }
+    .ph-label { color:rgba(255,255,255,.85); font-size:13px; font-weight:600; }
+    .ph-right { display:flex; align-items:center; gap:14px; }
+    .ph-vendor { color:rgba(255,255,255,.9); font-size:13px; font-weight:700; }
+    .ph-logout { background:rgba(255,255,255,.18); color:#fff; border:none; padding:8px 18px; border-radius:99px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; }
+    .ph-logout:hover { background:rgba(255,255,255,.32); }
+
+    /* ── DASHBOARD ── */
+    .dash-wrap { max-width:980px; margin:0 auto; padding:40px 20px 60px; }
+    .dash-welcome { margin-bottom:32px; }
+    .dash-welcome h2 { font-size:28px; font-weight:800; color:var(--burgundy); margin-bottom:6px; }
+    .dash-welcome p { color:#888; font-size:15px; margin-bottom:22px; }
+    .btn-new-req { background:var(--orange); color:#fff; border:none; border-radius:14px; padding:15px 32px; font-family:'Poppins',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; }
+    .btn-new-req:hover { background:#e64f00; transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,89,0,.25); }
+    .btn-refresh { background:#fff; color:var(--orange); border:2px solid var(--orange); border-radius:14px; padding:13px 22px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all .18s; margin-left:10px; }
+    .btn-refresh:hover { background:#fff8f3; }
+    .dash-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px; }
+    .stat-card { background:#fff; border-radius:20px; padding:28px 20px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+    .stat-num { font-size:42px; font-weight:900; margin-bottom:4px; line-height:1; }
+    .stat-label { font-size:12px; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:.8px; }
+    .stat-done   .stat-num { color:#22a86e; }
+    .stat-pending .stat-num { color:#f39c12; }
+    .stat-rejected .stat-num { color:#e74c3c; }
+    .stat-total  .stat-num { color:var(--orange); }
+
+    .dash-table-wrap { background:#fff; border-radius:20px; padding:28px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+    .dash-table-head { font-size:16px; font-weight:800; color:var(--burgundy); margin-bottom:20px; }
+    .dash-loading { text-align:center; color:#aaa; padding:48px; font-size:14px; }
+    .dash-empty { text-align:center; color:#aaa; padding:48px; font-size:14px; display:none; }
+    .dash-err { text-align:center; color:#e74c3c; padding:20px; font-size:13px; font-weight:600; background:#fde8e8; border-radius:12px; }
+
+    .req-card { border:1.5px solid #f0ebe4; border-radius:14px; padding:18px 20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; transition:border .18s; }
+    .req-card:hover { border-color:#e0d4c8; }
+    .req-card:last-child { margin-bottom:0; }
+    .req-left { flex:1; min-width:0; }
+    .req-type { font-size:14px; font-weight:700; color:var(--burgundy); margin-bottom:4px; }
+    .req-item { font-size:13px; color:#555; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .req-ts { font-size:11px; color:#bbb; }
+    .req-reason { font-size:12px; color:#e74c3c; margin-top:8px; font-weight:600; background:#fde8e8; border-radius:8px; padding:6px 10px; }
+    .badge { display:inline-block; padding:6px 14px; border-radius:99px; font-size:11px; font-weight:800; white-space:nowrap; flex-shrink:0; }
+    .badge-done     { background:#d4f8e8; color:#22a86e; }
+    .badge-pending  { background:#fef3cd; color:#b8860b; }
+    .badge-rejected { background:#fde8e8; color:#e74c3c; }
+
+    /* ── FORM VIEW WRAPPER ── */
+    .back-bar { background:#fff; border-bottom:1px solid #f0ebe4; padding:0 36px; height:50px; display:flex; align-items:center; }
+    .btn-back-dash { background:none; border:none; font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; color:var(--orange); cursor:pointer; display:flex; align-items:center; gap:6px; padding:0; }
+    .btn-back-dash:hover { text-decoration:underline; }
+
+    /* ── NAV (inside form view) ── */
+    .nav { background:var(--orange); height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 36px; }
+    .nav-logo { color:#fff; font-size:22px; font-weight:900; letter-spacing:-1px; }
+    .nav-pill { background:rgba(255,255,255,.2); color:#fff; border:none; padding:7px 18px; border-radius:99px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; }
+
+    /* ── FORM SHELL ── */
+    #shell { display:none; padding:36px 20px 60px; }
+    #shell.on { display:block; }
+    .wrap { max-width:700px; margin:0 auto; }
+    .phead { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .btn-back { background:none; border:none; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; color:var(--orange); cursor:pointer; display:flex; align-items:center; gap:5px; }
+    .count-tag { background:var(--orange); color:#fff; font-size:13px; font-weight:700; padding:6px 16px; border-radius:99px; }
+    .prog-rail { background:rgba(255,89,0,.15); border-radius:99px; height:5px; overflow:hidden; margin-bottom:26px; }
+    .prog-bar { background:var(--orange); height:100%; border-radius:99px; transition:width .4s ease; }
+
+    /* ── STEP CARDS ── */
+    .step { background:#fff; border-radius:24px; padding:42px; display:none; }
+    .step.on { display:block; animation:up .28s ease; }
+    @keyframes up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .chip { font-size:11px; font-weight:700; color:var(--orange); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px; }
+    .sh { font-size:26px; font-weight:800; margin-bottom:26px; }
+    .lbl { display:block; font-size:13px; font-weight:700; margin-bottom:7px; }
+    .req { color:var(--orange); }
+    .opt { color:#aaa; font-weight:500; }
+    .fg { margin-bottom:18px; }
+    .row { display:grid; gap:16px; }
+    .row.x2 { grid-template-columns:1fr 1fr; }
+    .row.x3 { grid-template-columns:1fr 1fr 1fr; }
+    input[type=text], input[type=email], input[type=url], input[type=password], textarea { width:100%; border:1.5px solid #e0d8d0; border-radius:12px; padding:13px 16px; font-family:'Poppins',sans-serif; font-size:14px; color:var(--burgundy); outline:none; transition:border .18s; background:#fff; }
+    textarea { resize:vertical; min-height:90px; }
+    input:focus, textarea:focus { border-color:var(--orange); }
+    input.bad, textarea.bad { border-color:#e74c3c; }
+    .ferr { font-size:12px; color:#e74c3c; font-weight:600; display:none; margin-top:5px; }
+    .ferr.on { display:block; }
+    .ferr-type { font-size:12px; color:#e74c3c; font-weight:600; display:none; margin-top:10px; }
+    .ferr-type.on { display:block; }
+    .sec-label { font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:1.2px; margin:22px 0 14px; border-top:1px solid #f0ebe4; padding-top:18px; }
+    .sec-label:first-child { margin-top:0; border-top:none; padding-top:0; }
+    .warn { background:#fff8f0; border-radius:12px; padding:12px 16px; font-size:13px; color:#c0392b; font-weight:600; display:flex; align-items:flex-start; gap:8px; margin-bottom:18px; }
+    .wi { flex-shrink:0; }
+    .drive-hint { font-size:12px; color:#888; margin-top:6px; }
+    .field-hint { font-size:12px; color:var(--orange); margin-top:5px; line-height:1.5; font-weight:500; }
+    .rv { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 0; border-bottom:1px solid #f5f0ea; gap:16px; }
+    .rv:last-child { border-bottom:none; }
+    .rv-k { font-size:13px; font-weight:700; color:#888; flex-shrink:0; }
+    .rv-v { font-size:13px; color:var(--burgundy); text-align:right; word-break:break-word; }
+
+    /* ── TYPE GRID ── */
+    .tgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+    .tc { background:#faf8f5; border:2px solid #e8e0d5; border-radius:16px; padding:18px; cursor:pointer; display:flex; align-items:center; gap:14px; transition:all .18s; }
+    .tc:hover { border-color:var(--orange); background:#fff8f3; }
+    .tc.sel { border-color:var(--orange); background:var(--orange); }
+    .tc.sel .tc-name, .tc.sel .tc-desc { color:#fff; }
+    .tc-icon { font-size:22px; }
+    .tc-name { font-size:14px; font-weight:700; color:var(--burgundy); }
+    .tc-desc { font-size:12px; color:#888; margin-top:2px; }
+    .tc.sel .tc-desc { color:rgba(255,255,255,.8); }
+
+    /* ── LIMIT BANNER ── */
+    .limit-banner { background:#fff3cd; border:1.5px solid #ffc107; border-radius:12px; padding:14px 18px; margin-top:12px; font-size:13px; color:#7d5a00; font-weight:600; display:none; }
+    .limit-banner.on { display:block; }
+
+    /* ── BUTTONS ── */
+    .btn-next { width:100%; background:var(--orange); color:#fff; border:none; border-radius:16px; padding:18px; font-family:'Poppins',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all .2s; margin-top:10px; }
+    .btn-next:hover { background:#e64f00; transform:translateY(-2px); box-shadow:0 8px 24px rgba(255,89,0,.28); }
+    .btn-next:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    /* ── SUCCESS ── */
+    .success-card { background:var(--orange); border-radius:28px; padding:64px 44px; text-align:center; }
+    .si { font-size:64px; margin-bottom:20px; }
+    .sh2 { font-size:34px; font-weight:900; color:#fff; margin-bottom:10px; }
+    .sp { font-size:16px; color:rgba(255,255,255,.85); margin-bottom:28px; }
+    .s-badge { display:inline-block; background:var(--lime); color:var(--burgundy); font-size:14px; font-weight:800; padding:10px 26px; border-radius:99px; margin-bottom:28px; }
+    .btn-more { background:rgba(255,255,255,.2); color:#fff; border:2px solid rgba(255,255,255,.35); border-radius:14px; padding:15px 30px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all .18s; margin:4px; }
+    .btn-more:hover { background:rgba(255,255,255,.3); }
+
+    @media(max-width:640px){
+      .stats-row { grid-template-columns:repeat(2,1fr); }
+      .portal-header, .back-bar { padding:0 18px; }
+      .dash-wrap { padding:24px 16px 40px; }
+      .step { padding:26px 20px; }
+      .tgrid { grid-template-columns:1fr; }
+      .row.x2, .row.x3 { grid-template-columns:1fr; }
+      .login-card { padding:32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ LOGIN PAGE ═══════════════════════════════════════ -->
+<div id="pg-login">
+  <div class="login-wrap">
+    <div class="login-logo">talabat</div>
+    <div class="login-tagline">Vendor Menu Update Portal</div>
+    <div class="login-card">
+      <div class="login-title">Sign in to your account</div>
+      <div class="login-sub">Enter your credentials to manage your menu update requests.</div>
+
+      <div class="li-field">
+        <label class="li-label">Email Address</label>
+        <input class="li-input" type="email" id="li-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <div class="li-field">
+        <label class="li-label">Password</label>
+        <div class="li-pass-wrap">
+          <input class="li-input" type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+          <button class="li-eye" type="button" onclick="togglePass()" id="li-eye-btn">👁</button>
+        </div>
+      </div>
+      <div class="li-error" id="li-err"></div>
+      <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ VENDOR PORTAL ═══════════════════════════════════════ -->
+<div id="pg-portal" style="display:none">
+
+  <!-- Portal Header -->
+  <header class="portal-header">
+    <div class="ph-left">
+      <div class="ph-logo">talabat</div>
+      <div class="ph-sep">|</div>
+      <div class="ph-label">Vendor Portal</div>
+    </div>
+    <div class="ph-right">
+      <span id="ph-vendor-name" class="ph-vendor"></span>
+      <button class="ph-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- ─────────────── DASHBOARD VIEW ─────────────── -->
+  <div id="view-dash">
+    <div class="dash-wrap">
+      <div class="dash-welcome">
+        <h2>Welcome back, <span id="dash-name"></span> 👋</h2>
+        <p>Track your menu update requests and submit new ones below.</p>
+        <div class="dash-actions">
+          <button class="btn-new-req" onclick="goToForm()">＋ Submit New Request</button>
+          <button class="btn-refresh" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card stat-done">
+          <div class="stat-num" id="cnt-done">—</div>
+          <div class="stat-label">Done</div>
+        </div>
+        <div class="stat-card stat-pending">
+          <div class="stat-num" id="cnt-pending">—</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card stat-rejected">
+          <div class="stat-num" id="cnt-rejected">—</div>
+          <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-card stat-total">
+          <div class="stat-num" id="cnt-total">—</div>
+          <div class="stat-label">Total</div>
+        </div>
+      </div>
+
+      <!-- Request List -->
+      <div class="dash-table-wrap">
+        <div class="dash-table-head">Your Requests</div>
+        <div id="dash-loading" class="dash-loading">Loading your requests…</div>
+        <div id="dash-empty" class="dash-empty">No requests submitted yet.</div>
+        <div id="dash-list"></div>
+        <div id="dash-err" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────── FORM VIEW ─────────────── -->
+  <div id="view-form" style="display:none">
+
+    <!-- Back bar -->
+    <div class="back-bar">
+      <button class="btn-back-dash" onclick="showView('dash'); loadDashboard()">← Back to Dashboard</button>
+    </div>
+
+    <!-- Form nav strip -->
+    <nav class="nav">
+      <div class="nav-logo">talabat</div>
+      <div class="nav-pill">Menu Updates</div>
+    </nav>
+
+    <!-- FORM SHELL -->
+    <section id="shell">
+      <div class="wrap">
+        <div class="phead">
+          <button class="btn-back" onclick="goBack()">← Back</button>
+          <span class="count-tag" id="countTag">Update 1 of 5</span>
+        </div>
+        <div class="prog-rail"><div class="prog-bar" id="progBar" style="width:25%"></div></div>
+
+        <!-- STEP 1: Contact Info -->
+        <div class="step on" id="s1">
+          <div class="chip">Step 1 of 4 &nbsp;·&nbsp; Your Info</div>
+          <div class="sh">Who is submitting?</div>
+          <div class="fg">
+            <label class="lbl">Email Address <span class="req">*</span></label>
+            <input type="email" id="f-email" placeholder="your@email.com">
+            <div class="ferr" id="e-email">Please enter a valid email</div>
+          </div>
+          <div class="fg">
+            <label class="lbl">Restaurant / Chain Name <span class="req">*</span></label>
+            <input type="text" id="f-restaurant" placeholder="e.g. Pizza Palace">
+            <div class="ferr" id="e-restaurant">Restaurant name is required</div>
+          </div>
+          <div class="fg">
+            <label class="lbl">Branch / Location <span class="req">*</span></label>
+            <input type="text" id="f-branch" placeholder="e.g. Maadi, Cairo">
+            <div class="ferr" id="e-branch">Branch location is required</div>
+          </div>
+          <div class="row x2">
+            <div class="fg">
+              <label class="lbl">Your Name <span class="opt">(optional)</span></label>
+              <input type="text" id="f-name" placeholder="Full name">
+            </div>
+            <div class="fg">
+              <label class="lbl">Vendor ID <span class="opt">(optional)</span></label>
+              <input type="text" id="f-vendor" placeholder="Helps us find your account">
+            </div>
+          </div>
+          <button class="btn-next" onclick="next(2)">Continue →</button>
+        </div>
+
+        <!-- STEP 2: Request Type -->
+        <div class="step" id="s2">
+          <div class="chip">Step 2 of 4 &nbsp;·&nbsp; Request Type</div>
+          <div class="sh">What would you like to update?</div>
+
+          <div class="tgrid">
+            <div class="tc" onclick="pick(this,'add')">
+              <div class="tc-icon">➕</div>
+              <div><div class="tc-name">Add a New Item</div><div class="tc-desc">List a brand new product on your menu</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'price')">
+              <div class="tc-icon">💰</div>
+              <div><div class="tc-name">Update Price</div><div class="tc-desc">Correct the price of an existing item</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'desc')">
+              <div class="tc-icon">📝</div>
+              <div><div class="tc-name">Update Description</div><div class="tc-desc">Fix an item's description text</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'photo')">
+              <div class="tc-icon">📸</div>
+              <div><div class="tc-name">Change Photo</div><div class="tc-desc">Replace an item's image</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'name')">
+              <div class="tc-icon">✏️</div>
+              <div><div class="tc-name">Update Item Name</div><div class="tc-desc">Rename an existing item</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'barcode')">
+              <div class="tc-icon">🔢</div>
+              <div><div class="tc-name">Update Barcode</div><div class="tc-desc">Fix an incorrect barcode or SKU</div></div>
+            </div>
+            <div class="tc" onclick="pick(this,'remove')">
+              <div class="tc-icon">🗑️</div>
+              <div><div class="tc-name">Remove an Item</div><div class="tc-desc">Delist a product from your menu</div></div>
+            </div>
+          </div>
+          <div class="ferr-type" id="e-type">Please select an update type to continue</div>
+          <div class="limit-banner" id="limit-banner">⚠️ You have reached the daily limit of 5 "Add Item" requests. Please try again tomorrow.</div>
+          <button class="btn-next" onclick="next(3)">Continue →</button>
+        </div>
+
+        <!-- STEP 3: Conditional Details -->
+        <div class="step" id="s3">
+          <div class="chip">Step 3 of 4 &nbsp;·&nbsp; <span id="s3-chip">Details</span></div>
+          <div class="sh" id="s3-title">Update Details</div>
+
+          <!-- ══ ADD NEW ITEM ══ -->
+          <div id="grp-add" style="display:none">
+            <div class="sec-label">Item Identifiers</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-add-barcode" placeholder="e.g. 06221067002767">
+                <div class="ferr" id="e-add-barcode">Barcode is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">SKU <span class="req">*</span></label>
+                <input type="text" id="f-add-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-add-sku">SKU is required</div>
+              </div>
+            </div>
+            <div class="sec-label">New Item Information</div>
+            <div class="fg">
+              <label class="lbl">Item Name (English) <span class="req">*</span></label>
+              <input type="text" id="f-add-name-en" placeholder="e.g. Paracetamol 500mg, 20 Tablets">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-add-name-en">Item name in English is required</div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Item Name (Arabic) <span class="opt">(optional)</span></label>
+              <input type="text" id="f-add-name-ar" placeholder="اسم المنتج بالعربي" dir="rtl">
+            </div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Category <span class="opt">(optional)</span></label>
+                <input type="text" id="f-add-cat" placeholder="e.g. Medications, Beverages">
+              </div>
+              <div class="fg">
+                <label class="lbl">Price <span class="req">*</span></label>
+                <input type="text" id="f-add-price" placeholder="e.g. EGP 34.00">
+                <div class="ferr" id="e-add-price">Price is required</div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Description <span class="opt">(optional, max 150 chars)</span></label>
+              <textarea id="f-add-desc" placeholder="Short description of the item…" maxlength="150"></textarea>
+            </div>
+            <div class="fg">
+              <label class="lbl">Item Photo – Google Drive Link <span class="req">*</span></label>
+              <div class="warn"><span class="wi">⚠️</span> A photo must be attached. Requests without an image may be rejected.</div>
+              <input type="url" id="f-add-photo" placeholder="https://drive.google.com/...">
+              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
+              <div class="ferr" id="e-add-photo">Photo link is required for new items</div>
+            </div>
+          </div>
+
+          <!-- ══ UPDATE PRICE ══ -->
+          <div id="grp-price" style="display:none">
+            <div class="sec-label">Item Identifiers</div>
+            <div class="row x3">
+              <div class="fg">
+                <label class="lbl">Item Name <span class="req">*</span></label>
+                <input type="text" id="f-pr-item" placeholder="Item name">
+                <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+                <div class="ferr" id="e-pr-item">Item name is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">SKU <span class="req">*</span></label>
+                <input type="text" id="f-pr-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-pr-sku">SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-pr-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-pr-barcode">Barcode is required</div>
+              </div>
+            </div>
+            <div class="sec-label">Price Details</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Current Price <span class="req">*</span></label>
+                <input type="text" id="f-pr-current" placeholder="e.g. EGP 25.00">
+                <div class="ferr" id="e-pr-current">Current price is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">New Price <span class="req">*</span></label>
+                <input type="text" id="f-pr-new" placeholder="e.g. EGP 34.00">
+                <div class="ferr" id="e-pr-new">New price is required</div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Reason for Change <span class="opt">(optional)</span></label>
+              <input type="text" id="f-pr-reason" placeholder="e.g. Supplier price increase">
+            </div>
+          </div>
+
+          <!-- ══ UPDATE DESCRIPTION ══ -->
+          <div id="grp-desc" style="display:none">
+            <div class="sec-label">Item Identifiers</div>
+            <div class="row x3">
+              <div class="fg">
+                <label class="lbl">Item Name <span class="req">*</span></label>
+                <input type="text" id="f-desc-item" placeholder="Item name">
+                <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+                <div class="ferr" id="e-desc-item">Item name is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">SKU <span class="req">*</span></label>
+                <input type="text" id="f-desc-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-desc-sku">SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-desc-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-desc-barcode">Barcode is required</div>
+              </div>
+            </div>
+            <div class="sec-label">Description Change</div>
+            <div class="fg">
+              <label class="lbl">Current Description <span class="req">*</span></label>
+              <textarea id="f-desc-current" placeholder="Paste the current (wrong) description…"></textarea>
+              <div class="ferr" id="e-desc-current">Current description is required</div>
+            </div>
+            <div class="fg">
+              <label class="lbl">New Description <span class="req">*</span></label>
+              <textarea id="f-desc-new" placeholder="Enter the correct description (max 150 chars)…" maxlength="150"></textarea>
+              <div class="ferr" id="e-desc-new">New description is required</div>
+            </div>
+          </div>
+
+          <!-- ══ CHANGE PHOTO ══ -->
+          <div id="grp-photo" style="display:none">
+            <div class="warn"><span class="wi">⚠️</span> A clear image must be attached. Requests without a photo will be rejected.</div>
+            <div class="sec-label">Item Identifiers</div>
+            <div class="fg">
+              <label class="lbl">Item Name <span class="req">*</span></label>
+              <input type="text" id="f-ph-item" placeholder="e.g. Paracetamol 500mg">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-ph-item">Item name is required</div>
+            </div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">SKU <span class="req">*</span></label>
+                <input type="text" id="f-ph-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-ph-sku">SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-ph-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-ph-barcode">Barcode is required</div>
+              </div>
+            </div>
+            <div class="sec-label">Photo Update</div>
+            <div class="fg">
+              <label class="lbl">New Photo – Google Drive Link <span class="req">*</span></label>
+              <input type="url" id="f-ph-link" placeholder="https://drive.google.com/...">
+              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
+              <div class="ferr" id="e-ph-link">Photo link is required</div>
+            </div>
+          </div>
+
+          <!-- ══ UPDATE ITEM NAME ══ -->
+          <div id="grp-name" style="display:none">
+            <div class="warn"><span class="wi">⚠️</span> A clear image or document must be attached as proof. Requests without proof will be rejected.</div>
+
+            <div class="sec-label">Current Item Details</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Current SKU <span class="req">*</span></label>
+                <input type="text" id="f-nm-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-nm-sku">Current SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">Current Barcode <span class="req">*</span></label>
+                <input type="text" id="f-nm-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-nm-barcode">Current barcode is required</div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Old Item Name <span class="req">*</span></label>
+              <input type="text" id="f-nm-current" placeholder="Existing name on the platform">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-nm-current">Current item name is required</div>
+            </div>
+
+            <div class="sec-label">New Item Details</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">New SKU <span class="req">*</span></label>
+                <input type="text" id="f-nm-new-sku" placeholder="e.g. 7201">
+                <div class="ferr" id="e-nm-new-sku">New SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">New Barcode <span class="req">*</span></label>
+                <input type="text" id="f-nm-new-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-nm-new-barcode">New barcode is required</div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">New Item Name <span class="req">*</span></label>
+              <input type="text" id="f-nm-new" placeholder="Correct new name">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-nm-new">New item name is required</div>
+            </div>
+            <div class="fg">
+              <label class="lbl">New Product Image – Google Drive Link <span class="req">*</span></label>
+              <input type="url" id="f-nm-proof" placeholder="https://drive.google.com/...">
+              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
+              <div class="ferr" id="e-nm-proof">New product image link is required</div>
+            </div>
+          </div>
+
+          <!-- ══ UPDATE BARCODE ══ -->
+          <div id="grp-barcode" style="display:none">
+            <div class="warn"><span class="wi">⚠️</span> A clear product image showing the barcode must be attached. Illegible or missing attachments will cause rejection.</div>
+            <div class="sec-label">Item Identifiers</div>
+            <div class="fg">
+              <label class="lbl">Item Name <span class="req">*</span></label>
+              <input type="text" id="f-bc-item" placeholder="Item name">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-bc-item">Item name is required</div>
+            </div>
+            <div class="fg">
+              <label class="lbl">SKU <span class="req">*</span></label>
+              <input type="text" id="f-bc-sku" placeholder="e.g. 6985">
+              <div class="ferr" id="e-bc-sku">SKU is required</div>
+            </div>
+            <div class="sec-label">Barcode Change</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Current Barcode <span class="req">*</span></label>
+                <input type="text" id="f-bc-current" placeholder="Existing barcode">
+                <div class="ferr" id="e-bc-current">Current barcode is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">New Barcode <span class="req">*</span></label>
+                <input type="text" id="f-bc-new" placeholder="Correct barcode">
+                <div class="ferr" id="e-bc-new">New barcode is required</div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Product Image / Proof – Google Drive Link <span class="req">*</span></label>
+              <input type="url" id="f-bc-proof" placeholder="https://drive.google.com/...">
+              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
+              <div class="ferr" id="e-bc-proof">Product image proof link is required</div>
+            </div>
+          </div>
+
+          <!-- ══ REMOVE ITEM ══ -->
+          <div id="grp-remove" style="display:none">
+            <div class="sec-label">Item Identifiers</div>
+            <div class="fg">
+              <label class="lbl">Item Name <span class="req">*</span></label>
+              <input type="text" id="f-rm-item" placeholder="e.g. Paracetamol 500mg">
+              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+              <div class="ferr" id="e-rm-item">Item name is required</div>
+            </div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">SKU <span class="req">*</span></label>
+                <input type="text" id="f-rm-sku" placeholder="e.g. 6985">
+                <div class="ferr" id="e-rm-sku">SKU is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-rm-barcode" placeholder="e.g. 0622...">
+                <div class="ferr" id="e-rm-barcode">Barcode is required</div>
+              </div>
+            </div>
+            <div class="sec-label">Removal Details</div>
+            <div class="fg">
+              <label class="lbl">Reason for Removal <span class="req">*</span></label>
+              <textarea id="f-rm-reason" placeholder="e.g. Item discontinued by supplier, out of stock permanently…"></textarea>
+              <div class="ferr" id="e-rm-reason">Reason for removal is required</div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Additional Notes <span class="opt">(optional)</span></label>
+              <input type="text" id="f-rm-notes" placeholder="Any extra context…">
+            </div>
+          </div>
+
+          <button class="btn-next" onclick="next(4)" style="margin-top:14px">Review Request →</button>
+        </div>
+
+        <!-- STEP 4: Review -->
+        <div class="step" id="s4">
+          <div class="chip">Step 4 of 4 &nbsp;·&nbsp; Review</div>
+          <div class="sh">Review &amp; Submit</div>
+          <div id="rv-body"></div>
+          <button class="btn-next" onclick="submitForm()" style="margin-top:24px">Submit Request ✓</button>
+        </div>
+
+        <!-- SUCCESS -->
+        <div class="step" id="sOK">
+          <div class="success-card">
+            <div class="si">✅</div>
+            <div class="sh2">Request Submitted!</div>
+            <div class="sp">Our Content Team will review and action your update within 24 hours.</div>
+            <div class="s-badge">⏱ SLA: within 24 hours</div>
+            <br><br>
+            <button class="btn-more" id="moreBtn" onclick="anotherUpdate()">＋ Submit Another Update</button>
+            <button class="btn-more" onclick="showView('dash'); loadDashboard()">View Dashboard</button>
+          </div>
+        </div>
+
+      </div><!-- /wrap -->
+    </section><!-- /shell -->
+
+  </div><!-- /view-form -->
+
+</div><!-- /pg-portal -->
+
+<script>
+  // ═══════════════ VENDOR CREDENTIALS ═══════════════
+  // Replace / add entries here until you have a proper backend.
+  // Format: 'email': { password: '...', name: 'Display Name', brand: 'Restaurant/Brand' }
+  const VENDORS = {
+    'omar.m@talabat.com':        { password: 'Admin2024!',  name: 'Omar',    brand: 'Talabat Admin' },
+    'vendor@restaurant.com':     { password: 'Vendor2024!', name: 'Manager', brand: 'My Restaurant' },
+  };
+
+  // ═══════════════ SESSION ═══════════════
+  let currentVendor = null;
+
+  function doLogin() {
+    const email = document.getElementById('li-email').value.trim().toLowerCase();
+    const pass  = document.getElementById('li-pass').value;
+    const errEl = document.getElementById('li-err');
+    errEl.textContent = '';
+    if (!email || !pass) { errEl.textContent = 'Please enter your email and password.'; return; }
+    const vendor = VENDORS[email];
+    if (!vendor || vendor.password !== pass) {
+      errEl.textContent = 'Incorrect email or password. Please try again.';
+      return;
+    }
+    currentVendor = { email, ...vendor };
+    localStorage.setItem('tlb_session', JSON.stringify({ email, ts: Date.now() }));
+    document.getElementById('ph-vendor-name').textContent = vendor.brand;
+    document.getElementById('dash-name').textContent = vendor.name;
+    document.getElementById('pg-login').style.display = 'none';
+    document.getElementById('pg-portal').style.display = 'block';
+    showView('dash');
+    loadDashboard();
+  }
+
+  function doLogout() {
+    currentVendor = null;
+    localStorage.removeItem('tlb_session');
+    document.getElementById('pg-portal').style.display = 'none';
+    document.getElementById('pg-login').style.display = 'flex';
+    document.getElementById('li-email').value = '';
+    document.getElementById('li-pass').value = '';
+    document.getElementById('li-err').textContent = '';
+  }
+
+  function togglePass() {
+    const inp = document.getElementById('li-pass');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  function showView(view) {
+    document.getElementById('view-dash').style.display = view === 'dash' ? 'block' : 'none';
+    document.getElementById('view-form').style.display = view === 'form' ? 'block' : 'none';
+  }
+
+  function goToForm() {
+    showView('form');
+    // Auto-fill contact details from session
+    if (currentVendor) {
+      document.getElementById('f-email').value = currentVendor.email;
+      if (!document.getElementById('f-restaurant').value)
+        document.getElementById('f-restaurant').value = currentVendor.brand;
+    }
+    // Show step 1 directly
+    $('shell').classList.add('on');
+    if (cur !== 1) resetForm();
+    scrollTo(0, 0);
+  }
+
+  function resetForm() {
+    if (typeof cur !== 'undefined') {
+      const prev = 's' + cur;
+      if (document.getElementById(prev)) document.getElementById(prev).classList.remove('on');
+      if (document.getElementById('sOK')) document.getElementById('sOK').classList.remove('on');
+    }
+    cur = 1;
+    reqType = '';
+    updateN = 1;
+    document.getElementById('s1').classList.add('on');
+    document.getElementById('progBar').style.width = '25%';
+    document.getElementById('countTag').textContent = 'Update 1 of 5';
+    document.querySelectorAll('.tc').forEach(c => c.classList.remove('sel'));
+    groups.forEach(g => document.getElementById('grp-' + g).style.display = 'none');
+    document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => {
+      const keep = ['f-email','f-restaurant','f-branch','f-name','f-vendor'];
+      if (!keep.includes(el.id)) el.value = '';
+    });
+  }
+
+  // Session resume on page load
+  (function resumeSession() {
+    const stored = localStorage.getItem('tlb_session');
+    if (!stored) return;
+    try {
+      const { email, ts } = JSON.parse(stored);
+      if (Date.now() - ts > 8 * 3600 * 1000) { localStorage.removeItem('tlb_session'); return; }
+      const vendor = VENDORS[email];
+      if (!vendor) return;
+      currentVendor = { email, ...vendor };
+      document.getElementById('ph-vendor-name').textContent = vendor.brand;
+      document.getElementById('dash-name').textContent = vendor.name;
+      document.getElementById('pg-login').style.display = 'none';
+      document.getElementById('pg-portal').style.display = 'block';
+      showView('dash');
+      loadDashboard();
+    } catch(e) { localStorage.removeItem('tlb_session'); }
+  })();
+
+  // ═══════════════ DASHBOARD ═══════════════
+  // IMPORTANT: Set the tracking sheet to "Anyone with link can view" in Google Sheets → Share
+  const APPS_SCRIPT_URL = '/api/requests';
+
+  async function loadDashboard() {
+    const listEl  = document.getElementById('dash-list');
+    const loadEl  = document.getElementById('dash-loading');
+    const emptyEl = document.getElementById('dash-empty');
+    const errEl   = document.getElementById('dash-err');
+    listEl.innerHTML = '';
+    loadEl.style.display = 'block';
+    emptyEl.style.display = 'none';
+    errEl.style.display = 'none';
+    ['cnt-done','cnt-pending','cnt-rejected','cnt-total'].forEach(id => document.getElementById(id).textContent = '—');
+
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'PASTE_YOUR_APPS_SCRIPT_URL_HERE') {
+      loadEl.style.display = 'none';
+      errEl.style.display = 'block';
+      errEl.className = 'dash-err';
+      errEl.textContent = 'Dashboard not connected yet. Deploy the Apps Script and paste the URL into the HTML file.';
+      return;
+    }
+
+    try {
+      const url = APPS_SCRIPT_URL + '?email=' + encodeURIComponent(currentVendor.email) + '&t=' + Date.now();
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const json = await resp.json();
+      if (json.error) throw new Error(json.error);
+
+      const rows = json.data || [];
+      loadEl.style.display = 'none';
+
+      if (rows.length === 0) { emptyEl.style.display = 'block'; setStats(0,0,0,0); return; }
+
+      rows.sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
+
+      let done = 0, pending = 0, rejected = 0;
+      rows.forEach(r => {
+        const s = (r['Status'] || '').toLowerCase();
+        if (s === 'done' || s === 'completed' || s === 'complete') done++;
+        else if (s.includes('reject') || s.includes('daily limit')) rejected++;
+        else pending++;
+      });
+      setStats(done, pending, rejected, rows.length);
+
+      listEl.innerHTML = rows.map(row => {
+        const status   = row['Status'] || 'Pending';
+        const reason   = row['Reason'] || row['Comment'] || '';
+        const sl       = status.toLowerCase();
+        const isDone   = sl === 'done' || sl === 'completed' || sl === 'complete';
+        const isRej    = sl.includes('reject') || sl.includes('daily limit');
+        const bClass   = isDone ? 'badge-done' : isRej ? 'badge-rejected' : 'badge-pending';
+        const tsRaw    = row['Timestamp'];
+        const ts       = tsRaw ? new Date(tsRaw).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
+        const reqType  = row['Request Type / نوع الطلب'] || row['Request Type'] || '—';
+        const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
+        return `<div class="req-card">
+          <div class="req-left">
+            <div class="req-type">${escHtml(reqType)}</div>
+            <div class="req-item">Item: ${escHtml(itemName)}</div>
+            <div class="req-ts">${ts}</div>
+            ${reasonHtml}
+          </div>
+          <span class="badge ${bClass}">${escHtml(status)}</span>
+        </div>`;
+      }).join('');
+
+    } catch(err) {
+      loadEl.style.display = 'none';
+      errEl.style.display = 'block';
+      errEl.className = 'dash-err';
+      errEl.textContent = 'Could not load requests: ' + err.message;
+    }
+  }
+
+  function setStats(done, pending, rejected, total) {
+    document.getElementById('cnt-done').textContent     = done;
+    document.getElementById('cnt-pending').textContent  = pending;
+    document.getElementById('cnt-rejected').textContent = rejected;
+    document.getElementById('cnt-total').textContent    = total;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+
+  // ═══════════════ FORM LOGIC ═══════════════
+  const GFORM_ID  = '1FAIpQLSe4hWcspTGV0g3a9rjofmBpORBJtSxh8C1w44eGEUxk3ykYCg';
+  const GFORM_URL = `https://docs.google.com/forms/d/e/${GFORM_ID}/formResponse`;
+  const ENTRY_IDS = {
+    email:1309960300, restaurant:516058230, branch:1789044217, name:1575888700,
+    vendor:1232151171, requestType:949529161, barcode:323974197, sku:243989003,
+    itemName:897782983, itemNameAr:1729708837, category:340810007, price:928771270,
+    currentPrice:511977690, newPrice:147576026, description:1686864536,
+    currentDesc:1035692733, newDesc:334127788, photoLink:1658946314,
+    currentBarcode:1815271527, newBarcode:608458386, currentName:605883220,
+    newName:352861800, reason:527110807, notes:1561124634
+  };
+
+  let cur = 1, updateN = 1, reqType = '';
+  const MAX = 5; // Daily limit for "Add Item" only
+  const typeLabels = {
+    add:'Add a New Item', price:'Update Price', desc:'Update Description',
+    photo:'Change Photo', name:'Update Item Name', barcode:'Update Barcode', remove:'Remove an Item'
+  };
+  const groups = ['add','price','desc','photo','name','barcode','remove'];
+
+  const $  = id => document.getElementById(id);
+  const v  = id => $(id) ? $(id).value.trim() : '';
+
+  function err(fid, eid) { if($(fid)) $(fid).classList.add('bad'); if($(eid)) $(eid).classList.add('on'); }
+  function clr(fid, eid) { if($(fid)) $(fid).classList.remove('bad'); if($(eid)) $(eid).classList.remove('on'); }
+  function req(fid, eid) { if (!v(fid)) { err(fid,eid); return false; } clr(fid,eid); return true; }
+  function emailOk() {
+    const e = v('f-email');
+    if (!e || !/\S+@\S+\.\S+/.test(e)) { err('f-email','e-email'); return false; }
+    clr('f-email','e-email'); return true;
+  }
+
+  // ── "Add Item" daily limit (only for add type) ──
+  function getAddKey() {
+    const id = (v('f-email') || v('f-restaurant')).toLowerCase().trim();
+    return 'tlb_add_' + id;
+  }
+  function getAddCount() {
+    const today = new Date().toDateString();
+    const stored = JSON.parse(localStorage.getItem(getAddKey()) || '{"date":"","count":0}');
+    return stored.date === today ? stored.count : 0;
+  }
+  function incrementAddCount() {
+    const today = new Date().toDateString();
+    const key = getAddKey();
+    const stored = JSON.parse(localStorage.getItem(key) || '{"date":"","count":0}');
+    const count = stored.date === today ? stored.count + 1 : 1;
+    localStorage.setItem(key, JSON.stringify({ date: today, count }));
+  }
+
+  function pick(card, type) {
+    document.querySelectorAll('.tc').forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    reqType = type;
+    $('e-type').classList.remove('on');
+    // Show limit banner only when "Add Item" is selected and daily limit is hit
+    if (type === 'add' && getAddCount() >= MAX) {
+      $('limit-banner').classList.add('on');
+    } else {
+      $('limit-banner').classList.remove('on');
+    }
+  }
+
+  function next(to) {
+    if (!validate(cur)) return;
+    if (to === 3 && reqType) applyType();
+    if (to === 4) buildReview();
+    switchTo(to);
+  }
+
+  function validate(s) {
+    let ok = true;
+    if (s === 1) {
+      if (!emailOk())                          ok = false;
+      if (!req('f-restaurant','e-restaurant')) ok = false;
+      if (!req('f-branch','e-branch'))         ok = false;
+    }
+    if (s === 2) {
+      if (!reqType) { $('e-type').classList.add('on'); ok = false; }
+      // Block "Add Item" if daily limit reached
+      if (reqType === 'add' && getAddCount() >= MAX) {
+        $('limit-banner').classList.add('on'); ok = false;
+      }
+    }
+    if (s === 3) {
+      if (reqType === 'add') {
+        if (!req('f-add-barcode','e-add-barcode'))   ok = false;
+        if (!req('f-add-sku','e-add-sku'))           ok = false;
+        if (!req('f-add-name-en','e-add-name-en'))   ok = false;
+        if (!req('f-add-price','e-add-price'))       ok = false;
+        if (!req('f-add-photo','e-add-photo'))       ok = false;
+      }
+      if (reqType === 'price') {
+        if (!req('f-pr-item','e-pr-item'))           ok = false;
+        if (!req('f-pr-sku','e-pr-sku'))             ok = false;
+        if (!req('f-pr-barcode','e-pr-barcode'))     ok = false;
+        if (!req('f-pr-current','e-pr-current'))     ok = false;
+        if (!req('f-pr-new','e-pr-new'))             ok = false;
+      }
+      if (reqType === 'desc') {
+        if (!req('f-desc-item','e-desc-item'))       ok = false;
+        if (!req('f-desc-sku','e-desc-sku'))         ok = false;
+        if (!req('f-desc-barcode','e-desc-barcode')) ok = false;
+        if (!req('f-desc-current','e-desc-current')) ok = false;
+        if (!req('f-desc-new','e-desc-new'))         ok = false;
+      }
+      if (reqType === 'photo') {
+        if (!req('f-ph-item','e-ph-item'))           ok = false;
+        if (!req('f-ph-sku','e-ph-sku'))             ok = false;
+        if (!req('f-ph-barcode','e-ph-barcode'))     ok = false;
+        if (!req('f-ph-link','e-ph-link'))           ok = false;
+      }
+      if (reqType === 'name') {
+        if (!req('f-nm-sku','e-nm-sku'))                 ok = false;
+        if (!req('f-nm-barcode','e-nm-barcode'))         ok = false;
+        if (!req('f-nm-current','e-nm-current'))         ok = false;
+        if (!req('f-nm-new-sku','e-nm-new-sku'))         ok = false;
+        if (!req('f-nm-new-barcode','e-nm-new-barcode')) ok = false;
+        if (!req('f-nm-new','e-nm-new'))                 ok = false;
+        if (!req('f-nm-proof','e-nm-proof'))             ok = false;
+      }
+      if (reqType === 'barcode') {
+        if (!req('f-bc-item','e-bc-item'))           ok = false;
+        if (!req('f-bc-sku','e-bc-sku'))             ok = false;
+        if (!req('f-bc-current','e-bc-current'))     ok = false;
+        if (!req('f-bc-new','e-bc-new'))             ok = false;
+        if (!req('f-bc-proof','e-bc-proof'))         ok = false;
+      }
+      if (reqType === 'remove') {
+        if (!req('f-rm-item','e-rm-item'))           ok = false;
+        if (!req('f-rm-sku','e-rm-sku'))             ok = false;
+        if (!req('f-rm-barcode','e-rm-barcode'))     ok = false;
+        if (!req('f-rm-reason','e-rm-reason'))       ok = false;
+      }
+    }
+    return ok;
+  }
+
+  function switchTo(n) {
+    $('s' + cur).classList.remove('on');
+    cur = n;
+    $('s' + cur).classList.add('on');
+    $('progBar').style.width = (cur / 4 * 100) + '%';
+    scrollTo(0, 0);
+  }
+
+  function goBack() {
+    if (cur === 1 || cur === 'done') { showView('dash'); loadDashboard(); return; }
+    $('s' + cur).classList.remove('on');
+    cur--;
+    $('s' + cur).classList.add('on');
+    $('progBar').style.width = (cur / 4 * 100) + '%';
+    scrollTo(0, 0);
+  }
+
+  function applyType() {
+    groups.forEach(g => $('grp-' + g).style.display = 'none');
+    $('grp-' + reqType).style.display = '';
+    $('s3-chip').textContent = typeLabels[reqType];
+    $('s3-title').textContent = typeLabels[reqType];
+  }
+
+  function buildPayload() {
+    const base = {
+      email: v('f-email'), restaurant: v('f-restaurant'),
+      branch: v('f-branch'), name: v('f-name'),
+      vendor: v('f-vendor'), requestType: typeLabels[reqType]
+    };
+    if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo') };
+    if (reqType === 'price')   return { ...base, barcode: v('f-pr-barcode'), sku: v('f-pr-sku'), itemName: v('f-pr-item'), currentPrice: v('f-pr-current'), newPrice: v('f-pr-new'), reason: v('f-pr-reason') };
+    if (reqType === 'desc')    return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
+    if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
+    if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
+    if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
+    if (reqType === 'remove')  return { ...base, barcode: v('f-rm-barcode'), sku: v('f-rm-sku'), itemName: v('f-rm-item'), reason: v('f-rm-reason'), notes: v('f-rm-notes') };
+    return base;
+  }
+
+  function buildReview() {
+    const rows = [
+      ['Email', v('f-email') || '—'], ['Restaurant', v('f-restaurant') || '—'],
+      ['Branch', v('f-branch') || '—'], ['Name', v('f-name') || '—'],
+      ['Vendor ID', v('f-vendor') || '—'], ['Request Type', typeLabels[reqType] || '—'],
+    ];
+    if (reqType === 'add')     { rows.push(['Barcode', v('f-add-barcode')], ['SKU', v('f-add-sku')], ['Item Name (EN)', v('f-add-name-en')], ['Price', v('f-add-price')], ['Photo Link', v('f-add-photo')]); if (v('f-add-name-ar')) rows.push(['Item Name (AR)', v('f-add-name-ar')]); if (v('f-add-cat')) rows.push(['Category', v('f-add-cat')]); if (v('f-add-desc')) rows.push(['Description', v('f-add-desc')]); }
+    if (reqType === 'price')   { rows.push(['Item Name', v('f-pr-item')], ['SKU', v('f-pr-sku')], ['Barcode', v('f-pr-barcode')], ['Current Price', v('f-pr-current')], ['New Price', v('f-pr-new')]); if (v('f-pr-reason')) rows.push(['Reason', v('f-pr-reason')]); }
+    if (reqType === 'desc')    { rows.push(['Item Name', v('f-desc-item')], ['SKU', v('f-desc-sku')], ['Barcode', v('f-desc-barcode')], ['Current Desc.', v('f-desc-current')], ['New Desc.', v('f-desc-new')]); }
+    if (reqType === 'photo')   { rows.push(['Item Name', v('f-ph-item')], ['SKU', v('f-ph-sku')], ['Barcode', v('f-ph-barcode')], ['Photo Link', v('f-ph-link')]); }
+    if (reqType === 'name')    { rows.push(['Current SKU', v('f-nm-sku')], ['Current Barcode', v('f-nm-barcode')], ['Old Item Name', v('f-nm-current')], ['New SKU', v('f-nm-new-sku')], ['New Barcode', v('f-nm-new-barcode')], ['New Item Name', v('f-nm-new')], ['New Product Image', v('f-nm-proof')]); }
+    if (reqType === 'barcode') { rows.push(['Item Name', v('f-bc-item')], ['SKU', v('f-bc-sku')], ['Current Barcode', v('f-bc-current')], ['New Barcode', v('f-bc-new')], ['Proof Link', v('f-bc-proof')]); }
+    if (reqType === 'remove')  { rows.push(['Item Name', v('f-rm-item')], ['SKU', v('f-rm-sku')], ['Barcode', v('f-rm-barcode')], ['Reason', v('f-rm-reason')]); if (v('f-rm-notes')) rows.push(['Notes', v('f-rm-notes')]); }
+    $('rv-body').innerHTML = rows.map(([k, val]) =>
+      `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
+    ).join('');
+  }
+
+  function submitForm() {
+    const btn = document.querySelector('#s4 .btn-next');
+
+    // Block "Add Item" if daily limit reached (final guard)
+    if (reqType === 'add' && getAddCount() >= MAX) {
+      alert('You have reached the daily limit of 5 "Add Item" requests. Please try again tomorrow.');
+      return;
+    }
+
+    btn.textContent = 'Submitting…';
+    btn.disabled = true;
+
+    try {
+      const payload = buildPayload();
+      const iframe = document.createElement('iframe');
+      iframe.name = 'gform_target';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GFORM_URL;
+      form.target = 'gform_target';
+
+      Object.entries(ENTRY_IDS).forEach(([k, id]) => {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = `entry.${id}`;
+        input.value = payload[k] || '';
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+
+      setTimeout(() => {
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        if (reqType === 'add') incrementAddCount();
+        btn.textContent = 'Submit Request ✓';
+        btn.disabled = false;
+        $('s4').classList.remove('on');
+        $('sOK').classList.add('on');
+        $('progBar').style.width = '100%';
+        cur = 'done';
+        const addsDone = getAddCount();
+        if (addsDone >= MAX) $('moreBtn').style.display = 'none';
+        // Silently refresh dashboard data in background
+        loadDashboard();
+      }, 1500);
+
+    } catch(e) {
+      btn.textContent = 'Submit Request ✓';
+      btn.disabled = false;
+      alert('Submission failed — please check your connection and try again.');
+    }
+  }
+
+  function anotherUpdate() {
+    updateN++;
+    $('countTag').textContent = `Update ${updateN} of ${MAX}`;
+    document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => {
+      const keep = ['f-email','f-restaurant','f-branch','f-name','f-vendor'];
+      if (!keep.includes(el.id)) el.value = '';
+    });
+    document.querySelectorAll('.tc').forEach(c => c.classList.remove('sel'));
+    groups.forEach(g => $('grp-' + g).style.display = 'none');
+    $('limit-banner').classList.remove('on');
+    reqType = '';
+    $('sOK').classList.remove('on');
+    cur = 2;
+    $('s2').classList.add('on');
+    $('progBar').style.width = '50%';
+    scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
