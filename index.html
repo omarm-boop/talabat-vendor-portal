@@ -1064,12 +1064,14 @@
     document.querySelectorAll('.step').forEach(s => s.classList.remove('on'));
     if (id === 's2') { cur = 2; $('progBar').style.width = '50%'; }
     $(id).classList.add('on');
+    $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
 
   function switchCustom(id) {
     document.querySelectorAll('.step').forEach(s => s.classList.remove('on'));
     $(id).classList.add('on');
+    $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
 
@@ -1138,6 +1140,7 @@
     cur = n;
     $('s' + cur).classList.add('on');
     $('progBar').style.width = (cur / 4 * 100) + '%';
+    if (!(cur === 3 && reqType === 'add')) $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
 
@@ -1149,6 +1152,7 @@
     cur--;
     $('s' + cur).classList.add('on');
     $('progBar').style.width = (cur / 4 * 100) + '%';
+    if (!(cur === 3 && reqType === 'add')) $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
 
