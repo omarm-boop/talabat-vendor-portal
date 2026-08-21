@@ -27,6 +27,9 @@
     .li-error { color:#e74c3c; font-size:13px; font-weight:600; margin-bottom:12px; min-height:18px; }
     .btn-login { width:100%; background:var(--orange); color:#fff; border:none; border-radius:14px; padding:17px; font-family:'Poppins',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all .2s; }
     .btn-login:hover { background:#e64f00; transform:translateY(-2px); box-shadow:0 8px 24px rgba(255,89,0,.28); }
+    .login-switch { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.6); }
+    .login-switch button { background:none; border:none; color:var(--orange); font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-decoration:underline; padding:0; }
+    .btn-login:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
 
     /* ── PORTAL HEADER ── */
     .portal-header { background:var(--orange); height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 36px; position:sticky; top:0; z-index:300; }
@@ -177,24 +180,51 @@
   <div class="login-wrap">
     <div class="login-logo">talabat</div>
     <div class="login-tagline">Vendor Menu Update Portal</div>
-    <div class="login-card">
-      <div class="login-title">Sign in to your account</div>
-      <div class="login-sub">Enter your credentials to manage your menu update requests.</div>
 
+    <!-- SIGN IN -->
+    <div class="login-card" id="card-signin">
+      <div class="login-title">Sign in</div>
+      <div class="login-sub">Enter your Vendor ID and password to continue.</div>
       <div class="li-field">
-        <label class="li-label">Email Address</label>
-        <input class="li-input" type="email" id="li-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter') doLogin()">
+        <label class="li-label">Vendor ID</label>
+        <input class="li-input" type="text" id="li-vendorid" placeholder="e.g. 503747" onkeydown="if(event.key==='Enter') doLogin()">
       </div>
       <div class="li-field">
         <label class="li-label">Password</label>
         <div class="li-pass-wrap">
           <input class="li-input" type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
-          <button class="li-eye" type="button" onclick="togglePass()" id="li-eye-btn">👁</button>
+          <button class="li-eye" type="button" onclick="togglePass('li-pass')">👁</button>
         </div>
       </div>
       <div class="li-error" id="li-err"></div>
-      <button class="btn-login" onclick="doLogin()">Sign In →</button>
+      <button class="btn-login" id="btn-signin" onclick="doLogin()">Sign In →</button>
     </div>
+    <div class="login-switch">Don't have an account? <button onclick="showPanel('signup')">Create Account</button></div>
+
+    <!-- SIGN UP -->
+    <div class="login-card" id="card-signup" style="display:none">
+      <div class="login-title">Create Account</div>
+      <div class="login-sub">Enter the Vendor ID assigned to your branch. It must exist in our system.</div>
+      <div class="li-field">
+        <label class="li-label">Vendor ID</label>
+        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 503747" onkeydown="if(event.key==='Enter') doSignup()">
+      </div>
+      <div class="li-field">
+        <label class="li-label">Create Password</label>
+        <div class="li-pass-wrap">
+          <input class="li-input" type="password" id="su-pass" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter') doSignup()">
+          <button class="li-eye" type="button" onclick="togglePass('su-pass')">👁</button>
+        </div>
+      </div>
+      <div class="li-field">
+        <label class="li-label">Confirm Password</label>
+        <input class="li-input" type="password" id="su-confirm" placeholder="Repeat your password" onkeydown="if(event.key==='Enter') doSignup()">
+      </div>
+      <div class="li-error" id="su-err"></div>
+      <button class="btn-login" id="btn-signup" onclick="doSignup()">Create Account →</button>
+    </div>
+    <div class="login-switch" id="switch-signup" style="display:none">Already have an account? <button onclick="showPanel('signin')">Sign In</button></div>
+
   </div>
 </div>
 
@@ -682,32 +712,65 @@
 </div><!-- /pg-portal -->
 
 <script>
-  // ═══════════════ VENDOR CREDENTIALS ═══════════════
-  // Replace / add entries here until you have a proper backend.
-  // Format: 'email': { password: '...', name: 'Display Name', brand: 'Restaurant/Brand' }
-  const VENDORS = {
-    'omar.m@talabat.com':        { password: 'Admin2024!',  name: 'Omar',    brand: 'Talabat Admin' },
-    'vendor@restaurant.com':     { password: 'Vendor2024!', name: 'Manager', brand: 'My Restaurant' },
-  };
-
   // ═══════════════ SESSION ═══════════════
   let currentVendor = null;
 
-  function doLogin() {
-    const email = document.getElementById('li-email').value.trim().toLowerCase();
-    const pass  = document.getElementById('li-pass').value;
-    const errEl = document.getElementById('li-err');
+  async function doLogin() {
+    const vendorId = document.getElementById('li-vendorid').value.trim();
+    const pass     = document.getElementById('li-pass').value;
+    const errEl    = document.getElementById('li-err');
+    const btn      = document.getElementById('btn-signin');
     errEl.textContent = '';
-    if (!email || !pass) { errEl.textContent = 'Please enter your email and password.'; return; }
-    const vendor = VENDORS[email];
-    if (!vendor || vendor.password !== pass) {
-      errEl.textContent = 'Incorrect email or password. Please try again.';
-      return;
+    if (!vendorId || !pass) { errEl.textContent = 'Please enter your Vendor ID and password.'; return; }
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+    try {
+      const resp = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId, password: pass }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Login failed.'; return; }
+      startSession(data.vendor);
+    } catch(e) {
+      errEl.textContent = 'Connection error. Please try again.';
+    } finally {
+      btn.textContent = 'Sign In →'; btn.disabled = false;
     }
-    currentVendor = { email, ...vendor };
-    localStorage.setItem('tlb_session', JSON.stringify({ email, ts: Date.now() }));
-    document.getElementById('ph-vendor-name').textContent = vendor.brand;
-    document.getElementById('dash-name').textContent = vendor.name;
+  }
+
+  async function doSignup() {
+    const vendorId = document.getElementById('su-vendorid').value.trim();
+    const pass     = document.getElementById('su-pass').value;
+    const confirm  = document.getElementById('su-confirm').value;
+    const errEl    = document.getElementById('su-err');
+    const btn      = document.getElementById('btn-signup');
+    errEl.textContent = '';
+    if (!vendorId)        { errEl.textContent = 'Please enter your Vendor ID.'; return; }
+    if (pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+    if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
+    btn.textContent = 'Creating account…'; btn.disabled = true;
+    try {
+      const resp = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId, password: pass }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Registration failed.'; return; }
+      startSession(data.vendor);
+    } catch(e) {
+      errEl.textContent = 'Connection error. Please try again.';
+    } finally {
+      btn.textContent = 'Create Account →'; btn.disabled = false;
+    }
+  }
+
+  function startSession(vendor) {
+    currentVendor = vendor;
+    localStorage.setItem('tlb_session', JSON.stringify({ vendor, ts: Date.now() }));
+    document.getElementById('ph-vendor-name').textContent = vendor.chainName;
+    document.getElementById('dash-name').textContent = vendor.branchName;
     document.getElementById('pg-login').style.display = 'none';
     document.getElementById('pg-portal').style.display = 'block';
     showView('dash');
@@ -719,14 +782,27 @@
     localStorage.removeItem('tlb_session');
     document.getElementById('pg-portal').style.display = 'none';
     document.getElementById('pg-login').style.display = 'flex';
-    document.getElementById('li-email').value = '';
+    document.getElementById('li-vendorid').value = '';
     document.getElementById('li-pass').value = '';
     document.getElementById('li-err').textContent = '';
+    showPanel('signin');
   }
 
-  function togglePass() {
-    const inp = document.getElementById('li-pass');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+  function togglePass(id) {
+    const inp = document.getElementById(id);
+    if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  function showPanel(panel) {
+    const isSignup = panel === 'signup';
+    document.getElementById('card-signin').style.display  = isSignup ? 'none' : 'block';
+    document.getElementById('card-signup').style.display  = isSignup ? 'block' : 'none';
+    document.getElementById('switch-signup').style.display = isSignup ? 'block' : 'none';
+    // find the signin switch (first .login-switch)
+    const switches = document.querySelectorAll('.login-switch');
+    if (switches[0]) switches[0].style.display = isSignup ? 'none' : 'block';
+    document.getElementById('li-err').textContent = '';
+    document.getElementById('su-err').textContent = '';
   }
 
   function showView(view) {
@@ -736,13 +812,12 @@
 
   function goToForm() {
     showView('form');
-    // Auto-fill contact details from session
     if (currentVendor) {
-      document.getElementById('f-email').value = currentVendor.email;
-      if (!document.getElementById('f-restaurant').value)
-        document.getElementById('f-restaurant').value = currentVendor.brand;
+      document.getElementById('f-email').value      = currentVendor.vendorId + '@vendor.portal';
+      document.getElementById('f-restaurant').value = currentVendor.chainName;
+      document.getElementById('f-branch').value     = currentVendor.branchName;
+      document.getElementById('f-vendor').value     = currentVendor.vendorId;
     }
-    // Show step 1 directly
     $('shell').classList.add('on');
     if (cur !== 1) resetForm();
     scrollTo(0, 0);
@@ -773,17 +848,10 @@
     const stored = localStorage.getItem('tlb_session');
     if (!stored) return;
     try {
-      const { email, ts } = JSON.parse(stored);
+      const { vendor, ts } = JSON.parse(stored);
+      if (!vendor || !vendor.vendorId) { localStorage.removeItem('tlb_session'); return; }
       if (Date.now() - ts > 8 * 3600 * 1000) { localStorage.removeItem('tlb_session'); return; }
-      const vendor = VENDORS[email];
-      if (!vendor) return;
-      currentVendor = { email, ...vendor };
-      document.getElementById('ph-vendor-name').textContent = vendor.brand;
-      document.getElementById('dash-name').textContent = vendor.name;
-      document.getElementById('pg-login').style.display = 'none';
-      document.getElementById('pg-portal').style.display = 'block';
-      showView('dash');
-      loadDashboard();
+      startSession(vendor);
     } catch(e) { localStorage.removeItem('tlb_session'); }
   })();
 
@@ -811,7 +879,8 @@
     }
 
     try {
-      const url = APPS_SCRIPT_URL + '?email=' + encodeURIComponent(currentVendor.email) + '&t=' + Date.now();
+      const vendorEmail = currentVendor.vendorId + '@vendor.portal';
+      const url = APPS_SCRIPT_URL + '?email=' + encodeURIComponent(vendorEmail) + '&t=' + Date.now();
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const json = await resp.json();
