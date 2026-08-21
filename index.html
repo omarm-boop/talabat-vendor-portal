@@ -276,7 +276,7 @@
       <div class="wrap">
         <div class="phead">
           <button class="btn-back" onclick="goBack()">← Back</button>
-          <span class="count-tag" id="countTag">Update 1 of 5</span>
+          <span class="count-tag" id="countTag" style="display:none">Update 1 of 5</span>
         </div>
         <div class="prog-rail"><div class="prog-bar" id="progBar" style="width:25%"></div></div>
 
@@ -322,10 +322,6 @@
               <div class="tc-icon">➕</div>
               <div><div class="tc-name">Add a New Item</div><div class="tc-desc">List a brand new product on your menu</div></div>
             </div>
-            <div class="tc" onclick="pick(this,'price')">
-              <div class="tc-icon">💰</div>
-              <div><div class="tc-name">Update Price</div><div class="tc-desc">Correct the price of an existing item</div></div>
-            </div>
             <div class="tc" onclick="pick(this,'desc')">
               <div class="tc-icon">📝</div>
               <div><div class="tc-name">Update Description</div><div class="tc-desc">Fix an item's description text</div></div>
@@ -348,8 +344,54 @@
             </div>
           </div>
           <div class="ferr-type" id="e-type">Please select an update type to continue</div>
-          <div class="limit-banner" id="limit-banner">⚠️ You have reached the daily limit of 5 "Add Item" requests. Please try again tomorrow.</div>
           <button class="btn-next" onclick="next(3)">Continue →</button>
+        </div>
+
+        <!-- ADD ITEM TYPE SELECTION -->
+        <div class="step" id="s-add-type">
+          <div class="chip">Add New Item</div>
+          <div class="sh">How would you like to add items?</div>
+          <div class="tgrid">
+            <div class="tc" id="tc-urgent" onclick="pickAddType('urgent')">
+              <div class="tc-icon">⚡</div>
+              <div>
+                <div class="tc-name">Urgent Add Item</div>
+                <div class="tc-desc">Single item — limited to 5 requests per day</div>
+              </div>
+            </div>
+            <div class="tc" onclick="pickAddType('master')">
+              <div class="tc-icon">📂</div>
+              <div>
+                <div class="tc-name">Add Master File</div>
+                <div class="tc-desc">Upload a list of items via CSV/Excel template</div>
+              </div>
+            </div>
+          </div>
+          <div class="limit-banner" id="limit-banner">⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.</div>
+          <button class="btn-back-dash" style="margin-top:18px" onclick="backTo('s2')">← Back</button>
+        </div>
+
+        <!-- MASTER FILE: PHARMACY OR GROCERY -->
+        <div class="step" id="s-master-type">
+          <div class="chip">Add Master File</div>
+          <div class="sh">Select your store type</div>
+          <div class="tgrid">
+            <div class="tc" onclick="pickMasterType('pharmacy')">
+              <div class="tc-icon">💊</div>
+              <div>
+                <div class="tc-name">Pharmacy</div>
+                <div class="tc-desc">Pharmaceutical products &amp; medications</div>
+              </div>
+            </div>
+            <div class="tc" onclick="pickMasterType('grocery')">
+              <div class="tc-icon">🛒</div>
+              <div>
+                <div class="tc-name">Grocery</div>
+                <div class="tc-desc">Food, beverages &amp; household items</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn-back-dash" style="margin-top:18px" onclick="backTo('s-add-type')">← Back</button>
         </div>
 
         <!-- STEP 3: Conditional Details -->
@@ -407,43 +449,19 @@
             </div>
           </div>
 
-          <!-- ══ UPDATE PRICE ══ -->
-          <div id="grp-price" style="display:none">
-            <div class="sec-label">Item Identifiers</div>
-            <div class="row x3">
-              <div class="fg">
-                <label class="lbl">Item Name <span class="req">*</span></label>
-                <input type="text" id="f-pr-item" placeholder="Item name">
-                <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
-                <div class="ferr" id="e-pr-item">Item name is required</div>
-              </div>
-              <div class="fg">
-                <label class="lbl">SKU <span class="req">*</span></label>
-                <input type="text" id="f-pr-sku" placeholder="e.g. 6985">
-                <div class="ferr" id="e-pr-sku">SKU is required</div>
-              </div>
-              <div class="fg">
-                <label class="lbl">Barcode <span class="req">*</span></label>
-                <input type="text" id="f-pr-barcode" placeholder="e.g. 0622...">
-                <div class="ferr" id="e-pr-barcode">Barcode is required</div>
-              </div>
-            </div>
-            <div class="sec-label">Price Details</div>
-            <div class="row x2">
-              <div class="fg">
-                <label class="lbl">Current Price <span class="req">*</span></label>
-                <input type="text" id="f-pr-current" placeholder="e.g. EGP 25.00">
-                <div class="ferr" id="e-pr-current">Current price is required</div>
-              </div>
-              <div class="fg">
-                <label class="lbl">New Price <span class="req">*</span></label>
-                <input type="text" id="f-pr-new" placeholder="e.g. EGP 34.00">
-                <div class="ferr" id="e-pr-new">New price is required</div>
-              </div>
+          <!-- ══ ADD MASTER FILE ══ -->
+          <div id="grp-master" style="display:none">
+            <div class="warn">📋 Download the template, fill it in, upload to Google Drive, then paste the link below.</div>
+            <div id="master-template-block"></div>
+            <div class="fg" style="margin-top:18px">
+              <label class="lbl">Google Drive Link to Filled File <span class="req">*</span></label>
+              <input type="url" id="f-master-link" placeholder="https://drive.google.com/...">
+              <div class="drive-hint">📁 Make sure sharing is set to "Anyone with the link can view"</div>
+              <div class="ferr" id="e-master-link">File link is required</div>
             </div>
             <div class="fg">
-              <label class="lbl">Reason for Change <span class="opt">(optional)</span></label>
-              <input type="text" id="f-pr-reason" placeholder="e.g. Supplier price increase">
+              <label class="lbl">Additional Notes <span class="opt">(optional)</span></label>
+              <input type="text" id="f-master-notes" placeholder="Any extra details for the content team…">
             </div>
           </div>
 
@@ -741,7 +759,7 @@
     updateN = 1;
     document.getElementById('s1').classList.add('on');
     document.getElementById('progBar').style.width = '25%';
-    document.getElementById('countTag').textContent = 'Update 1 of 5';
+    document.getElementById('countTag').style.display = 'none';
     document.querySelectorAll('.tc').forEach(c => c.classList.remove('sel'));
     groups.forEach(g => document.getElementById('grp-' + g).style.display = 'none');
     document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => {
@@ -871,13 +889,14 @@
     newName:352861800, reason:527110807, notes:1561124634
   };
 
-  let cur = 1, updateN = 1, reqType = '';
-  const MAX = 5; // Daily limit for "Add Item" only
+  let cur = 1, updateN = 1, reqType = '', masterType = '';
+  const MAX = 5; // Daily limit for "Urgent Add Item" only
   const typeLabels = {
-    add:'Add a New Item', price:'Update Price', desc:'Update Description',
-    photo:'Change Photo', name:'Update Item Name', barcode:'Update Barcode', remove:'Remove an Item'
+    add:'Urgent Add Item', desc:'Update Description',
+    photo:'Change Photo', name:'Update Item Name', barcode:'Update Barcode',
+    remove:'Remove an Item', master:'Add Master File'
   };
-  const groups = ['add','price','desc','photo','name','barcode','remove'];
+  const groups = ['add','desc','photo','name','barcode','remove','master'];
 
   const $  = id => document.getElementById(id);
   const v  = id => $(id) ? $(id).value.trim() : '';
@@ -914,19 +933,75 @@
     card.classList.add('sel');
     reqType = type;
     $('e-type').classList.remove('on');
-    // Show limit banner only when "Add Item" is selected and daily limit is hit
-    if (type === 'add' && getAddCount() >= MAX) {
-      $('limit-banner').classList.add('on');
-    } else {
-      $('limit-banner').classList.remove('on');
-    }
   }
 
   function next(to) {
     if (!validate(cur)) return;
-    if (to === 3 && reqType) applyType();
+    if (to === 3) {
+      if (reqType === 'add') { switchCustom('s-add-type'); return; }
+      applyType();
+    }
     if (to === 4) buildReview();
     switchTo(to);
+  }
+
+  function pickAddType(type) {
+    if (type === 'urgent') {
+      if (getAddCount() >= MAX) { $('limit-banner').classList.add('on'); return; }
+      $('limit-banner').classList.remove('on');
+      reqType = 'add';
+      $('countTag').textContent = `Update ${updateN} of ${MAX}`;
+      $('countTag').style.display = '';
+      applyType();
+      switchTo(3);
+    } else {
+      switchCustom('s-master-type');
+    }
+  }
+
+  function pickMasterType(type) {
+    masterType = type;
+    reqType = 'master';
+    $('countTag').style.display = 'none';
+    showMasterTemplate(type);
+    applyType();
+    switchTo(3);
+  }
+
+  function showMasterTemplate(type) {
+    const col = type === 'pharmacy'
+      ? 'Valid Barcode | Full Item Name | SKU | Price | Stock'
+      : 'Valid Barcode | Full Item Name | SKU | Price | Min Weight (if weighable)';
+    $('master-template-block').innerHTML = `
+      <div class="warn" style="background:#f0f8ff;border-color:#90caf9;color:#1565c0">
+        📄 Template columns: <strong>${col}</strong><br>
+        <button class="btn-back-dash" style="margin-top:10px;color:#1565c0" onclick="downloadTemplate('${type}')">⬇ Download ${type === 'pharmacy' ? 'Pharmacy' : 'Grocery'} Template CSV</button>
+      </div>`;
+  }
+
+  function downloadTemplate(type) {
+    const pharmacyCSV = 'Valid Barcode,Full Item Name,SKU,Price,Stock\n,,,,\n,,,,\n,,,,';
+    const groceryCSV  = 'Valid Barcode,Full Item Name,SKU,Price,Min Weight (if weighable)\n,,,,\n,,,,\n,,,,';
+    const csv  = type === 'pharmacy' ? pharmacyCSV : groceryCSV;
+    const name = type === 'pharmacy' ? 'pharmacy-template.csv' : 'grocery-template.csv';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+  }
+
+  function backTo(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('on'));
+    if (id === 's2') { cur = 2; $('progBar').style.width = '50%'; }
+    $(id).classList.add('on');
+    scrollTo(0, 0);
+  }
+
+  function switchCustom(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('on'));
+    $(id).classList.add('on');
+    scrollTo(0, 0);
   }
 
   function validate(s) {
@@ -938,10 +1013,6 @@
     }
     if (s === 2) {
       if (!reqType) { $('e-type').classList.add('on'); ok = false; }
-      // Block "Add Item" if daily limit reached
-      if (reqType === 'add' && getAddCount() >= MAX) {
-        $('limit-banner').classList.add('on'); ok = false;
-      }
     }
     if (s === 3) {
       if (reqType === 'add') {
@@ -951,12 +1022,8 @@
         if (!req('f-add-price','e-add-price'))       ok = false;
         if (!req('f-add-photo','e-add-photo'))       ok = false;
       }
-      if (reqType === 'price') {
-        if (!req('f-pr-item','e-pr-item'))           ok = false;
-        if (!req('f-pr-sku','e-pr-sku'))             ok = false;
-        if (!req('f-pr-barcode','e-pr-barcode'))     ok = false;
-        if (!req('f-pr-current','e-pr-current'))     ok = false;
-        if (!req('f-pr-new','e-pr-new'))             ok = false;
+      if (reqType === 'master') {
+        if (!req('f-master-link','e-master-link'))   ok = false;
       }
       if (reqType === 'desc') {
         if (!req('f-desc-item','e-desc-item'))       ok = false;
@@ -1007,6 +1074,8 @@
 
   function goBack() {
     if (cur === 1 || cur === 'done') { showView('dash'); loadDashboard(); return; }
+    if ($('s-master-type').classList.contains('on')) { switchCustom('s-add-type'); return; }
+    if ($('s-add-type').classList.contains('on')) { backTo('s2'); return; }
     $('s' + cur).classList.remove('on');
     cur--;
     $('s' + cur).classList.add('on');
@@ -1028,7 +1097,7 @@
       vendor: v('f-vendor'), requestType: typeLabels[reqType]
     };
     if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo') };
-    if (reqType === 'price')   return { ...base, barcode: v('f-pr-barcode'), sku: v('f-pr-sku'), itemName: v('f-pr-item'), currentPrice: v('f-pr-current'), newPrice: v('f-pr-new'), reason: v('f-pr-reason') };
+    if (reqType === 'master')  return { ...base, requestType: 'Add Master File – ' + (masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'), photoLink: v('f-master-link'), notes: v('f-master-notes') };
     if (reqType === 'desc')    return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
     if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
@@ -1044,7 +1113,7 @@
       ['Vendor ID', v('f-vendor') || '—'], ['Request Type', typeLabels[reqType] || '—'],
     ];
     if (reqType === 'add')     { rows.push(['Barcode', v('f-add-barcode')], ['SKU', v('f-add-sku')], ['Item Name (EN)', v('f-add-name-en')], ['Price', v('f-add-price')], ['Photo Link', v('f-add-photo')]); if (v('f-add-name-ar')) rows.push(['Item Name (AR)', v('f-add-name-ar')]); if (v('f-add-cat')) rows.push(['Category', v('f-add-cat')]); if (v('f-add-desc')) rows.push(['Description', v('f-add-desc')]); }
-    if (reqType === 'price')   { rows.push(['Item Name', v('f-pr-item')], ['SKU', v('f-pr-sku')], ['Barcode', v('f-pr-barcode')], ['Current Price', v('f-pr-current')], ['New Price', v('f-pr-new')]); if (v('f-pr-reason')) rows.push(['Reason', v('f-pr-reason')]); }
+    if (reqType === 'master')  { rows.push(['Store Type', masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'], ['File Link', v('f-master-link')]); if (v('f-master-notes')) rows.push(['Notes', v('f-master-notes')]); }
     if (reqType === 'desc')    { rows.push(['Item Name', v('f-desc-item')], ['SKU', v('f-desc-sku')], ['Barcode', v('f-desc-barcode')], ['Current Desc.', v('f-desc-current')], ['New Desc.', v('f-desc-new')]); }
     if (reqType === 'photo')   { rows.push(['Item Name', v('f-ph-item')], ['SKU', v('f-ph-sku')], ['Barcode', v('f-ph-barcode')], ['Photo Link', v('f-ph-link')]); }
     if (reqType === 'name')    { rows.push(['Current SKU', v('f-nm-sku')], ['Current Barcode', v('f-nm-barcode')], ['Old Item Name', v('f-nm-current')], ['New SKU', v('f-nm-new-sku')], ['New Barcode', v('f-nm-new-barcode')], ['New Item Name', v('f-nm-new')], ['New Product Image', v('f-nm-proof')]); }
@@ -1115,7 +1184,7 @@
 
   function anotherUpdate() {
     updateN++;
-    $('countTag').textContent = `Update ${updateN} of ${MAX}`;
+    $('countTag').style.display = 'none';
     document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => {
       const keep = ['f-email','f-restaurant','f-branch','f-name','f-vendor'];
       if (!keep.includes(el.id)) el.value = '';
