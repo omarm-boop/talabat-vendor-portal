@@ -962,6 +962,7 @@
     }
     $('shell').classList.add('on');
     if (cur !== 1) resetForm();
+    $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
 
@@ -1307,6 +1308,7 @@
     const label = getTypeLabel(reqType);
     $('s3-chip').textContent = label;
     $('s3-title').textContent = label;
+    if (reqType !== 'add') $('countTag').style.display = 'none';
   }
 
   function buildPayload() {
