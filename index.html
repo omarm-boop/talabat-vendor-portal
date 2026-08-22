@@ -30,6 +30,9 @@
     .login-switch { text-align:center; margin-top:20px; font-size:13px; color:rgba(255,255,255,.6); }
     .login-switch button { background:none; border:none; color:var(--orange); font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-decoration:underline; padding:0; }
     .btn-login:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+    .lang-btn { background:rgba(255,255,255,.18); color:#fff; border:none; padding:6px 18px; border-radius:99px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; }
+    .lang-btn:hover { background:rgba(255,255,255,.32); }
+    .login-lang { text-align:right; margin-bottom:16px; }
 
     /* ── PORTAL HEADER ── */
     .portal-header { background:var(--orange); height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 36px; position:sticky; top:0; z-index:300; }
@@ -178,52 +181,53 @@
 <!-- ═══════════════════════════════════════ LOGIN PAGE ═══════════════════════════════════════ -->
 <div id="pg-login">
   <div class="login-wrap">
+    <div class="login-lang"><button class="lang-btn" onclick="setLang(lang==='ar'?'en':'ar')">ع</button></div>
     <div class="login-logo">talabat</div>
-    <div class="login-tagline">Vendor Menu Update Portal</div>
+    <div class="login-tagline" data-i18n="tagline">Vendor Menu Update Portal</div>
 
     <!-- SIGN IN -->
     <div class="login-card" id="card-signin">
-      <div class="login-title">Sign in</div>
-      <div class="login-sub">Enter your Vendor ID and password to continue.</div>
+      <div class="login-title" data-i18n="signIn">Sign in</div>
+      <div class="login-sub" data-i18n="signInSub">Enter your Vendor ID and password to continue.</div>
       <div class="li-field">
-        <label class="li-label">Vendor ID</label>
-        <input class="li-input" type="text" id="li-vendorid" placeholder="e.g. 503747" onkeydown="if(event.key==='Enter') doLogin()">
+        <label class="li-label" data-i18n="vendorIdLabel">Vendor ID</label>
+        <input class="li-input" type="text" id="li-vendorid" placeholder="e.g. 503747" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doLogin()">
       </div>
       <div class="li-field">
-        <label class="li-label">Password</label>
+        <label class="li-label" data-i18n="passwordLabel">Password</label>
         <div class="li-pass-wrap">
           <input class="li-input" type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
           <button class="li-eye" type="button" onclick="togglePass('li-pass')">👁</button>
         </div>
       </div>
       <div class="li-error" id="li-err"></div>
-      <button class="btn-login" id="btn-signin" onclick="doLogin()">Sign In →</button>
+      <button class="btn-login" id="btn-signin" data-i18n="signInBtn" onclick="doLogin()">Sign In →</button>
     </div>
-    <div class="login-switch">Don't have an account? <button onclick="showPanel('signup')">Create Account</button></div>
+    <div class="login-switch"><span data-i18n="noAccount">Don't have an account?</span> <button data-i18n="createAccLink" onclick="showPanel('signup')">Create Account</button></div>
 
     <!-- SIGN UP -->
     <div class="login-card" id="card-signup" style="display:none">
-      <div class="login-title">Create Account</div>
-      <div class="login-sub">Enter the Vendor ID assigned to your branch. It must exist in our system.</div>
+      <div class="login-title" data-i18n="createAcc">Create Account</div>
+      <div class="login-sub" data-i18n="createAccSub">Enter the Vendor ID assigned to your branch. It must exist in our system.</div>
       <div class="li-field">
-        <label class="li-label">Vendor ID</label>
-        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 503747" onkeydown="if(event.key==='Enter') doSignup()">
+        <label class="li-label" data-i18n="vendorIdLabel">Vendor ID</label>
+        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 503747" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field">
-        <label class="li-label">Create Password</label>
+        <label class="li-label" data-i18n="createPassLabel">Create Password</label>
         <div class="li-pass-wrap">
-          <input class="li-input" type="password" id="su-pass" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter') doSignup()">
+          <input class="li-input" type="password" id="su-pass" placeholder="At least 6 characters" data-i18n-ph="createPassPh" onkeydown="if(event.key==='Enter') doSignup()">
           <button class="li-eye" type="button" onclick="togglePass('su-pass')">👁</button>
         </div>
       </div>
       <div class="li-field">
-        <label class="li-label">Confirm Password</label>
-        <input class="li-input" type="password" id="su-confirm" placeholder="Repeat your password" onkeydown="if(event.key==='Enter') doSignup()">
+        <label class="li-label" data-i18n="confirmPassLabel">Confirm Password</label>
+        <input class="li-input" type="password" id="su-confirm" placeholder="Repeat your password" data-i18n-ph="confirmPassPh" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-error" id="su-err"></div>
-      <button class="btn-login" id="btn-signup" onclick="doSignup()">Create Account →</button>
+      <button class="btn-login" id="btn-signup" data-i18n="createAccBtn" onclick="doSignup()">Create Account →</button>
     </div>
-    <div class="login-switch" id="switch-signup" style="display:none">Already have an account? <button onclick="showPanel('signin')">Sign In</button></div>
+    <div class="login-switch" id="switch-signup" style="display:none"><span data-i18n="haveAccount">Already have an account?</span> <button data-i18n="signInLink" onclick="showPanel('signin')">Sign In</button></div>
 
   </div>
 </div>
@@ -236,11 +240,12 @@
     <div class="ph-left">
       <div class="ph-logo">talabat</div>
       <div class="ph-sep">|</div>
-      <div class="ph-label">Vendor Portal</div>
+      <div class="ph-label" data-i18n="vendorPortal">Vendor Portal</div>
     </div>
     <div class="ph-right">
+      <button class="lang-btn" onclick="setLang(lang==='ar'?'en':'ar')">ع</button>
       <span id="ph-vendor-name" class="ph-vendor"></span>
-      <button class="ph-logout" onclick="doLogout()">Sign Out</button>
+      <button class="ph-logout" data-i18n="signOut" onclick="doLogout()">Sign Out</button>
     </div>
   </header>
 
@@ -248,11 +253,11 @@
   <div id="view-dash">
     <div class="dash-wrap">
       <div class="dash-welcome">
-        <h2>Welcome back, <span id="dash-name"></span> 👋</h2>
-        <p>Track your menu update requests and submit new ones below.</p>
+        <h2><span data-i18n="welcomeBack">Welcome back,</span> <span id="dash-name"></span> 👋</h2>
+        <p data-i18n="dashSub">Track your menu update requests and submit new ones below.</p>
         <div class="dash-actions">
-          <button class="btn-new-req" onclick="goToForm()">＋ Submit New Request</button>
-          <button class="btn-refresh" onclick="loadDashboard()">↻ Refresh</button>
+          <button class="btn-new-req" data-i18n="newReqBtn" onclick="goToForm()">＋ Submit New Request</button>
+          <button class="btn-refresh" data-i18n="refreshBtn" onclick="loadDashboard()">↻ Refresh</button>
         </div>
       </div>
 
@@ -260,27 +265,27 @@
       <div class="stats-row">
         <div class="stat-card stat-done">
           <div class="stat-num" id="cnt-done">—</div>
-          <div class="stat-label">Done</div>
+          <div class="stat-label" data-i18n="statDone">Done</div>
         </div>
         <div class="stat-card stat-pending">
           <div class="stat-num" id="cnt-pending">—</div>
-          <div class="stat-label">Pending</div>
+          <div class="stat-label" data-i18n="statPending">Pending</div>
         </div>
         <div class="stat-card stat-rejected">
           <div class="stat-num" id="cnt-rejected">—</div>
-          <div class="stat-label">Rejected</div>
+          <div class="stat-label" data-i18n="statRejected">Rejected</div>
         </div>
         <div class="stat-card stat-total">
           <div class="stat-num" id="cnt-total">—</div>
-          <div class="stat-label">Total</div>
+          <div class="stat-label" data-i18n="statTotal">Total</div>
         </div>
       </div>
 
       <!-- Request List -->
       <div class="dash-table-wrap">
-        <div class="dash-table-head">Your Requests</div>
-        <div id="dash-loading" class="dash-loading">Loading your requests…</div>
-        <div id="dash-empty" class="dash-empty">No requests submitted yet.</div>
+        <div class="dash-table-head" data-i18n="yourRequests">Your Requests</div>
+        <div id="dash-loading" class="dash-loading" data-i18n="loadingReqs">Loading your requests…</div>
+        <div id="dash-empty" class="dash-empty" data-i18n="noReqs">No requests submitted yet.</div>
         <div id="dash-list"></div>
         <div id="dash-err" style="display:none"></div>
       </div>
@@ -292,136 +297,136 @@
 
     <!-- Back bar -->
     <div class="back-bar">
-      <button class="btn-back-dash" onclick="showView('dash'); loadDashboard()">← Back to Dashboard</button>
+      <button class="btn-back-dash" data-i18n="backDash" onclick="showView('dash'); loadDashboard()">← Back to Dashboard</button>
     </div>
 
     <!-- Form nav strip -->
     <nav class="nav">
       <div class="nav-logo">talabat</div>
-      <div class="nav-pill">Menu Updates</div>
+      <div class="nav-pill" data-i18n="navPill">Menu Updates</div>
     </nav>
 
     <!-- FORM SHELL -->
     <section id="shell">
       <div class="wrap">
         <div class="phead">
-          <button class="btn-back" onclick="goBack()">← Back</button>
+          <button class="btn-back" data-i18n="backBtn" onclick="goBack()">← Back</button>
           <span class="count-tag" id="countTag" style="display:none">Update 1 of 5</span>
         </div>
         <div class="prog-rail"><div class="prog-bar" id="progBar" style="width:25%"></div></div>
 
         <!-- STEP 1: Contact Info -->
         <div class="step on" id="s1">
-          <div class="chip">Step 1 of 4 &nbsp;·&nbsp; Your Info</div>
-          <div class="sh">Who is submitting?</div>
+          <div class="chip" data-i18n="s1chip">Step 1 of 4 &nbsp;·&nbsp; Your Info</div>
+          <div class="sh" data-i18n="s1title">Who is submitting?</div>
           <div class="fg">
-            <label class="lbl">Email Address <span class="req">*</span></label>
+            <label class="lbl"><span data-i18n="fEmailLabel">Email Address</span> <span class="req">*</span></label>
             <input type="email" id="f-email" placeholder="your@email.com">
             <div class="ferr" id="e-email">Please enter a valid email</div>
           </div>
           <div class="fg">
-            <label class="lbl">Restaurant / Chain Name <span class="req">*</span></label>
-            <input type="text" id="f-restaurant" placeholder="e.g. Pizza Palace">
+            <label class="lbl"><span data-i18n="fRestLabel">Restaurant / Chain Name</span> <span class="req">*</span></label>
+            <input type="text" id="f-restaurant" placeholder="e.g. Pizza Palace" data-i18n-ph="fRestPh">
             <div class="ferr" id="e-restaurant">Restaurant name is required</div>
           </div>
           <div class="fg">
-            <label class="lbl">Branch / Location <span class="req">*</span></label>
-            <input type="text" id="f-branch" placeholder="e.g. Maadi, Cairo">
+            <label class="lbl"><span data-i18n="fBranchLabel">Branch / Location</span> <span class="req">*</span></label>
+            <input type="text" id="f-branch" placeholder="e.g. Maadi, Cairo" data-i18n-ph="fBranchPh">
             <div class="ferr" id="e-branch">Branch location is required</div>
           </div>
           <div class="row x2">
             <div class="fg">
-              <label class="lbl">Your Name <span class="opt">(optional)</span></label>
-              <input type="text" id="f-name" placeholder="Full name">
+              <label class="lbl"><span data-i18n="fNameLabel">Your Name</span> <span class="opt" data-i18n="optional">(optional)</span></label>
+              <input type="text" id="f-name" placeholder="Full name" data-i18n-ph="fNamePh">
             </div>
             <div class="fg">
-              <label class="lbl">Vendor ID <span class="opt">(optional)</span></label>
-              <input type="text" id="f-vendor" placeholder="Helps us find your account">
+              <label class="lbl"><span data-i18n="vendorIdLabel">Vendor ID</span> <span class="opt" data-i18n="optional">(optional)</span></label>
+              <input type="text" id="f-vendor" placeholder="Helps us find your account" data-i18n-ph="fVendorPh">
             </div>
           </div>
-          <button class="btn-next" onclick="next(2)">Continue →</button>
+          <button class="btn-next" data-i18n="continueBtn" onclick="next(2)">Continue →</button>
         </div>
 
         <!-- STEP 2: Request Type -->
         <div class="step" id="s2">
-          <div class="chip">Step 2 of 4 &nbsp;·&nbsp; Request Type</div>
-          <div class="sh">What would you like to update?</div>
+          <div class="chip" data-i18n="s2chip">Step 2 of 4 &nbsp;·&nbsp; Request Type</div>
+          <div class="sh" data-i18n="s2title">What would you like to update?</div>
 
           <div class="tgrid">
             <div class="tc" onclick="pick(this,'add')">
               <div class="tc-icon">➕</div>
-              <div><div class="tc-name">Add a New Item</div><div class="tc-desc">List a brand new product on your menu</div></div>
+              <div><div class="tc-name" data-i18n="tcAddName">Add a New Item</div><div class="tc-desc" data-i18n="tcAddDesc">List a brand new product on your menu</div></div>
             </div>
             <div class="tc" onclick="pick(this,'desc')">
               <div class="tc-icon">📝</div>
-              <div><div class="tc-name">Update Description</div><div class="tc-desc">Fix an item's description text</div></div>
+              <div><div class="tc-name" data-i18n="tcDescName">Update Description</div><div class="tc-desc" data-i18n="tcDescDesc">Fix an item's description text</div></div>
             </div>
             <div class="tc" onclick="pick(this,'photo')">
               <div class="tc-icon">📸</div>
-              <div><div class="tc-name">Change Photo</div><div class="tc-desc">Replace an item's image</div></div>
+              <div><div class="tc-name" data-i18n="tcPhotoName">Change Photo</div><div class="tc-desc" data-i18n="tcPhotoDesc">Replace an item's image</div></div>
             </div>
             <div class="tc" onclick="pick(this,'name')">
               <div class="tc-icon">✏️</div>
-              <div><div class="tc-name">Update Item Name</div><div class="tc-desc">Rename an existing item</div></div>
+              <div><div class="tc-name" data-i18n="tcNameName">Update Item Name</div><div class="tc-desc" data-i18n="tcNameDesc">Rename an existing item</div></div>
             </div>
             <div class="tc" onclick="pick(this,'barcode')">
               <div class="tc-icon">🔢</div>
-              <div><div class="tc-name">Update Barcode</div><div class="tc-desc">Fix an incorrect barcode or SKU</div></div>
+              <div><div class="tc-name" data-i18n="tcBarcodeName">Update Barcode</div><div class="tc-desc" data-i18n="tcBarcodeDesc">Fix an incorrect barcode or SKU</div></div>
             </div>
             <div class="tc" onclick="pick(this,'remove')">
               <div class="tc-icon">🗑️</div>
-              <div><div class="tc-name">Remove an Item</div><div class="tc-desc">Delist a product from your menu</div></div>
+              <div><div class="tc-name" data-i18n="tcRemoveName">Remove an Item</div><div class="tc-desc" data-i18n="tcRemoveDesc">Delist a product from your menu</div></div>
             </div>
           </div>
-          <div class="ferr-type" id="e-type">Please select an update type to continue</div>
-          <button class="btn-next" onclick="next(3)">Continue →</button>
+          <div class="ferr-type" id="e-type" data-i18n="errType">Please select an update type to continue</div>
+          <button class="btn-next" data-i18n="continueBtn" onclick="next(3)">Continue →</button>
         </div>
 
         <!-- ADD ITEM TYPE SELECTION -->
         <div class="step" id="s-add-type">
-          <div class="chip">Add New Item</div>
-          <div class="sh">How would you like to add items?</div>
+          <div class="chip" data-i18n="addTypeChip">Add New Item</div>
+          <div class="sh" data-i18n="addTypeTitle">How would you like to add items?</div>
           <div class="tgrid">
             <div class="tc" id="tc-urgent" onclick="pickAddType('urgent')">
               <div class="tc-icon">⚡</div>
               <div>
-                <div class="tc-name">Urgent Add Item</div>
-                <div class="tc-desc">Single item — limited to 5 requests per day</div>
+                <div class="tc-name" data-i18n="urgentName">Urgent Add Item</div>
+                <div class="tc-desc" data-i18n="urgentDesc">Single item — limited to 5 requests per day</div>
               </div>
             </div>
             <div class="tc" onclick="pickAddType('master')">
               <div class="tc-icon">📂</div>
               <div>
-                <div class="tc-name">Add Master File</div>
-                <div class="tc-desc">Upload a list of items via CSV/Excel template</div>
+                <div class="tc-name" data-i18n="masterName">Add Master File</div>
+                <div class="tc-desc" data-i18n="masterDesc">Upload a list of items via CSV/Excel template</div>
               </div>
             </div>
           </div>
-          <div class="limit-banner" id="limit-banner">⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.</div>
-          <button class="btn-back-dash" style="margin-top:18px" onclick="backTo('s2')">← Back</button>
+          <div class="limit-banner" id="limit-banner" data-i18n="limitBanner">⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.</div>
+          <button class="btn-back-dash" data-i18n="backBtn" style="margin-top:18px" onclick="backTo('s2')">← Back</button>
         </div>
 
         <!-- MASTER FILE: PHARMACY OR GROCERY -->
         <div class="step" id="s-master-type">
-          <div class="chip">Add Master File</div>
-          <div class="sh">Select your store type</div>
+          <div class="chip" data-i18n="masterTypeChip">Add Master File</div>
+          <div class="sh" data-i18n="masterTypeTitle">Select your store type</div>
           <div class="tgrid">
             <div class="tc" onclick="pickMasterType('pharmacy')">
               <div class="tc-icon">💊</div>
               <div>
-                <div class="tc-name">Pharmacy</div>
-                <div class="tc-desc">Pharmaceutical products &amp; medications</div>
+                <div class="tc-name" data-i18n="pharmacyName">Pharmacy</div>
+                <div class="tc-desc" data-i18n="pharmacyDesc">Pharmaceutical products &amp; medications</div>
               </div>
             </div>
             <div class="tc" onclick="pickMasterType('grocery')">
               <div class="tc-icon">🛒</div>
               <div>
-                <div class="tc-name">Grocery</div>
-                <div class="tc-desc">Food, beverages &amp; household items</div>
+                <div class="tc-name" data-i18n="groceryName">Grocery</div>
+                <div class="tc-desc" data-i18n="groceryDesc">Food, beverages &amp; household items</div>
               </div>
             </div>
           </div>
-          <button class="btn-back-dash" style="margin-top:18px" onclick="backTo('s-add-type')">← Back</button>
+          <button class="btn-back-dash" data-i18n="backBtn" style="margin-top:18px" onclick="backTo('s-add-type')">← Back</button>
         </div>
 
         <!-- STEP 3: Conditional Details -->
@@ -680,27 +685,27 @@
             </div>
           </div>
 
-          <button class="btn-next" onclick="next(4)" style="margin-top:14px">Review Request →</button>
+          <button class="btn-next" data-i18n="reviewBtn" onclick="next(4)" style="margin-top:14px">Review Request →</button>
         </div>
 
         <!-- STEP 4: Review -->
         <div class="step" id="s4">
-          <div class="chip">Step 4 of 4 &nbsp;·&nbsp; Review</div>
-          <div class="sh">Review &amp; Submit</div>
+          <div class="chip" data-i18n="s4chip">Step 4 of 4 &nbsp;·&nbsp; Review</div>
+          <div class="sh" data-i18n="s4title">Review &amp; Submit</div>
           <div id="rv-body"></div>
-          <button class="btn-next" onclick="submitForm()" style="margin-top:24px">Submit Request ✓</button>
+          <button class="btn-next" data-i18n="submitBtn" onclick="submitForm()" style="margin-top:24px">Submit Request ✓</button>
         </div>
 
         <!-- SUCCESS -->
         <div class="step" id="sOK">
           <div class="success-card">
             <div class="si">✅</div>
-            <div class="sh2">Request Submitted!</div>
-            <div class="sp">Our Content Team will review and action your update within 24 hours.</div>
-            <div class="s-badge">⏱ SLA: within 24 hours</div>
+            <div class="sh2" data-i18n="successTitle">Request Submitted!</div>
+            <div class="sp" data-i18n="successSub">Our Content Team will review and action your update within 24 hours.</div>
+            <div class="s-badge" data-i18n="successBadge">⏱ SLA: within 24 hours</div>
             <br><br>
-            <button class="btn-more" id="moreBtn" onclick="anotherUpdate()">＋ Submit Another Update</button>
-            <button class="btn-more" onclick="showView('dash'); loadDashboard()">View Dashboard</button>
+            <button class="btn-more" data-i18n="anotherBtn" id="moreBtn" onclick="anotherUpdate()">＋ Submit Another Update</button>
+            <button class="btn-more" data-i18n="dashBtn" onclick="showView('dash'); loadDashboard()">View Dashboard</button>
           </div>
         </div>
 
@@ -712,6 +717,143 @@
 </div><!-- /pg-portal -->
 
 <script>
+  // ═══════════════ LANGUAGE / I18N ═══════════════
+  const T = {
+    en: {
+      tagline:'Vendor Menu Update Portal',
+      signIn:'Sign in', signInSub:'Enter your Vendor ID and password to continue.',
+      vendorIdLabel:'Vendor ID', vendorIdPh:'e.g. 503747', passwordLabel:'Password',
+      signInBtn:'Sign In →', signingIn:'Signing in…',
+      noAccount:"Don't have an account?", createAccLink:'Create Account',
+      createAcc:'Create Account', createAccSub:'Enter the Vendor ID assigned to your branch. It must exist in our system.',
+      createPassLabel:'Create Password', createPassPh:'At least 6 characters',
+      confirmPassLabel:'Confirm Password', confirmPassPh:'Repeat your password',
+      createAccBtn:'Create Account →', creatingAcc:'Creating account…',
+      haveAccount:'Already have an account?', signInLink:'Sign In',
+      vendorPortal:'Vendor Portal', signOut:'Sign Out',
+      welcomeBack:'Welcome back,', dashSub:'Track your menu update requests and submit new ones below.',
+      newReqBtn:'＋ Submit New Request', refreshBtn:'↻ Refresh',
+      statDone:'Done', statPending:'Pending', statRejected:'Rejected', statTotal:'Total',
+      yourRequests:'Your Requests', loadingReqs:'Loading your requests…', noReqs:'No requests submitted yet.',
+      navPill:'Menu Updates', backBtn:'← Back', backDash:'← Back to Dashboard', optional:'(optional)',
+      s1chip:'Step 1 of 4 · Your Info', s1title:'Who is submitting?',
+      fEmailLabel:'Email Address', fRestLabel:'Restaurant / Chain Name', fRestPh:'e.g. Pizza Palace',
+      fBranchLabel:'Branch / Location', fBranchPh:'e.g. Maadi, Cairo',
+      fNameLabel:'Your Name', fNamePh:'Full name', fVendorPh:'Helps us find your account',
+      continueBtn:'Continue →',
+      s2chip:'Step 2 of 4 · Request Type', s2title:'What would you like to update?',
+      tcAddName:'Add a New Item', tcAddDesc:'List a brand new product on your menu',
+      tcDescName:'Update Description', tcDescDesc:"Fix an item's description text",
+      tcPhotoName:'Change Photo', tcPhotoDesc:"Replace an item's image",
+      tcNameName:'Update Item Name', tcNameDesc:'Rename an existing item',
+      tcBarcodeName:'Update Barcode', tcBarcodeDesc:'Fix an incorrect barcode or SKU',
+      tcRemoveName:'Remove an Item', tcRemoveDesc:'Delist a product from your menu',
+      errType:'Please select an update type to continue',
+      addTypeChip:'Add New Item', addTypeTitle:'How would you like to add items?',
+      urgentName:'Urgent Add Item', urgentDesc:'Single item — limited to 5 requests per day',
+      masterName:'Add Master File', masterDesc:'Upload a list of items via CSV/Excel template',
+      limitBanner:'⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.',
+      masterTypeChip:'Add Master File', masterTypeTitle:'Select your store type',
+      pharmacyName:'Pharmacy', pharmacyDesc:'Pharmaceutical products & medications',
+      groceryName:'Grocery', groceryDesc:'Food, beverages & household items',
+      reviewBtn:'Review Request →',
+      s4chip:'Step 4 of 4 · Review', s4title:'Review & Submit', submitBtn:'Submit Request ✓',
+      successTitle:'Request Submitted!', successSub:'Our Content Team will review and action your update within 24 hours.',
+      successBadge:'⏱ SLA: within 24 hours', anotherBtn:'＋ Submit Another Update', dashBtn:'View Dashboard',
+      countTag: n => `Update ${n} of 5`,
+      rvEmail:'Email', rvRestaurant:'Restaurant', rvBranch:'Branch', rvName:'Name',
+      rvVendorId:'Vendor ID', rvReqType:'Request Type', rvBarcode:'Barcode', rvSKU:'SKU',
+      rvItemNameEN:'Item Name (EN)', rvItemNameAR:'Item Name (AR)', rvCategory:'Category',
+      rvPrice:'Price', rvPhoto:'Photo Link', rvDesc:'Description', rvStoreType:'Store Type',
+      rvFileLink:'File Link', rvNotes:'Notes', rvItemName:'Item Name',
+      rvCurrentDesc:'Current Desc.', rvNewDesc:'New Desc.', rvCurrentSKU:'Current SKU',
+      rvCurrentBarcode:'Current Barcode', rvOldName:'Old Item Name', rvNewSKU:'New SKU',
+      rvNewBarcode:'New Barcode', rvNewName:'New Item Name', rvNewImage:'New Product Image',
+      rvProof:'Proof Link', rvReason:'Reason',
+      typeUrgent:'Urgent Add Item', typeMaster:'Add Master File', typeDesc:'Update Description',
+      typePhoto:'Change Photo', typeName:'Update Item Name', typeBarcode:'Update Barcode', typeRemove:'Remove an Item',
+    },
+    ar: {
+      tagline:'بوابة تحديث قائمة الموردين',
+      signIn:'تسجيل الدخول', signInSub:'أدخل رقم المورد وكلمة المرور للمتابعة.',
+      vendorIdLabel:'رقم المورد', vendorIdPh:'مثال: 503747', passwordLabel:'كلمة المرور',
+      signInBtn:'دخول ←', signingIn:'جاري الدخول…',
+      noAccount:'ليس لديك حساب؟', createAccLink:'إنشاء حساب',
+      createAcc:'إنشاء حساب', createAccSub:'أدخل رقم المورد الخاص بفرعك. يجب أن يكون موجوداً في نظامنا.',
+      createPassLabel:'إنشاء كلمة مرور', createPassPh:'٦ أحرف على الأقل',
+      confirmPassLabel:'تأكيد كلمة المرور', confirmPassPh:'أعد كتابة كلمة المرور',
+      createAccBtn:'إنشاء الحساب ←', creatingAcc:'جاري إنشاء الحساب…',
+      haveAccount:'لديك حساب بالفعل؟', signInLink:'تسجيل الدخول',
+      vendorPortal:'بوابة الموردين', signOut:'خروج',
+      welcomeBack:'مرحباً بك،', dashSub:'تابع طلبات تحديث قائمتك وأرسل طلبات جديدة أدناه.',
+      newReqBtn:'＋ طلب جديد', refreshBtn:'↻ تحديث',
+      statDone:'تم', statPending:'قيد المعالجة', statRejected:'مرفوض', statTotal:'الإجمالي',
+      yourRequests:'طلباتك', loadingReqs:'جاري تحميل طلباتك…', noReqs:'لم يتم إرسال أي طلبات بعد.',
+      navPill:'تحديثات القائمة', backBtn:'→ رجوع', backDash:'→ رجوع للوحة التحكم', optional:'(اختياري)',
+      s1chip:'الخطوة ١ من ٤ · معلوماتك', s1title:'من يرسل الطلب؟',
+      fEmailLabel:'البريد الإلكتروني', fRestLabel:'اسم المطعم / السلسلة', fRestPh:'مثال: بيتزا بالاس',
+      fBranchLabel:'الفرع / الموقع', fBranchPh:'مثال: المعادي، القاهرة',
+      fNameLabel:'اسمك', fNamePh:'الاسم الكامل', fVendorPh:'يساعدنا في إيجاد حسابك',
+      continueBtn:'متابعة →',
+      s2chip:'الخطوة ٢ من ٤ · نوع الطلب', s2title:'ماذا تريد أن تحدّث؟',
+      tcAddName:'إضافة منتج جديد', tcAddDesc:'أضف منتجاً جديداً إلى قائمتك',
+      tcDescName:'تحديث الوصف', tcDescDesc:'تصحيح وصف منتج موجود',
+      tcPhotoName:'تغيير الصورة', tcPhotoDesc:'استبدال صورة منتج',
+      tcNameName:'تحديث اسم المنتج', tcNameDesc:'إعادة تسمية منتج موجود',
+      tcBarcodeName:'تحديث الباركود', tcBarcodeDesc:'تصحيح باركود أو SKU خاطئ',
+      tcRemoveName:'حذف منتج', tcRemoveDesc:'إزالة منتج من قائمتك',
+      errType:'الرجاء اختيار نوع الطلب للمتابعة',
+      addTypeChip:'إضافة منتج جديد', addTypeTitle:'كيف تريد إضافة المنتجات؟',
+      urgentName:'إضافة عاجلة', urgentDesc:'منتج واحد - محدود بـ ٥ طلبات يومياً',
+      masterName:'رفع ملف رئيسي', masterDesc:'رفع قائمة منتجات عبر قالب CSV/Excel',
+      limitBanner:'⚠️ لقد وصلت إلى الحد اليومي لطلبات الإضافة العاجلة (٥ طلبات). يرجى المحاولة غداً.',
+      masterTypeChip:'رفع ملف رئيسي', masterTypeTitle:'اختر نوع متجرك',
+      pharmacyName:'صيدلية', pharmacyDesc:'منتجات صيدلانية وأدوية',
+      groceryName:'بقالة', groceryDesc:'مواد غذائية ومشروبات ومنتجات منزلية',
+      reviewBtn:'مراجعة الطلب →',
+      s4chip:'الخطوة ٤ من ٤ · مراجعة', s4title:'مراجعة وإرسال', submitBtn:'إرسال الطلب ✓',
+      successTitle:'تم إرسال الطلب!', successSub:'سيراجع فريق المحتوى طلبك وينفذه خلال ٢٤ ساعة.',
+      successBadge:'⏱ SLA: خلال ٢٤ ساعة', anotherBtn:'＋ إرسال طلب آخر', dashBtn:'عرض لوحة التحكم',
+      countTag: n => `تحديث ${n} من ٥`,
+      rvEmail:'البريد الإلكتروني', rvRestaurant:'المطعم', rvBranch:'الفرع', rvName:'الاسم',
+      rvVendorId:'رقم المورد', rvReqType:'نوع الطلب', rvBarcode:'الباركود', rvSKU:'SKU',
+      rvItemNameEN:'اسم المنتج (EN)', rvItemNameAR:'اسم المنتج (AR)', rvCategory:'الفئة',
+      rvPrice:'السعر', rvPhoto:'رابط الصورة', rvDesc:'الوصف', rvStoreType:'نوع المتجر',
+      rvFileLink:'رابط الملف', rvNotes:'ملاحظات', rvItemName:'اسم المنتج',
+      rvCurrentDesc:'الوصف الحالي', rvNewDesc:'الوصف الجديد', rvCurrentSKU:'SKU الحالي',
+      rvCurrentBarcode:'الباركود الحالي', rvOldName:'الاسم القديم', rvNewSKU:'SKU الجديد',
+      rvNewBarcode:'الباركود الجديد', rvNewName:'الاسم الجديد', rvNewImage:'صورة المنتج الجديدة',
+      rvProof:'رابط الإثبات', rvReason:'السبب',
+      typeUrgent:'إضافة عاجلة', typeMaster:'رفع ملف رئيسي', typeDesc:'تحديث الوصف',
+      typePhoto:'تغيير الصورة', typeName:'تحديث اسم المنتج', typeBarcode:'تحديث الباركود', typeRemove:'حذف منتج',
+    }
+  };
+  let lang = localStorage.getItem('tlb_lang') || 'en';
+
+  function setLang(l) {
+    lang = l;
+    localStorage.setItem('tlb_lang', l);
+    const t = T[l];
+    document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', l);
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key] !== undefined && typeof t[key] !== 'function') el.textContent = t[key];
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      const key = el.getAttribute('data-i18n-ph');
+      if (t[key] !== undefined) el.placeholder = t[key];
+    });
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.textContent = l === 'ar' ? 'EN' : 'ع';
+    });
+  }
+
+  function getTypeLabel(type) {
+    const t = T[lang];
+    return { add: t.typeUrgent, master: t.typeMaster, desc: t.typeDesc, photo: t.typePhoto, name: t.typeName, barcode: t.typeBarcode, remove: t.typeRemove }[type] || type;
+  }
+
   // ═══════════════ SESSION ═══════════════
   let currentVendor = null;
 
@@ -722,7 +864,7 @@
     const btn      = document.getElementById('btn-signin');
     errEl.textContent = '';
     if (!vendorId || !pass) { errEl.textContent = 'Please enter your Vendor ID and password.'; return; }
-    btn.textContent = 'Signing in…'; btn.disabled = true;
+    btn.textContent = T[lang].signingIn; btn.disabled = true;
     try {
       const resp = await fetch('/api/auth', {
         method: 'POST',
@@ -735,7 +877,7 @@
     } catch(e) {
       errEl.textContent = 'Connection error. Please try again.';
     } finally {
-      btn.textContent = 'Sign In →'; btn.disabled = false;
+      btn.textContent = T[lang].signInBtn; btn.disabled = false;
     }
   }
 
@@ -749,7 +891,7 @@
     if (!vendorId)        { errEl.textContent = 'Please enter your Vendor ID.'; return; }
     if (pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
     if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
-    btn.textContent = 'Creating account…'; btn.disabled = true;
+    btn.textContent = T[lang].creatingAcc; btn.disabled = true;
     try {
       const resp = await fetch('/api/register', {
         method: 'POST',
@@ -762,7 +904,7 @@
     } catch(e) {
       errEl.textContent = 'Connection error. Please try again.';
     } finally {
-      btn.textContent = 'Create Account →'; btn.disabled = false;
+      btn.textContent = T[lang].createAccBtn; btn.disabled = false;
     }
   }
 
@@ -854,6 +996,9 @@
       startSession(vendor);
     } catch(e) { localStorage.removeItem('tlb_session'); }
   })();
+
+  // Apply saved language on every page load
+  setLang(lang);
 
   // ═══════════════ DASHBOARD ═══════════════
   // IMPORTANT: Set the tracking sheet to "Anyone with link can view" in Google Sheets → Share
@@ -1019,7 +1164,7 @@
       if (getAddCount() >= MAX) { $('limit-banner').classList.add('on'); return; }
       $('limit-banner').classList.remove('on');
       reqType = 'add';
-      $('countTag').textContent = `Update ${updateN} of ${MAX}`;
+      $('countTag').textContent = T[lang].countTag(updateN);
       $('countTag').style.display = '';
       applyType();
       switchTo(3);
@@ -1159,8 +1304,9 @@
   function applyType() {
     groups.forEach(g => $('grp-' + g).style.display = 'none');
     $('grp-' + reqType).style.display = '';
-    $('s3-chip').textContent = typeLabels[reqType];
-    $('s3-title').textContent = typeLabels[reqType];
+    const label = getTypeLabel(reqType);
+    $('s3-chip').textContent = label;
+    $('s3-title').textContent = label;
   }
 
   function buildPayload() {
@@ -1180,18 +1326,19 @@
   }
 
   function buildReview() {
+    const t = T[lang];
     const rows = [
-      ['Email', v('f-email') || '—'], ['Restaurant', v('f-restaurant') || '—'],
-      ['Branch', v('f-branch') || '—'], ['Name', v('f-name') || '—'],
-      ['Vendor ID', v('f-vendor') || '—'], ['Request Type', typeLabels[reqType] || '—'],
+      [t.rvEmail, v('f-email') || '—'], [t.rvRestaurant, v('f-restaurant') || '—'],
+      [t.rvBranch, v('f-branch') || '—'], [t.rvName, v('f-name') || '—'],
+      [t.rvVendorId, v('f-vendor') || '—'], [t.rvReqType, getTypeLabel(reqType) || '—'],
     ];
-    if (reqType === 'add')     { rows.push(['Barcode', v('f-add-barcode')], ['SKU', v('f-add-sku')], ['Item Name (EN)', v('f-add-name-en')], ['Price', v('f-add-price')], ['Photo Link', v('f-add-photo')]); if (v('f-add-name-ar')) rows.push(['Item Name (AR)', v('f-add-name-ar')]); if (v('f-add-cat')) rows.push(['Category', v('f-add-cat')]); if (v('f-add-desc')) rows.push(['Description', v('f-add-desc')]); }
-    if (reqType === 'master')  { rows.push(['Store Type', masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'], ['File Link', v('f-master-link')]); if (v('f-master-notes')) rows.push(['Notes', v('f-master-notes')]); }
-    if (reqType === 'desc')    { rows.push(['Item Name', v('f-desc-item')], ['SKU', v('f-desc-sku')], ['Barcode', v('f-desc-barcode')], ['Current Desc.', v('f-desc-current')], ['New Desc.', v('f-desc-new')]); }
-    if (reqType === 'photo')   { rows.push(['Item Name', v('f-ph-item')], ['SKU', v('f-ph-sku')], ['Barcode', v('f-ph-barcode')], ['Photo Link', v('f-ph-link')]); }
-    if (reqType === 'name')    { rows.push(['Current SKU', v('f-nm-sku')], ['Current Barcode', v('f-nm-barcode')], ['Old Item Name', v('f-nm-current')], ['New SKU', v('f-nm-new-sku')], ['New Barcode', v('f-nm-new-barcode')], ['New Item Name', v('f-nm-new')], ['New Product Image', v('f-nm-proof')]); }
-    if (reqType === 'barcode') { rows.push(['Item Name', v('f-bc-item')], ['SKU', v('f-bc-sku')], ['Current Barcode', v('f-bc-current')], ['New Barcode', v('f-bc-new')], ['Proof Link', v('f-bc-proof')]); }
-    if (reqType === 'remove')  { rows.push(['Item Name', v('f-rm-item')], ['SKU', v('f-rm-sku')], ['Barcode', v('f-rm-barcode')], ['Reason', v('f-rm-reason')]); if (v('f-rm-notes')) rows.push(['Notes', v('f-rm-notes')]); }
+    if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo')]); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
+    if (reqType === 'master')  { rows.push([t.rvStoreType, masterType === 'pharmacy' ? t.pharmacyName : t.groceryName], [t.rvFileLink, v('f-master-link')]); if (v('f-master-notes')) rows.push([t.rvNotes, v('f-master-notes')]); }
+    if (reqType === 'desc')    { rows.push([t.rvItemName, v('f-desc-item')], [t.rvSKU, v('f-desc-sku')], [t.rvBarcode, v('f-desc-barcode')], [t.rvCurrentDesc, v('f-desc-current')], [t.rvNewDesc, v('f-desc-new')]); }
+    if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link')]); }
+    if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof')]); }
+    if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof')]); }
+    if (reqType === 'remove')  { rows.push([t.rvItemName, v('f-rm-item')], [t.rvSKU, v('f-rm-sku')], [t.rvBarcode, v('f-rm-barcode')], [t.rvReason, v('f-rm-reason')]); if (v('f-rm-notes')) rows.push([t.rvNotes, v('f-rm-notes')]); }
     $('rv-body').innerHTML = rows.map(([k, val]) =>
       `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
     ).join('');
@@ -1236,7 +1383,7 @@
         document.body.removeChild(form);
         document.body.removeChild(iframe);
         if (reqType === 'add') incrementAddCount();
-        btn.textContent = 'Submit Request ✓';
+        btn.textContent = T[lang].submitBtn;
         btn.disabled = false;
         $('s4').classList.remove('on');
         $('sOK').classList.add('on');
