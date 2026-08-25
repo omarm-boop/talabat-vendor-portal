@@ -174,6 +174,19 @@
       .row.x2, .row.x3 { grid-template-columns:1fr; }
       .login-card { padding:32px 24px; }
     }
+    .delist-table-wrap { border:1px solid #e8e0d8; border-radius:10px; overflow:hidden; margin-bottom:6px; }
+    .delist-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .delist-table thead th { background:#fff8f4; padding:9px 12px; font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:.9px; text-align:left; border-bottom:1px solid #e8e0d8; }
+    .delist-table thead th:last-child { width:36px; }
+    .delist-table tbody tr:not(:last-child) td { border-bottom:1px solid #f2ece5; }
+    .delist-table td { padding:6px 8px; }
+    .delist-sku-input { width:100%; border:1px solid #e5ddd5; border-radius:7px; padding:8px 11px; font-size:14px; font-family:'Poppins',sans-serif; background:#fff; }
+    .delist-sku-input:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,90,0,.1); }
+    .delist-action-cell { color:var(--orange); font-weight:700; font-size:13px; min-width:58px; padding-left:14px; }
+    .btn-rm-row { background:none; border:none; color:#ccc; font-size:19px; cursor:pointer; padding:2px 8px; line-height:1; border-radius:5px; }
+    .btn-rm-row:hover { color:#e53935; background:#fff0f0; }
+    .btn-add-row { width:100%; background:none; border:1px dashed #d0c8be; border-radius:8px; padding:9px; font-size:13px; color:#999; cursor:pointer; margin-top:8px; font-family:'Poppins',sans-serif; transition:all .15s; }
+    .btn-add-row:hover { border-color:var(--orange); color:var(--orange); }
   </style>
 </head>
 <body>
@@ -654,34 +667,26 @@
 
           <!-- ══ REMOVE ITEM ══ -->
           <div id="grp-remove" style="display:none">
-            <div class="sec-label">Item Identifiers</div>
-            <div class="fg">
-              <label class="lbl">Item Name <span class="req">*</span></label>
-              <input type="text" id="f-rm-item" placeholder="e.g. Paracetamol 500mg">
-              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
-              <div class="ferr" id="e-rm-item">Item name is required</div>
+            <div class="sec-label">SKUs to Delist</div>
+            <div class="delist-table-wrap">
+              <table class="delist-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Action</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="delist-rows"></tbody>
+              </table>
             </div>
-            <div class="row x2">
-              <div class="fg">
-                <label class="lbl">SKU <span class="req">*</span></label>
-                <input type="text" id="f-rm-sku" placeholder="e.g. 6985">
-                <div class="ferr" id="e-rm-sku">SKU is required</div>
-              </div>
-              <div class="fg">
-                <label class="lbl">Barcode <span class="req">*</span></label>
-                <input type="text" id="f-rm-barcode" placeholder="e.g. 0622...">
-                <div class="ferr" id="e-rm-barcode">Barcode is required</div>
-              </div>
-            </div>
+            <button type="button" class="btn-add-row" onclick="addDelistRow()">+ Add Row</button>
+            <div class="ferr" id="e-rm-skus" style="margin-top:6px">At least one SKU is required</div>
             <div class="sec-label">Removal Details</div>
             <div class="fg">
               <label class="lbl">Reason for Removal <span class="req">*</span></label>
               <textarea id="f-rm-reason" placeholder="e.g. Item discontinued by supplier, out of stock permanently…"></textarea>
               <div class="ferr" id="e-rm-reason">Reason for removal is required</div>
-            </div>
-            <div class="fg">
-              <label class="lbl">Additional Notes <span class="opt">(optional)</span></label>
-              <input type="text" id="f-rm-notes" placeholder="Any extra context…">
             </div>
           </div>
 
@@ -1274,9 +1279,8 @@
         if (!req('f-bc-proof','e-bc-proof'))         ok = false;
       }
       if (reqType === 'remove') {
-        if (!req('f-rm-item','e-rm-item'))           ok = false;
-        if (!req('f-rm-sku','e-rm-sku'))             ok = false;
-        if (!req('f-rm-barcode','e-rm-barcode'))     ok = false;
+        if (getDelistSkus().length === 0) { $('e-rm-skus').classList.add('on'); ok = false; }
+        else $('e-rm-skus').classList.remove('on');
         if (!req('f-rm-reason','e-rm-reason'))       ok = false;
       }
     }
@@ -1311,6 +1315,44 @@
     $('s3-chip').textContent = label;
     $('s3-title').textContent = label;
     if (reqType !== 'add') $('countTag').style.display = 'none';
+    if (reqType === 'remove') initDelistRows();
+  }
+
+  function initDelistRows() {
+    const tbody = $('delist-rows');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    addDelistRow(false);
+  }
+
+  function addDelistRow(focusNew) {
+    const tbody = $('delist-rows');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="text" class="delist-sku-input" placeholder="e.g. 6985" oninput="onDelistInput(this)"></td><td class="delist-action-cell"></td><td><button type="button" class="btn-rm-row" onclick="removeDelistRow(this)" title="Remove row">×</button></td>`;
+    tbody.appendChild(tr);
+    updateRemoveButtons();
+    if (focusNew !== false) tr.querySelector('.delist-sku-input').focus();
+  }
+
+  function onDelistInput(input) {
+    const cell = input.closest('tr').querySelector('.delist-action-cell');
+    cell.textContent = input.value.trim() ? 'delist' : '';
+    $('e-rm-skus').classList.remove('on');
+  }
+
+  function removeDelistRow(btn) {
+    const tbody = $('delist-rows');
+    if (tbody.children.length > 1) { btn.closest('tr').remove(); updateRemoveButtons(); }
+  }
+
+  function updateRemoveButtons() {
+    const btns = document.querySelectorAll('#delist-rows .btn-rm-row');
+    btns.forEach(b => b.style.visibility = btns.length > 1 ? 'visible' : 'hidden');
+  }
+
+  function getDelistSkus() {
+    return Array.from(document.querySelectorAll('.delist-sku-input'))
+      .map(i => i.value.trim()).filter(Boolean);
   }
 
   function buildPayload() {
@@ -1325,7 +1367,7 @@
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
     if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
     if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
-    if (reqType === 'remove')  return { ...base, barcode: v('f-rm-barcode'), sku: v('f-rm-sku'), itemName: v('f-rm-item'), reason: v('f-rm-reason'), notes: v('f-rm-notes') };
+    if (reqType === 'remove')  return { ...base, sku: getDelistSkus().join(', '), reason: v('f-rm-reason') };
     return base;
   }
 
@@ -1342,7 +1384,7 @@
     if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link')]); }
     if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof')]); }
     if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof')]); }
-    if (reqType === 'remove')  { rows.push([t.rvItemName, v('f-rm-item')], [t.rvSKU, v('f-rm-sku')], [t.rvBarcode, v('f-rm-barcode')], [t.rvReason, v('f-rm-reason')]); if (v('f-rm-notes')) rows.push([t.rvNotes, v('f-rm-notes')]); }
+    if (reqType === 'remove')  { rows.push([t.rvSKU, getDelistSkus().join(', ')], [t.rvReason, v('f-rm-reason')]); }
     $('rv-body').innerHTML = rows.map(([k, val]) =>
       `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
     ).join('');
