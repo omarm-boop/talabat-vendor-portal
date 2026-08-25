@@ -37,10 +37,10 @@ module.exports = async function handler(req, res) {
       return obj;
     });
 
-    const email = (req.query.email || '').toLowerCase().trim();
-    if (email) {
+    const vendorId = (req.query.vendorId || '').trim();
+    if (vendorId) {
       rows = rows.filter(r =>
-        String(r['Email Address'] || '').toLowerCase().trim() === email
+        String(r['Vendor ID'] || '').trim() === vendorId
       );
     }
 
