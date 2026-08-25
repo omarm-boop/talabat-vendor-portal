@@ -187,6 +187,9 @@
     .btn-rm-row:hover { color:#e53935; background:#fff0f0; }
     .btn-add-row { width:100%; background:none; border:1px dashed #d0c8be; border-radius:8px; padding:9px; font-size:13px; color:#999; cursor:pointer; margin-top:8px; font-family:'Poppins',sans-serif; transition:all .15s; }
     .btn-add-row:hover { border-color:var(--orange); color:var(--orange); }
+    .btn-template-dl { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--orange); border-radius:10px; padding:13px 18px; color:var(--orange); font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; text-decoration:none; transition:all .15s; }
+    .btn-template-dl:hover { background:var(--orange); color:#fff; }
+    .btn-template-dl .dl-icon { font-size:20px; }
   </style>
 </head>
 <body>
@@ -667,24 +670,23 @@
 
           <!-- ══ REMOVE ITEM ══ -->
           <div id="grp-remove" style="display:none">
-            <div class="sec-label">SKUs to Delist</div>
-            <div class="delist-table-wrap">
-              <table class="delist-table">
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Action</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="delist-rows"></tbody>
-              </table>
-            </div>
-            <button type="button" class="btn-add-row" onclick="addDelistRow()">+ Add Row</button>
-            <div class="ferr" id="e-rm-skus" style="margin-top:6px">At least one SKU is required</div>
-            <div class="sec-label">Removal Details</div>
+            <div class="sec-label">Step 1 — Download Template</div>
+            <a id="delist-template-link" href="PASTE_TEMPLATE_URL_HERE" target="_blank" class="btn-template-dl">
+              <span class="dl-icon">⬇</span>
+              <span>Delist Template (Google Sheet)</span>
+            </a>
+            <div class="field-hint" style="margin-top:10px">Open the template → fill SKUs in Column A (Column B auto-fills "delist") → upload to Google Drive → copy the link.</div>
+
+            <div class="sec-label">Step 2 — Paste Your File Link</div>
             <div class="fg">
-              <label class="lbl">Reason for Removal <span class="req">*</span></label>
+              <label class="lbl">Google Sheet / Drive Link <span class="req">*</span></label>
+              <input type="url" id="f-rm-link" placeholder="https://docs.google.com/spreadsheets/…">
+              <div class="ferr" id="e-rm-link">File link is required</div>
+            </div>
+
+            <div class="sec-label">Step 3 — Reason for Removal</div>
+            <div class="fg">
+              <label class="lbl">Reason <span class="req">*</span></label>
               <textarea id="f-rm-reason" placeholder="e.g. Item discontinued by supplier, out of stock permanently…"></textarea>
               <div class="ferr" id="e-rm-reason">Reason for removal is required</div>
             </div>
@@ -1278,9 +1280,8 @@
         if (!req('f-bc-proof','e-bc-proof'))         ok = false;
       }
       if (reqType === 'remove') {
-        if (getDelistSkus().length === 0) { $('e-rm-skus').classList.add('on'); ok = false; }
-        else $('e-rm-skus').classList.remove('on');
-        if (!req('f-rm-reason','e-rm-reason'))       ok = false;
+        if (!req('f-rm-link','e-rm-link'))     ok = false;
+        if (!req('f-rm-reason','e-rm-reason')) ok = false;
       }
     }
     return ok;
@@ -1366,7 +1367,7 @@
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
     if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
     if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
-    if (reqType === 'remove')  return { ...base, sku: getDelistSkus().join(', '), reason: v('f-rm-reason') };
+    if (reqType === 'remove')  return { ...base, fileLink: v('f-rm-link'), reason: v('f-rm-reason') };
     return base;
   }
 
@@ -1383,7 +1384,7 @@
     if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link')]); }
     if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof')]); }
     if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof')]); }
-    if (reqType === 'remove')  { rows.push([t.rvSKU, getDelistSkus().join(', ')], [t.rvReason, v('f-rm-reason')]); }
+    if (reqType === 'remove')  { rows.push([t.rvFileLink, v('f-rm-link')], [t.rvReason, v('f-rm-reason')]); }
     $('rv-body').innerHTML = rows.map(([k, val]) =>
       `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
     ).join('');
