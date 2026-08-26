@@ -174,6 +174,50 @@
       .row.x2, .row.x3 { grid-template-columns:1fr; }
       .login-card { padding:32px 24px; }
     }
+    /* ── ADMIN PANEL ── */
+    #pg-admin { display:none; flex-direction:column; min-height:100vh; background:#f4ede3; }
+    .adm-top { background:var(--orange); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; }
+    .adm-brand { color:#fff; font-size:20px; font-weight:800; letter-spacing:-.5px; }
+    .adm-brand span { font-weight:400; opacity:.75; font-size:14px; margin-left:8px; }
+    .adm-out { background:rgba(255,255,255,.2); color:#fff; border:none; padding:7px 18px; border-radius:99px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; }
+    .adm-out:hover { background:rgba(255,255,255,.32); }
+    .adm-body { padding:24px 28px; flex:1; max-width:1400px; width:100%; margin:0 auto; box-sizing:border-box; }
+    .adm-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:22px; }
+    .adm-stat { background:#fff; border-radius:12px; padding:16px; text-align:center; }
+    .adm-stat-num { font-size:30px; font-weight:800; color:var(--orange); line-height:1; }
+    .adm-stat-num.s-blue  { color:#1565c0; }
+    .adm-stat-num.s-green { color:#2e7d32; }
+    .adm-stat-num.s-red   { color:#c62828; }
+    .adm-stat-num.s-gray  { color:#888; }
+    .adm-stat-lbl { font-size:11px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.9px; margin-top:5px; }
+    .adm-toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+    .adm-sel { border:1px solid #e0d8ce; border-radius:8px; padding:9px 12px; font-size:13px; font-family:'Poppins',sans-serif; background:#fff; color:#411517; cursor:pointer; }
+    .adm-search { border:1px solid #e0d8ce; border-radius:8px; padding:9px 14px; font-size:13px; font-family:'Poppins',sans-serif; background:#fff; flex:1; min-width:180px; }
+    .adm-sel:focus,.adm-search:focus { outline:none; border-color:var(--orange); }
+    .adm-refresh { background:var(--orange); color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap; }
+    .adm-refresh:hover { background:#e05000; }
+    .adm-table-wrap { background:#fff; border-radius:12px; overflow:hidden; border:1px solid #e8e0d8; }
+    .adm-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .adm-table thead th { background:#fff8f4; padding:11px 14px; text-align:left; font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:.9px; border-bottom:1px solid #e8e0d8; white-space:nowrap; }
+    .adm-table tbody tr:not(:last-child) { border-bottom:1px solid #f2ece5; }
+    .adm-table tbody tr:hover { background:#fdf9f6; }
+    .adm-table td { padding:10px 14px; vertical-align:top; color:#411517; }
+    .adm-badge { display:inline-block; padding:3px 11px; border-radius:99px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .ab-pending  { background:#fff3e0; color:#e65100; }
+    .ab-progress { background:#e3f2fd; color:#1565c0; }
+    .ab-done     { background:#e8f5e9; color:#2e7d32; }
+    .ab-rejected { background:#ffebee; color:#c62828; }
+    .adm-btn { border:none; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; margin-right:4px; }
+    .adm-btn-prog { background:#e3f2fd; color:#1565c0; }
+    .adm-btn-done { background:#e8f5e9; color:#2e7d32; }
+    .adm-btn-rej  { background:#ffebee; color:#c62828; }
+    .adm-btn:hover { opacity:.8; }
+    .adm-rej-wrap { display:none; margin-top:8px; display:none; gap:6px; }
+    .adm-rej-input { border:1px solid #e0d8ce; border-radius:6px; padding:5px 10px; font-size:12px; font-family:'Poppins',sans-serif; flex:1; }
+    .adm-rej-input:focus { outline:none; border-color:#c62828; }
+    .adm-rej-send { background:#c62828; color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap; }
+    .adm-msg { text-align:center; padding:40px; color:#bbb; font-size:14px; }
+
     .delist-table-wrap { border:1px solid #e8e0d8; border-radius:10px; overflow:hidden; margin-bottom:6px; }
     .delist-table { width:100%; border-collapse:collapse; font-size:14px; }
     .delist-table thead th { background:#fff8f4; padding:9px 12px; font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:.9px; text-align:left; border-bottom:1px solid #e8e0d8; }
@@ -723,6 +767,71 @@
 
 </div><!-- /pg-portal -->
 
+<!-- ═══════════════════════════════════════ ADMIN PANEL ═══════════════════════════════════════ -->
+<div id="pg-admin">
+  <div class="adm-top">
+    <div class="adm-brand">talabat <span>· Content Team</span></div>
+    <button class="adm-out" onclick="doLogout()">Sign Out</button>
+  </div>
+  <div class="adm-body">
+
+    <!-- Stats -->
+    <div class="adm-stats">
+      <div class="adm-stat"><div class="adm-stat-num" id="as-pending">—</div><div class="adm-stat-lbl">Pending</div></div>
+      <div class="adm-stat"><div class="adm-stat-num s-blue" id="as-progress">—</div><div class="adm-stat-lbl">In Progress</div></div>
+      <div class="adm-stat"><div class="adm-stat-num s-green" id="as-done">—</div><div class="adm-stat-lbl">Done</div></div>
+      <div class="adm-stat"><div class="adm-stat-num s-red" id="as-rejected">—</div><div class="adm-stat-lbl">Rejected</div></div>
+      <div class="adm-stat"><div class="adm-stat-num s-gray" id="as-total">—</div><div class="adm-stat-lbl">Total</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="adm-toolbar">
+      <select class="adm-sel" id="a-filter-type" onchange="renderAdminTable()">
+        <option value="">All Types</option>
+        <option value="Urgent Add Item">Add Item</option>
+        <option value="Update Description">Update Description</option>
+        <option value="Change Photo">Change Photo</option>
+        <option value="Update Item Name">Update Item Name</option>
+        <option value="Update Barcode">Update Barcode</option>
+        <option value="Remove an Item">Remove an Item</option>
+        <option value="Add Master File">Master File</option>
+      </select>
+      <select class="adm-sel" id="a-filter-status" onchange="renderAdminTable()">
+        <option value="">All Status</option>
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+      <input class="adm-search" id="a-search" placeholder="Search vendor, restaurant, SKU…" oninput="renderAdminTable()">
+      <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
+    </div>
+
+    <!-- Table -->
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Vendor ID</th>
+            <th>Restaurant</th>
+            <th>Branch</th>
+            <th>Type</th>
+            <th>Item / SKU</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="a-tbody">
+          <tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div><!-- /pg-admin -->
+
 <script>
   // ═══════════════ LANGUAGE / I18N ═══════════════
   const T = {
@@ -920,18 +1029,24 @@
   function startSession(vendor) {
     currentVendor = vendor;
     localStorage.setItem('tlb_session', JSON.stringify({ vendor, ts: Date.now() }));
-    document.getElementById('ph-vendor-name').textContent = vendor.chainName;
-    document.getElementById('dash-name').textContent = vendor.branchName;
     document.getElementById('pg-login').style.display = 'none';
-    document.getElementById('pg-portal').style.display = 'block';
-    showView('dash');
-    loadDashboard();
+    if (vendor.chainId === '0') {
+      document.getElementById('pg-admin').style.display = 'flex';
+      loadAdminRequests();
+    } else {
+      document.getElementById('ph-vendor-name').textContent = vendor.chainName;
+      document.getElementById('dash-name').textContent = vendor.branchName;
+      document.getElementById('pg-portal').style.display = 'block';
+      showView('dash');
+      loadDashboard();
+    }
   }
 
   function doLogout() {
     currentVendor = null;
     localStorage.removeItem('tlb_session');
     document.getElementById('pg-portal').style.display = 'none';
+    document.getElementById('pg-admin').style.display = 'none';
     document.getElementById('pg-login').style.display = 'flex';
     document.getElementById('li-vendorid').value = '';
     document.getElementById('li-pass').value = '';
@@ -1098,6 +1213,124 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+
+  // ═══════════════ ADMIN PANEL ═══════════════
+  let adminRequests = [];
+
+  async function loadAdminRequests() {
+    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>';
+    try {
+      const resp = await fetch('/api/requests?t=' + Date.now());
+      const json = await resp.json();
+      adminRequests = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
+      updateAdminStats();
+      renderAdminTable();
+    } catch(e) {
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
+    }
+  }
+
+  function updateAdminStats() {
+    let pending = 0, progress = 0, done = 0, rejected = 0;
+    adminRequests.forEach(r => {
+      const s = (r['Status'] || '').toLowerCase();
+      if (s === 'done' || s === 'completed') done++;
+      else if (s.includes('progress'))       progress++;
+      else if (s.includes('reject'))         rejected++;
+      else                                   pending++;
+    });
+    document.getElementById('as-pending').textContent  = pending;
+    document.getElementById('as-progress').textContent = progress;
+    document.getElementById('as-done').textContent     = done;
+    document.getElementById('as-rejected').textContent = rejected;
+    document.getElementById('as-total').textContent    = adminRequests.length;
+  }
+
+  function renderAdminTable() {
+    const typeFilter   = document.getElementById('a-filter-type').value;
+    const statusFilter = document.getElementById('a-filter-status').value.toLowerCase();
+    const search       = document.getElementById('a-search').value.toLowerCase();
+
+    const filtered = adminRequests.filter(r => {
+      const type   = r['Request Type'] || '';
+      const status = (r['Status'] || '').toLowerCase();
+      const searchStr = [r['Vendor ID'], r['Restaurant'], r['Branch'], r['SKU'], r['Item Name']].join(' ').toLowerCase();
+      if (typeFilter   && !type.includes(typeFilter))        return false;
+      if (statusFilter && !status.includes(statusFilter))    return false;
+      if (search       && !searchStr.includes(search))       return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">No requests match the current filter.</td></tr>';
+      return;
+    }
+
+    document.getElementById('a-tbody').innerHTML = filtered.map(r => {
+      const status  = r['Status'] || 'Pending';
+      const sl      = status.toLowerCase();
+      const isDone  = sl === 'done' || sl === 'completed';
+      const isRej   = sl.includes('reject');
+      const isProg  = sl.includes('progress');
+      const bCls    = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
+      const ts      = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+      const rowIdx  = r['_rowIndex'];
+      const canAct  = !isDone && !isRej;
+      const actions = canAct ? `
+        <div>
+          ${!isProg ? `<button class="adm-btn adm-btn-prog" onclick="adminUpdateStatus(${rowIdx},'In Progress',this)">⏳ In Progress</button>` : ''}
+          <button class="adm-btn adm-btn-done" onclick="adminUpdateStatus(${rowIdx},'Done',this)">✓ Done</button>
+          <button class="adm-btn adm-btn-rej"  onclick="adminShowReject(this)">✗ Reject</button>
+          <div class="adm-rej-wrap" style="display:none">
+            <input class="adm-rej-input" placeholder="Rejection reason (required)…">
+            <button class="adm-rej-send" onclick="adminConfirmReject(this,${rowIdx})">Send</button>
+          </div>
+        </div>` : `<span style="color:#bbb;font-size:12px">—</span>`;
+      return `<tr>
+        <td style="white-space:nowrap;color:#999;font-size:12px">${ts}</td>
+        <td style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
+        <td>${escHtml(r['Restaurant'] || '—')}</td>
+        <td style="color:#999;font-size:12px">${escHtml(r['Branch'] || '—')}</td>
+        <td style="white-space:nowrap">${escHtml(r['Request Type'] || '—')}</td>
+        <td style="max-width:140px;word-break:break-word">${escHtml(r['Item Name'] || r['SKU'] || '—')}</td>
+        <td style="max-width:160px;word-break:break-word;color:#888;font-size:12px">${escHtml(r['Reason'] || '—')}</td>
+        <td><span class="adm-badge ${bCls}">${escHtml(status)}</span></td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function adminShowReject(btn) {
+    const wrap = btn.nextElementSibling;
+    wrap.style.display = wrap.style.display === 'flex' ? 'none' : 'flex';
+  }
+
+  function adminConfirmReject(sendBtn, rowIdx) {
+    const reason = sendBtn.previousElementSibling.value.trim();
+    if (!reason) { sendBtn.previousElementSibling.focus(); return; }
+    adminUpdateStatus(rowIdx, 'Rejected', sendBtn, reason);
+  }
+
+  async function adminUpdateStatus(rowIdx, status, btn, rejectionReason) {
+    const orig = btn.textContent;
+    btn.textContent = '…'; btn.disabled = true;
+    try {
+      const resp = await fetch('/api/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: rowIdx, status, rejectionReason }),
+      });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error || 'Unknown error');
+      const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
+      if (row) { row['Status'] = status; if (rejectionReason) row['Rejection Reason'] = rejectionReason; }
+      updateAdminStats();
+      renderAdminTable();
+    } catch(e) {
+      btn.textContent = orig; btn.disabled = false;
+      alert('Update failed: ' + e.message);
+    }
+  }
 
   // ═══════════════ FORM LOGIC ═══════════════
   const GFORM_ID  = '1FAIpQLSe4hWcspTGV0g3a9rjofmBpORBJtSxh8C1w44eGEUxk3ykYCg';

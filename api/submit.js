@@ -5,7 +5,7 @@ const TAB      = 'Sheet1';
 const HEADERS  = [
   'Timestamp', 'Vendor ID', 'Email Address', 'Restaurant', 'Branch',
   'Contact Name', 'Request Type', 'Item Name', 'SKU', 'Barcode',
-  'Reason', 'Notes', 'Status',
+  'Reason', 'Notes', 'Status', 'Rejection Reason',
 ];
 
 module.exports = async function handler(req, res) {
@@ -56,11 +56,12 @@ module.exports = async function handler(req, res) {
       body.reason      || '',
       body.notes       || body.fileLink || '',
       'Pending',
+      '',
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!A:M`,
+      range: `${TAB}!A:N`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [row] },
     });

@@ -31,9 +31,10 @@ module.exports = async function handler(req, res) {
     const headers = values[0].map(h => String(h).trim());
     const dataRows = values.slice(1);
 
-    let rows = dataRows.map(row => {
+    let rows = dataRows.map((row, index) => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+      obj['_rowIndex'] = index + 2; // row 1 = headers, data starts at row 2
       return obj;
     });
 
