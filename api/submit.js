@@ -5,7 +5,7 @@ const TAB      = 'Sheet1';
 const HEADERS  = [
   'Timestamp', 'Vendor ID', 'Email Address', 'Restaurant', 'Branch',
   'Contact Name', 'Request Type', 'Item Name', 'SKU', 'Barcode',
-  'Reason', 'Notes', 'Status', 'Rejection Reason',
+  'Reason', 'Notes', 'Status', 'Rejection Reason', 'Assignee',
 ];
 
 module.exports = async function handler(req, res) {
@@ -56,6 +56,7 @@ module.exports = async function handler(req, res) {
       body.reason      || '',
       body.notes       || body.fileLink || '',
       'Pending',
+      '',
       '',
     ];
 

@@ -217,6 +217,22 @@
     .adm-rej-input:focus { outline:none; border-color:#c62828; }
     .adm-rej-send { background:#c62828; color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap; }
     .adm-msg { text-align:center; padding:40px; color:#bbb; font-size:14px; }
+    .adm-role-tag { font-size:11px; font-weight:700; padding:3px 11px; border-radius:99px; margin-left:10px; vertical-align:middle; }
+    .adm-role-monitor { background:#cfff00; color:#411517; }
+    .adm-role-agent   { background:rgba(255,255,255,.22); color:#fff; }
+    .adm-breakdown { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+    .adm-bd-card { background:#fff; border-radius:10px; padding:12px 14px; border-left:3px solid var(--orange); }
+    .adm-bd-name { font-size:11px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+    .adm-bd-nums { display:flex; gap:12px; }
+    .adm-bd-num  { text-align:center; }
+    .adm-bd-n    { font-size:18px; font-weight:800; color:var(--orange); line-height:1; }
+    .adm-bd-n.s-blue  { color:#1565c0; }
+    .adm-bd-n.s-green { color:#2e7d32; }
+    .adm-bd-lbl  { font-size:9px; color:#bbb; text-transform:uppercase; letter-spacing:.6px; margin-top:2px; }
+    .adm-assign-sel { border:1px solid #e0d8ce; border-radius:6px; padding:4px 8px; font-size:12px; font-family:'Poppins',sans-serif; color:#411517; cursor:pointer; max-width:115px; }
+    .adm-assign-sel:focus { outline:none; border-color:var(--orange); }
+    .adm-assigned   { color:#411517; font-size:12px; font-weight:600; }
+    .adm-unassigned { color:#ccc; font-size:12px; font-style:italic; }
 
     .delist-table-wrap { border:1px solid #e8e0d8; border-radius:10px; overflow:hidden; margin-bottom:6px; }
     .delist-table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -770,7 +786,7 @@
 <!-- ═══════════════════════════════════════ ADMIN PANEL ═══════════════════════════════════════ -->
 <div id="pg-admin">
   <div class="adm-top">
-    <div class="adm-brand">talabat <span>· Content Team</span></div>
+    <div class="adm-brand">talabat <span>· Content Team</span><span id="adm-user-tag" class="adm-role-tag" style="display:none"></span></div>
     <button class="adm-out" onclick="doLogout()">Sign Out</button>
   </div>
   <div class="adm-body">
@@ -783,6 +799,9 @@
       <div class="adm-stat"><div class="adm-stat-num s-red" id="as-rejected">—</div><div class="adm-stat-lbl">Rejected</div></div>
       <div class="adm-stat"><div class="adm-stat-num s-gray" id="as-total">—</div><div class="adm-stat-lbl">Total</div></div>
     </div>
+
+    <!-- Per-agent breakdown (monitor only) -->
+    <div id="adm-breakdown" class="adm-breakdown" style="display:none"></div>
 
     <!-- Toolbar -->
     <div class="adm-toolbar">
@@ -803,6 +822,9 @@
         <option value="Done">Done</option>
         <option value="Rejected">Rejected</option>
       </select>
+      <select class="adm-sel" id="a-filter-assignee" onchange="renderAdminTable()" style="display:none">
+        <option value="">All Agents</option>
+      </select>
       <input class="adm-search" id="a-search" placeholder="Search vendor, restaurant, SKU…" oninput="renderAdminTable()">
       <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
     </div>
@@ -819,12 +841,13 @@
             <th>Type</th>
             <th>Item / SKU</th>
             <th>Reason</th>
+            <th>Assignee</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="a-tbody">
-          <tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>
+          <tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1031,7 +1054,13 @@
     localStorage.setItem('tlb_session', JSON.stringify({ vendor, ts: Date.now() }));
     document.getElementById('pg-login').style.display = 'none';
     if (vendor.chainId === '0') {
+      currentAdminUser = { name: vendor.name || 'Admin', role: vendor.role || 'monitor' };
+      const tag = document.getElementById('adm-user-tag');
+      tag.textContent = currentAdminUser.name + ' · ' + (currentAdminUser.role === 'monitor' ? 'Monitor' : 'Agent');
+      tag.className = 'adm-role-tag ' + (currentAdminUser.role === 'monitor' ? 'adm-role-monitor' : 'adm-role-agent');
+      tag.style.display = '';
       document.getElementById('pg-admin').style.display = 'flex';
+      initAdminView();
       loadAdminRequests();
     } else {
       document.getElementById('ph-vendor-name').textContent = vendor.chainName;
@@ -1044,6 +1073,9 @@
 
   function doLogout() {
     currentVendor = null;
+    currentAdminUser = { name: '', role: 'monitor' };
+    const tag = document.getElementById('adm-user-tag');
+    if (tag) { tag.style.display = 'none'; tag.textContent = ''; }
     localStorage.removeItem('tlb_session');
     document.getElementById('pg-portal').style.display = 'none';
     document.getElementById('pg-admin').style.display = 'none';
@@ -1215,18 +1247,41 @@
 
 
   // ═══════════════ ADMIN PANEL ═══════════════
-  let adminRequests = [];
+  // Keep in sync with the names in api/auth.js
+  const TEAM_AGENTS = ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4'];
+
+  let adminRequests   = [];
+  let currentAdminUser = { name: '', role: 'monitor' };
+
+  function initAdminView() {
+    const isMonitor = currentAdminUser.role === 'monitor';
+    // Assignee filter — monitor only
+    const assigneeSel = document.getElementById('a-filter-assignee');
+    if (isMonitor) {
+      assigneeSel.innerHTML = '<option value="">All Agents</option>' +
+        TEAM_AGENTS.map(n => `<option value="${n}">${escHtml(n)}</option>`).join('');
+      assigneeSel.style.display = '';
+    } else {
+      assigneeSel.style.display = 'none';
+    }
+    // Per-agent breakdown cards — monitor only
+    document.getElementById('adm-breakdown').style.display = isMonitor ? 'grid' : 'none';
+  }
 
   async function loadAdminRequests() {
-    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>';
+    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
     try {
       const resp = await fetch('/api/requests?t=' + Date.now());
       const json = await resp.json();
-      adminRequests = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
+      const all = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
+      // Agents see only their assigned requests
+      adminRequests = currentAdminUser.role === 'agent'
+        ? all.filter(r => (r['Assignee'] || '') === currentAdminUser.name)
+        : all;
       updateAdminStats();
       renderAdminTable();
     } catch(e) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
   }
 
@@ -1244,38 +1299,70 @@
     document.getElementById('as-done').textContent     = done;
     document.getElementById('as-rejected').textContent = rejected;
     document.getElementById('as-total').textContent    = adminRequests.length;
+    if (currentAdminUser.role === 'monitor') renderAgentBreakdown(adminRequests);
+  }
+
+  function renderAgentBreakdown(all) {
+    document.getElementById('adm-breakdown').innerHTML = TEAM_AGENTS.map(name => {
+      const rows     = all.filter(r => (r['Assignee'] || '') === name);
+      const pending  = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return !s.includes('progress')&&s!=='done'&&s!=='completed'&&!s.includes('reject'); }).length;
+      const progress = rows.filter(r => (r['Status']||'').toLowerCase().includes('progress')).length;
+      const done     = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return s==='done'||s==='completed'; }).length;
+      return `<div class="adm-bd-card">
+        <div class="adm-bd-name">${escHtml(name)}</div>
+        <div class="adm-bd-nums">
+          <div class="adm-bd-num"><div class="adm-bd-n">${rows.length}</div><div class="adm-bd-lbl">Total</div></div>
+          <div class="adm-bd-num"><div class="adm-bd-n">${pending}</div><div class="adm-bd-lbl">Pending</div></div>
+          <div class="adm-bd-num"><div class="adm-bd-n s-blue">${progress}</div><div class="adm-bd-lbl">In Prog</div></div>
+          <div class="adm-bd-num"><div class="adm-bd-n s-green">${done}</div><div class="adm-bd-lbl">Done</div></div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   function renderAdminTable() {
-    const typeFilter   = document.getElementById('a-filter-type').value;
-    const statusFilter = document.getElementById('a-filter-status').value.toLowerCase();
-    const search       = document.getElementById('a-search').value.toLowerCase();
+    const typeFilter     = document.getElementById('a-filter-type').value;
+    const statusFilter   = document.getElementById('a-filter-status').value.toLowerCase();
+    const assigneeFilter = document.getElementById('a-filter-assignee').value;
+    const search         = document.getElementById('a-search').value.toLowerCase();
+    const isMonitor      = currentAdminUser.role === 'monitor';
 
     const filtered = adminRequests.filter(r => {
-      const type   = r['Request Type'] || '';
-      const status = (r['Status'] || '').toLowerCase();
+      const type      = r['Request Type'] || '';
+      const status    = (r['Status'] || '').toLowerCase();
+      const assignee  = r['Assignee'] || '';
       const searchStr = [r['Vendor ID'], r['Restaurant'], r['Branch'], r['SKU'], r['Item Name']].join(' ').toLowerCase();
-      if (typeFilter   && !type.includes(typeFilter))        return false;
-      if (statusFilter && !status.includes(statusFilter))    return false;
-      if (search       && !searchStr.includes(search))       return false;
+      if (typeFilter     && !type.includes(typeFilter))      return false;
+      if (statusFilter   && !status.includes(statusFilter))  return false;
+      if (assigneeFilter && assignee !== assigneeFilter)     return false;
+      if (search         && !searchStr.includes(search))     return false;
       return true;
     });
 
     if (filtered.length === 0) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">No requests match the current filter.</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">No requests match the current filter.</td></tr>';
       return;
     }
 
     document.getElementById('a-tbody').innerHTML = filtered.map(r => {
-      const status  = r['Status'] || 'Pending';
-      const sl      = status.toLowerCase();
-      const isDone  = sl === 'done' || sl === 'completed';
-      const isRej   = sl.includes('reject');
-      const isProg  = sl.includes('progress');
-      const bCls    = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
-      const ts      = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
-      const rowIdx  = r['_rowIndex'];
-      const canAct  = !isDone && !isRej;
+      const status   = r['Status'] || 'Pending';
+      const sl       = status.toLowerCase();
+      const isDone   = sl === 'done' || sl === 'completed';
+      const isRej    = sl.includes('reject');
+      const isProg   = sl.includes('progress');
+      const bCls     = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
+      const ts       = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+      const rowIdx   = r['_rowIndex'];
+      const canAct   = !isDone && !isRej;
+      const assigned = r['Assignee'] || '';
+
+      const assigneeCell = isMonitor
+        ? `<td><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
+             <option value="">Unassigned</option>
+             ${TEAM_AGENTS.map(n => `<option value="${n}"${assigned===n?' selected':''}>${escHtml(n)}</option>`).join('')}
+           </select></td>`
+        : `<td><span class="${assigned ? 'adm-assigned' : 'adm-unassigned'}">${escHtml(assigned || 'Unassigned')}</span></td>`;
+
       const actions = canAct ? `
         <div>
           ${!isProg ? `<button class="adm-btn adm-btn-prog" onclick="adminUpdateStatus(${rowIdx},'In Progress',this)">⏳ In Progress</button>` : ''}
@@ -1286,6 +1373,7 @@
             <button class="adm-rej-send" onclick="adminConfirmReject(this,${rowIdx})">Send</button>
           </div>
         </div>` : `<span style="color:#bbb;font-size:12px">—</span>`;
+
       return `<tr>
         <td style="white-space:nowrap;color:#999;font-size:12px">${ts}</td>
         <td style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
@@ -1294,6 +1382,7 @@
         <td style="white-space:nowrap">${escHtml(r['Request Type'] || '—')}</td>
         <td style="max-width:140px;word-break:break-word">${escHtml(r['Item Name'] || r['SKU'] || '—')}</td>
         <td style="max-width:160px;word-break:break-word;color:#888;font-size:12px">${escHtml(r['Reason'] || '—')}</td>
+        ${assigneeCell}
         <td><span class="adm-badge ${bCls}">${escHtml(status)}</span></td>
         <td>${actions}</td>
       </tr>`;
@@ -1329,6 +1418,26 @@
     } catch(e) {
       btn.textContent = orig; btn.disabled = false;
       alert('Update failed: ' + e.message);
+    }
+  }
+
+  async function adminAssign(rowIdx, assignee, sel) {
+    sel.disabled = true;
+    try {
+      const resp = await fetch('/api/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: rowIdx, assignee }),
+      });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error || 'Unknown error');
+      const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
+      if (row) row['Assignee'] = assignee;
+      renderAgentBreakdown(adminRequests);
+    } catch(e) {
+      alert('Assign failed: ' + e.message);
+    } finally {
+      sel.disabled = false;
     }
   }
 

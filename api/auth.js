@@ -3,9 +3,13 @@ const { google } = require('googleapis');
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
 
-// Internal team bypass — not visible to vendors
+// Internal team — update usernames/passwords/names to match your team
 const ADMINS = {
-  'admin': { password: 'Admin2024!', chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
+  'monitor': { password: 'Monitor2024!', name: 'Monitor',  role: 'monitor', chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
+  'agent1':  { password: 'Agent1_2024!', name: 'Agent 1',  role: 'agent',   chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
+  'agent2':  { password: 'Agent2_2024!', name: 'Agent 2',  role: 'agent',   chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
+  'agent3':  { password: 'Agent3_2024!', name: 'Agent 3',  role: 'agent',   chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
+  'agent4':  { password: 'Agent4_2024!', name: 'Agent 4',  role: 'agent',   chainName: 'Talabat', branchName: 'Admin Panel', chainId: '0' },
 };
 
 module.exports = async function handler(req, res) {
