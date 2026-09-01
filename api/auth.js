@@ -40,8 +40,15 @@ module.exports = async function handler(req, res) {
         console.error('auth.js: failed to read sheet metadata:', e.message);
       }
 
-      if (!teamTabName)
-        return res.status(500).json({ error: 'Team tab not found in the sheet. Please create a tab named "Team".' });
+      if (!teamTabName) {
+        // List available tabs to help diagnose the mismatch
+        let tabList = '(could not read sheet metadata)';
+        try {
+          const meta2 = await sheets.spreadsheets.get({ spreadsheetId: TRACKING_SHEET_ID });
+          tabList = (meta2.data.sheets || []).map(s => `"${s.properties.title}"`).join(', ') || '(no tabs found)';
+        } catch(_) {}
+        return res.status(500).json({ error: `Team tab not found. Available tabs: ${tabList}` });
+      }
 
       let teamValues = [];
       try {
