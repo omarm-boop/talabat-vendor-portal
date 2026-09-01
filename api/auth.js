@@ -28,15 +28,31 @@ module.exports = async function handler(req, res) {
 
     // ── Internal team: @talabat.com emails → check Team tab ──────────────────
     if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
+      // Find the Team tab by name (case-insensitive, trims whitespace)
+      let teamTabName = null;
+      try {
+        const meta = await sheets.spreadsheets.get({ spreadsheetId: TRACKING_SHEET_ID });
+        const found = (meta.data.sheets || []).find(
+          s => s.properties.title.trim().toLowerCase() === TEAM_TAB.toLowerCase()
+        );
+        if (found) teamTabName = found.properties.title;
+      } catch(e) {
+        console.error('auth.js: failed to read sheet metadata:', e.message);
+      }
+
+      if (!teamTabName)
+        return res.status(500).json({ error: 'Team tab not found in the sheet. Please create a tab named "Team".' });
+
       let teamValues = [];
       try {
         const teamResp = await sheets.spreadsheets.values.get({
           spreadsheetId: TRACKING_SHEET_ID,
-          range: TEAM_TAB,
+          range: teamTabName,
         });
         teamValues = teamResp.data.values || [];
-      } catch(_) {
-        return res.status(500).json({ error: 'Team tab not found in the sheet. Please set it up.' });
+      } catch(e) {
+        console.error('auth.js: failed to read Team tab:', e.message);
+        return res.status(500).json({ error: 'Could not read the Team tab. Check sheet permissions.' });
       }
 
       if (teamValues.length < 2)
