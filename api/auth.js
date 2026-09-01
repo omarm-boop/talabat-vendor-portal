@@ -26,35 +26,19 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // ── Internal team: @talabat.com emails → check Team tab ──────────────────
+    // ── Internal team: @talabat.com emails → check TEAM_CREDENTIALS env var ──
     if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
-      let teamValues = [];
+      let team = [];
       try {
-        const teamResp = await sheets.spreadsheets.values.get({
-          spreadsheetId: TRACKING_SHEET_ID,
-          range: `${TEAM_TAB}!A1:D1000`,
-        });
-        teamValues = teamResp.data.values || [];
-      } catch(e) {
-        console.error('auth.js Team tab error:', e.message);
-        return res.status(500).json({ error: 'Could not read Team tab: ' + e.message });
+        team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
+      } catch(_) {
+        return res.status(500).json({ error: 'TEAM_CREDENTIALS env var is not valid JSON.' });
       }
 
-      if (teamValues.length < 2)
-        return res.status(401).json({ error: 'No team accounts configured yet.' });
-
-      const headers = teamValues[0].map(h => String(h).trim());
-      const rows    = teamValues.slice(1);
-      let matched   = null;
-      for (const row of rows) {
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-        if (String(obj['Email']).toLowerCase().trim() === String(vendorId).toLowerCase().trim() &&
-            obj['Password'] === password) {
-          matched = obj;
-          break;
-        }
-      }
+      const matched = team.find(
+        m => String(m.email).toLowerCase().trim() === String(vendorId).toLowerCase().trim()
+          && m.password === password
+      );
 
       if (!matched)
         return res.status(401).json({ error: 'Incorrect email or password.' });
@@ -62,9 +46,9 @@ module.exports = async function handler(req, res) {
       return res.json({
         success: true,
         vendor: {
-          vendorId:   matched['Email'],
-          name:       matched['Name']  || matched['Email'],
-          role:       (matched['Role'] || 'agent').toLowerCase(),
+          vendorId:   matched.email,
+          name:       matched.name  || matched.email,
+          role:       (matched.role || 'agent').toLowerCase(),
           chainId:    '0',
           chainName:  'Talabat',
           branchName: 'Admin Panel',
