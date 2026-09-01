@@ -29,6 +29,33 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
+    // ── @talabat.com: internal team self-registration ─────────────────────────
+    if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
+      const email = String(vendorId).toLowerCase().trim();
+
+      // Check not already registered
+      const existingResp = await sheets.spreadsheets.values.get({
+        spreadsheetId: TRACKING_SHEET_ID,
+        range: `${CREDENTIALS_TAB}!A:A`,
+      });
+      const existingIds = (existingResp.data.values || []).flat().map(v => String(v).toLowerCase().trim());
+      if (existingIds.includes(email))
+        return res.status(409).json({ error: 'This email is already registered. Please log in instead.' });
+
+      const now = new Date().toISOString();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: TRACKING_SHEET_ID,
+        range: `${CREDENTIALS_TAB}!A:F`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [[email, password, '0', 'Talabat', 'agent', now]] },
+      });
+
+      return res.json({
+        success: true,
+        vendor: { vendorId: email, name: email, role: 'agent', chainId: '0', chainName: 'Talabat', branchName: 'Admin Panel' },
+      });
+    }
+
     // 1. Validate Vendor ID exists in the vendor DB
     const dbResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: VENDOR_DB_SHEET_ID,

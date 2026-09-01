@@ -26,34 +26,60 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // ── Internal team: @talabat.com emails → check TEAM_CREDENTIALS env var ──
+    // ── Internal team: @talabat.com emails ───────────────────────────────────
     if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
+      const email = String(vendorId).toLowerCase().trim();
+
+      // 1. Check TEAM_CREDENTIALS env var (pre-configured accounts, e.g. monitor)
       let team = [];
-      try {
-        team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
-      } catch(_) {
-        return res.status(500).json({ error: 'TEAM_CREDENTIALS env var is not valid JSON.' });
+      try { team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]'); } catch(_) {}
+      const envMatch = team.find(
+        m => String(m.email).toLowerCase().trim() === email && m.password === password
+      );
+      if (envMatch) {
+        return res.json({
+          success: true,
+          vendor: {
+            vendorId:   envMatch.email,
+            name:       envMatch.name || envMatch.email,
+            role:       (envMatch.role || 'agent').toLowerCase(),
+            chainId:    '0',
+            chainName:  'Talabat',
+            branchName: 'Admin Panel',
+          },
+        });
       }
 
-      const matched = team.find(
-        m => String(m.email).toLowerCase().trim() === String(vendorId).toLowerCase().trim()
-          && m.password === password
-      );
-
-      if (!matched)
-        return res.status(401).json({ error: 'Incorrect email or password.' });
-
-      return res.json({
-        success: true,
-        vendor: {
-          vendorId:   matched.email,
-          name:       matched.name  || matched.email,
-          role:       (matched.role || 'agent').toLowerCase(),
-          chainId:    '0',
-          chainName:  'Talabat',
-          branchName: 'Admin Panel',
-        },
+      // 2. Check Credentials tab for self-registered agents (chainId = '0')
+      const credsResp = await sheets.spreadsheets.values.get({
+        spreadsheetId: TRACKING_SHEET_ID,
+        range: CREDENTIALS_TAB,
       });
+      const credsValues = credsResp.data.values || [];
+      if (credsValues.length > 1) {
+        const headers = credsValues[0];
+        for (const row of credsValues.slice(1)) {
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+          if (String(obj['Vendor ID']).toLowerCase().trim() === email
+              && obj['Password'] === password
+              && String(obj['Chain ID']).trim() === '0') {
+            return res.json({
+              success: true,
+              vendor: {
+                vendorId:   obj['Vendor ID'],
+                name:       obj['Vendor ID'],
+                role:       obj['Branch Name'] || 'agent',
+                chainId:    '0',
+                chainName:  'Talabat',
+                branchName: 'Admin Panel',
+              },
+            });
+          }
+        }
+      }
+
+      return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
     // ── Regular vendor: check Credentials tab ─────────────────────────────────
