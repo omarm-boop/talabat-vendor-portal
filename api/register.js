@@ -28,14 +28,17 @@ module.exports = async function handler(req, res) {
     try { credentials = JSON.parse(raw); } catch(e) {
       return res.status(500).json({ error: 'GOOGLE_SERVICE_ACCOUNT is not valid JSON: ' + e.message });
     }
-    if (!credentials.client_email || !credentials.private_key) {
-      return res.status(500).json({ error: `GOOGLE_SERVICE_ACCOUNT invalid. client_email: ${!!credentials.client_email}, private_key: ${!!credentials.private_key}` });
+    const clientEmail = String(credentials.client_email || '').trim();
+    const privateKey  = String(credentials.private_key  || '').replace(/\\n/g, '\n');
+    if (!clientEmail || !privateKey) {
+      return res.status(500).json({ error: `[v6] Missing creds — email:${!!clientEmail} key:${!!privateKey}` });
     }
-    const auth = new google.auth.JWT({
-      email: credentials.client_email,
-      key:   credentials.private_key,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+    const auth = new google.auth.JWT(
+      clientEmail,
+      null,
+      privateKey,
+      ['https://www.googleapis.com/auth/spreadsheets']
+    );
     const sheets = google.sheets({ version: 'v4', auth });
 
     // ── @talabat.com: internal team self-registration ─────────────────────────
@@ -140,6 +143,6 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('register.js error:', err.message);
-    return res.status(500).json({ error: 'Server error: ' + err.message });
+    return res.status(500).json({ error: '[v6] ' + err.message });
   }
 };
