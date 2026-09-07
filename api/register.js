@@ -28,11 +28,12 @@ module.exports = async function handler(req, res) {
     try { credentials = JSON.parse(raw); } catch(e) {
       return res.status(500).json({ error: 'GOOGLE_SERVICE_ACCOUNT is not valid JSON: ' + e.message });
     }
-    if (!credentials.client_email) {
-      return res.status(500).json({ error: `GOOGLE_SERVICE_ACCOUNT is missing client_email. Keys present: ${Object.keys(credentials).join(', ')}` });
+    if (!credentials.client_email || !credentials.private_key) {
+      return res.status(500).json({ error: `GOOGLE_SERVICE_ACCOUNT invalid. client_email: ${!!credentials.client_email}, private_key: ${!!credentials.private_key}` });
     }
-    const auth = new google.auth.GoogleAuth({
-      credentials,
+    const auth = new google.auth.JWT({
+      email: credentials.client_email,
+      key:   credentials.private_key,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
