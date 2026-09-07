@@ -131,6 +131,6 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('register.js error:', err.message);
-    return res.status(500).json({ error: 'Server error. Please try again.' });
+    return res.status(500).json({ error: 'Server error: ' + err.message });
   }
 };
