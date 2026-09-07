@@ -22,7 +22,15 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    const raw = process.env.GOOGLE_SERVICE_ACCOUNT;
+    if (!raw) return res.status(500).json({ error: 'GOOGLE_SERVICE_ACCOUNT env var is not set.' });
+    let credentials;
+    try { credentials = JSON.parse(raw); } catch(e) {
+      return res.status(500).json({ error: 'GOOGLE_SERVICE_ACCOUNT is not valid JSON: ' + e.message });
+    }
+    if (!credentials.client_email) {
+      return res.status(500).json({ error: `GOOGLE_SERVICE_ACCOUNT is missing client_email. Keys present: ${Object.keys(credentials).join(', ')}` });
+    }
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
