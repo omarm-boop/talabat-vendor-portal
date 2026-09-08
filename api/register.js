@@ -74,6 +74,8 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('register.js error:', err.message);
-    return res.status(500).json({ error: 'Server error: ' + err.message });
+    let saEmail = '';
+    try { saEmail = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || '{}').client_email || ''; } catch(_) {}
+    return res.status(500).json({ error: 'Server error: ' + err.message, serviceAccount: saEmail });
   }
 };
