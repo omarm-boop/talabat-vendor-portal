@@ -24,10 +24,10 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Column O = Assignee
+    // Column U = Owner (Assignee)
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!O${rowIndex}`,
+      range: `${TAB}!U${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[assignee || '']] },
     });

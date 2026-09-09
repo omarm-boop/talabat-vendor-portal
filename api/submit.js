@@ -40,29 +40,36 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const itemName = body.itemName || body.itemNameEn || body.currentName || body.sku || '';
+    const itemName   = body.itemName || body.itemNameEn || body.currentName || '';
+    const explainText = [body.requestType, body.notes].filter(Boolean).join('\n');
 
+    // Column positions match actual Sheet1 headers (legacy Google Form structure):
+    // A=Timestamp, B=Vendor ID (Month Name), C=Contact Name (Week number),
+    // D=Chain Name, E=Branch (Request Type col), F=Barcode, G=SKU,
+    // H=Item Name, I=Explanation, J=Email, K=Image(empty), L=File link,
+    // M-O=empty, P=Delist reason, Q-S=empty, T=Status
     const row = [
-      new Date().toISOString(),
-      body.vendor      || '',
-      body.email       || '',
-      body.restaurant  || '',
-      body.branch      || '',
-      body.name        || '',
-      body.requestType || '',
-      itemName,
-      body.sku         || '',
-      body.barcode     || '',
-      body.reason      || '',
-      body.notes       || body.fileLink || '',
-      'Pending',
-      '',
-      '',
+      new Date().toISOString(),   // A: Timestamp
+      body.vendor      || '',     // B: Vendor ID
+      body.name        || '',     // C: Contact Name
+      body.restaurant  || '',     // D: Chain Name
+      body.branch      || '',     // E: Branch
+      body.barcode     || '',     // F: Barcode
+      body.sku         || '',     // G: SKU / Internal Code
+      itemName,                   // H: Item Name
+      explainText,                // I: Explanation (Request Type + Notes)
+      body.email       || '',     // J: Email
+      '',                         // K: Image upload (not applicable)
+      body.fileLink    || '',     // L: File link
+      '', '', '',                 // M, N, O: unused
+      body.reason      || '',     // P: Delist reason
+      '', '', '',                 // Q, R, S: unused
+      'Pending',                  // T: Status
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!A:N`,
+      range: `${TAB}!A:T`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [row] },
     });

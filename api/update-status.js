@@ -25,12 +25,18 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Column M = Status, Column N = Rejection Reason
+    // Column T = Status, Column V = Reason (T and V are not adjacent so two calls)
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!M${rowIndex}:N${rowIndex}`,
+      range: `${TAB}!T${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[status, rejectionReason || '']] },
+      requestBody: { values: [[status]] },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${TAB}!V${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[rejectionReason || '']] },
     });
 
     return res.json({ success: true });

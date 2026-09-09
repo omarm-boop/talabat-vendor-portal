@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
       alias('Barcode',          'Email Address');
       alias('Status',           'Price/ السعر');
       alias('Rejection Reason', 'Branch Name / اسم الفرع');
-      alias('Assignee',         'Items Weight / وزن المنتج');
+      alias('Assignee',         'Owner', 'Items Weight / وزن المنتج');
 
       return obj;
     });
