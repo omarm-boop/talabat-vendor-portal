@@ -34,7 +34,31 @@ module.exports = async function handler(req, res) {
     let rows = dataRows.map((row, index) => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
-      obj['_rowIndex'] = index + 2; // row 1 = headers, data starts at row 2
+      obj['_rowIndex'] = index + 2;
+
+      // Normalize legacy-form column names → portal field names
+      // (Sheet1 headers come from Google Form; submit.js writes to column positions,
+      //  so each portal field maps to whichever header is at that column.)
+      const alias = (portalKey, ...sheetKeys) => {
+        if (!obj[portalKey]) {
+          for (const k of sheetKeys) {
+            if (obj[k] !== undefined && obj[k] !== '') { obj[portalKey] = obj[k]; break; }
+          }
+        }
+      };
+      alias('Vendor ID',        'Month Name');
+      alias('Email Address',    'Week number');
+      alias('Restaurant',       'Chain Name / اسم السلسة', 'Chain Name');
+      alias('Branch',           'Request Type / نوع الطلب');
+      alias('Contact Name',     'Barcode / الباركود');
+      alias('Request Type',     'SKU/ الباركود الداخلى', 'SKU');
+      alias('Item Name',        'Item Name / اسم المنتج');
+      alias('Notes',            'Explain your request (if needed) / توضيح الطلب');
+      alias('Barcode',          'Email Address');
+      alias('Status',           'Price/ السعر');
+      alias('Rejection Reason', 'Branch Name / اسم الفرع');
+      alias('Assignee',         'Items Weight / وزن المنتج');
+
       return obj;
     });
 
