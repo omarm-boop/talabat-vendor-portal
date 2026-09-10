@@ -891,27 +891,14 @@
             <th>Chain Name</th>
             <th>Request Type</th>
             <th>Branch Name</th>
-            <th>Barcode</th>
-            <th>SKU</th>
             <th>Item Name</th>
-            <th>Explain Request</th>
-            <th>Photo</th>
-            <th>Upload File</th>
-            <th>Price</th>
-            <th>Items Weight</th>
-            <th>Delist Reason</th>
-            <th>New Barcode</th>
-            <th>New SKU</th>
-            <th>New Item Name</th>
-            <th>Owner</th>
-            <th>Comment</th>
             <th>Assignee</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="a-tbody">
-          <tr><td colspan="22" class="adm-msg">Loading requests…</td></tr>
+          <tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1335,7 +1322,7 @@
   }
 
   async function loadAdminRequests() {
-    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">Loading requests…</td></tr>';
+    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>';
     try {
       const resp = await fetch('/api/requests?t=' + Date.now());
       const json = await resp.json();
@@ -1344,7 +1331,7 @@
       updateAdminStats();
       renderAdminTable();
     } catch(e) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
   }
 
@@ -1403,7 +1390,7 @@
     });
 
     if (filtered.length === 0) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">No requests match the current filter.</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">No requests match the current filter.</td></tr>';
       return;
     }
 
@@ -1451,20 +1438,7 @@
         ${cell(r['Restaurant'] || r['Chain Name / اسم السلسة'])}
         ${cell(r['Request Type'] || r['Request Type / نوع الطلب'])}
         ${cell(r['Branch'] || r['Branch Name / اسم الفرع'])}
-        ${cell(r['Barcode / الباركود'])}
-        ${cell(r['SKU/ الباركود الداخلى'])}
         ${cell(r['Item Name'] || r['Item Name / اسم المنتج'])}
-        <td class="adm-td-clip" title="${escHtml(r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '')}">${escHtml((r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '—').substring(0,40))}${(r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '').length > 40 ? '…' : ''}</td>
-        <td style="white-space:nowrap">${photoCell}</td>
-        <td style="white-space:nowrap">${fileCell}</td>
-        ${cell(r['Price/ السعر'])}
-        ${cell(r['Items Weight / وزن المنتج'])}
-        ${cell(r['يرجى ذكر السبب فى حالة طلب "حذف منتج" / Kindly mention the reason for delisted cases'])}
-        ${cell(r['الباركود الجديد اذا يوجد / New Barcode If Found'])}
-        ${cell(r['الكود الداخلى الجديد اذا وجد / New SKU If Found'])}
-        ${cell(r['New Item Name / اسم المنتج الجديد'])}
-        ${cell(r['Owner'])}
-        ${cell(r['Comment'] || r['Rejection Reason'])}
         ${assigneeCell}
         <td style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status)}</td>
         <td>${actions}</td>
