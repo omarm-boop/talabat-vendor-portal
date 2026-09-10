@@ -1306,10 +1306,7 @@
       const resp = await fetch('/api/requests?t=' + Date.now());
       const json = await resp.json();
       const all = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
-      // Agents see only their assigned requests
-      adminRequests = currentAdminUser.role === 'agent'
-        ? all.filter(r => (r['Assignee'] || '') === currentAdminUser.name)
-        : all;
+      adminRequests = all;
       updateAdminStats();
       renderAdminTable();
     } catch(e) {

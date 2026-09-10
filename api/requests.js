@@ -70,9 +70,17 @@ module.exports = async function handler(req, res) {
       // New rows have 'Pending' in col T directly so this only fires for very old rows.
       if (!obj['Status']) obj['Status'] = obj['Price/ السعر'] || '';
 
-      // Assignee: col U "Owner" (new rows), col O "Items Weight" (old rows)
+      // Assignee: written to col U (index 20) by assign.js.
+      // Read by index first — col U header varies across sheet setups.
+      // Fall back to named headers for backward-compat with old rows.
       if (!obj['Assignee']) {
-        obj['Assignee'] = obj['Owner'] || obj['Items Weight / وزن المنتج'] || '';
+        obj['Assignee'] = (row[20] && row[20] !== '') ? row[20]
+          : obj['Owner'] || obj['Items Weight / وزن المنتج'] || '';
+      }
+
+      // Rejection reason: written to col V (index 21) by update-status.js
+      if (!obj['Rejection Reason']) {
+        obj['Rejection Reason'] = (row[21] && row[21] !== '') ? row[21] : obj['Reason'] || '';
       }
 
       // Convenience aliases for frontend display
