@@ -149,6 +149,31 @@
 
     /* ── LIMIT BANNER ── */
     .limit-banner { background:#fff3cd; border:1.5px solid #ffc107; border-radius:12px; padding:14px 18px; margin-top:12px; font-size:13px; color:#7d5a00; font-weight:600; display:none; }
+
+    /* ── SLA BADGE ── */
+    .sla-badge { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; margin-left:5px; vertical-align:middle; white-space:nowrap; }
+    .sla-green  { background:#d4edda; color:#155724; }
+    .sla-yellow { background:#fff3cd; color:#856404; }
+    .sla-red    { background:#f8d7da; color:#721c24; }
+
+    /* ── IMAGE PREVIEW ── */
+    .img-prev-btn { background:none; border:1px solid #ddd; border-radius:6px; padding:2px 8px; font-size:11px; cursor:pointer; color:#666; margin-top:4px; display:inline-block; font-family:'Poppins',sans-serif; }
+    .img-prev-btn:hover { border-color:var(--orange); color:var(--orange); }
+    .img-modal-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.78); z-index:9999; align-items:center; justify-content:center; }
+    .img-modal-ov.on { display:flex; }
+    .img-modal-box { background:#fff; border-radius:16px; padding:24px 20px 20px; max-width:92vw; max-height:92vh; overflow:auto; text-align:center; position:relative; min-width:280px; }
+    .img-modal-close { position:absolute; top:10px; right:14px; font-size:22px; cursor:pointer; color:#666; background:none; border:none; font-weight:700; line-height:1; }
+    .img-modal-box img { max-width:100%; max-height:68vh; border-radius:8px; object-fit:contain; }
+    .img-modal-link { display:block; margin-top:10px; font-size:11px; color:var(--orange); word-break:break-all; text-decoration:none; }
+    .img-modal-link:hover { text-decoration:underline; }
+
+    /* ── VENDOR NOTIFICATIONS ── */
+    .notif-banner { background:#fff8f4; border:1.5px solid var(--orange); border-radius:12px; padding:14px 16px; margin-bottom:14px; display:none; }
+    .notif-banner.on { display:block; }
+    .notif-hd { font-size:13px; font-weight:700; color:var(--orange); margin-bottom:8px; }
+    .notif-item { font-size:12px; color:var(--burgundy); padding:6px 0; border-bottom:1px solid #ffe0c0; line-height:1.5; }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-dismiss { margin-top:10px; background:none; border:1.5px solid var(--orange); color:var(--orange); border-radius:8px; padding:5px 16px; font-size:12px; cursor:pointer; font-weight:700; font-family:'Poppins',sans-serif; }
     .limit-banner.on { display:block; }
 
     /* ── BUTTONS ── */
@@ -360,6 +385,11 @@
       <!-- Request List -->
       <div class="dash-table-wrap">
         <div class="dash-table-head" data-i18n="yourRequests">Your Requests</div>
+        <div id="notif-banner" class="notif-banner">
+          <div class="notif-hd">🔔 Updates on your requests</div>
+          <div id="notif-list"></div>
+          <button class="notif-dismiss" onclick="dismissNotifs()">Got it ✓</button>
+        </div>
         <div id="dash-loading" class="dash-loading" data-i18n="loadingReqs">Loading your requests…</div>
         <div id="dash-empty" class="dash-empty" data-i18n="noReqs">No requests submitted yet.</div>
         <div id="dash-list"></div>
@@ -1194,6 +1224,8 @@
 
       rows.sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
 
+      checkNotifications(rows, currentVendor.vendorId);
+
       let done = 0, pending = 0, rejected = 0;
       rows.forEach(r => {
         const s = (r['Status'] || '').toLowerCase();
@@ -1345,16 +1377,19 @@
     }
 
     document.getElementById('a-tbody').innerHTML = filtered.map(r => {
-      const status   = r['Status'] || 'Pending';
-      const sl       = status.toLowerCase();
-      const isDone   = sl === 'done' || sl === 'completed';
-      const isRej    = sl.includes('reject');
-      const isProg   = sl.includes('progress');
-      const bCls     = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
-      const ts       = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
-      const rowIdx   = r['_rowIndex'];
-      const canAct   = !isDone && !isRej;
-      const assigned = r['Assignee'] || '';
+      const status     = r['Status'] || 'Pending';
+      const sl         = status.toLowerCase();
+      const isDone     = sl === 'done' || sl === 'completed';
+      const isRej      = sl.includes('reject');
+      const isProg     = sl.includes('progress');
+      const bCls       = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
+      const ts         = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+      const rowIdx     = r['_rowIndex'];
+      const canAct     = !isDone && !isRej;
+      const assigned   = r['Assignee'] || '';
+      const assignedAt = r['AssignedAt'] || '';
+      const photoLink  = r['PhotoLink'] || '';
+      const photoBtn   = photoLink ? `<br><button class="img-prev-btn" onclick="openImgModal(this)" data-url="${escHtml(photoLink)}">🖼 Photo</button>` : '';
 
       const assigneeCell = isMonitor
         ? `<td><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
@@ -1380,10 +1415,10 @@
         <td>${escHtml(r['Restaurant'] || '—')}</td>
         <td style="color:#999;font-size:12px">${escHtml(r['Branch'] || '—')}</td>
         <td style="white-space:nowrap">${escHtml(r['Request Type'] || '—')}</td>
-        <td style="max-width:140px;word-break:break-word">${escHtml(r['Item Name'] || r['SKU'] || '—')}</td>
-        <td style="max-width:160px;word-break:break-word;color:#888;font-size:12px">${escHtml(r['Reason'] || '—')}</td>
+        <td style="max-width:140px;word-break:break-word">${escHtml(r['Item Name'] || r['SKU'] || '—')}${photoBtn}</td>
+        <td style="max-width:160px;word-break:break-word;color:#888;font-size:12px">${escHtml(r['Notes'] || r['Reason'] || '—')}</td>
         ${assigneeCell}
-        <td><span class="adm-badge ${bCls}">${escHtml(status)}</span></td>
+        <td><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status)}</td>
         <td>${actions}</td>
       </tr>`;
     }).join('');
@@ -1432,8 +1467,13 @@
       const json = await resp.json();
       if (!json.success) throw new Error(json.error || 'Unknown error');
       const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
-      if (row) row['Assignee'] = assignee;
+      if (row) {
+        row['Assignee'] = assignee;
+        if (assignee && !row['AssignedAt']) row['AssignedAt'] = new Date().toISOString();
+        if (!assignee) row['AssignedAt'] = '';
+      }
       renderAgentBreakdown(adminRequests);
+      renderAdminTable();
     } catch(e) {
       alert('Assign failed: ' + e.message);
     } finally {
@@ -1787,6 +1827,110 @@
     $('progBar').style.width = '50%';
     scrollTo(0, 0);
   }
+
+  // ═══════════════ SLA ═══════════════
+  // Egyptian public holidays (fixed + estimated Islamic dates 2025-2026)
+  const EG_HOLIDAYS = new Set([
+    '2025-01-07','2025-01-25','2025-04-25','2025-05-01',
+    '2025-06-30','2025-07-23','2025-10-06',
+    '2025-03-30','2025-03-31','2025-04-01',  // Eid Al-Fitr 2025
+    '2025-06-06','2025-06-07','2025-06-08','2025-06-09', // Eid Al-Adha 2025
+    '2025-06-27','2025-09-04',               // Islamic New Year / Prophet's Birthday 2025
+    '2026-01-07','2026-01-25','2026-04-25','2026-05-01',
+    '2026-06-30','2026-07-23','2026-10-06',
+    '2026-03-20','2026-03-21','2026-03-22',  // Eid Al-Fitr 2026
+    '2026-05-27','2026-05-28','2026-05-29',  // Eid Al-Adha 2026
+  ]);
+
+  function isWorkingDay(d) {
+    const day = d.getUTCDay(); // 5=Fri 6=Sat
+    if (day === 5 || day === 6) return false;
+    return !EG_HOLIDAYS.has(d.toISOString().slice(0, 10));
+  }
+
+  function workingHoursSince(isoStr) {
+    if (!isoStr) return null;
+    const start = new Date(isoStr);
+    const now   = new Date();
+    if (now <= start) return 0;
+    let ms = 0, cursor = new Date(start);
+    while (cursor < now) {
+      const dayEnd = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate(), 23, 59, 59, 999));
+      const periodEnd = dayEnd < now ? new Date(dayEnd.getTime() + 1) : now;
+      if (isWorkingDay(cursor)) ms += periodEnd - cursor;
+      cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+    }
+    return ms / 3600000;
+  }
+
+  function slaBadge(assignedAt, status) {
+    const sl = (status || '').toLowerCase();
+    if (!assignedAt || sl === 'done' || sl === 'completed' || sl.includes('reject')) return '';
+    const elapsed   = workingHoursSince(assignedAt);
+    if (elapsed === null) return '';
+    const remaining = 24 - elapsed;
+    let cls, label;
+    if (remaining <= 0)       { cls = 'sla-red';    label = '⚠ SLA Breached'; }
+    else if (remaining <= 4)  { cls = 'sla-red';    label = `⏰ ${remaining.toFixed(1)}h left`; }
+    else if (remaining <= 8)  { cls = 'sla-yellow'; label = `⏳ ${remaining.toFixed(1)}h left`; }
+    else                      { cls = 'sla-green';  label = `✓ ${remaining.toFixed(1)}h left`; }
+    return `<span class="sla-badge ${cls}">${label}</span>`;
+  }
+
+  // ═══════════════ IMAGE PREVIEW ═══════════════
+  function openImgModal(btn) {
+    const url = btn.getAttribute('data-url');
+    document.getElementById('img-modal-img').src  = url;
+    document.getElementById('img-modal-link').href        = url;
+    document.getElementById('img-modal-link').textContent = url;
+    document.getElementById('img-modal').classList.add('on');
+  }
+  function closeImgModal() {
+    document.getElementById('img-modal').classList.remove('on');
+    document.getElementById('img-modal-img').src = '';
+  }
+
+  // ═══════════════ VENDOR NOTIFICATIONS ═══════════════
+  function checkNotifications(rows, vendorId) {
+    const key = 'tlb_req_states_' + vendorId;
+    let prev = {};
+    try { prev = JSON.parse(localStorage.getItem(key) || '{}'); } catch(_) {}
+    const updates = [];
+    const next = {};
+    rows.forEach(row => {
+      const id     = String(row['Timestamp'] || row['_rowIndex'] || '');
+      const status = row['Status'] || 'Pending';
+      next[id] = status;
+      if (prev[id] && prev[id] !== status) {
+        const rt = row['Request Type'] || row['Item Name'] || 'Your request';
+        updates.push({ label: rt, from: prev[id], to: status });
+      }
+    });
+    localStorage.setItem(key, JSON.stringify(next));
+    const banner = document.getElementById('notif-banner');
+    const list   = document.getElementById('notif-list');
+    if (!banner || !list) return;
+    if (updates.length === 0) { banner.classList.remove('on'); return; }
+    list.innerHTML = updates.map(u =>
+      `<div class="notif-item"><strong>${escHtml(u.label)}</strong> — status updated to <strong>${escHtml(u.to)}</strong></div>`
+    ).join('');
+    banner.classList.add('on');
+  }
+
+  function dismissNotifs() {
+    document.getElementById('notif-banner').classList.remove('on');
+  }
+
 </script>
+
+<!-- Image Preview Modal -->
+<div class="img-modal-ov" id="img-modal" onclick="if(event.target===this)closeImgModal()">
+  <div class="img-modal-box">
+    <button class="img-modal-close" onclick="closeImgModal()">✕</button>
+    <img id="img-modal-img" src="" alt="Request image">
+    <a id="img-modal-link" class="img-modal-link" target="_blank" rel="noopener noreferrer">Open original</a>
+  </div>
+</div>
+
 </body>
 </html>

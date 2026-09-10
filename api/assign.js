@@ -32,6 +32,14 @@ module.exports = async function handler(req, res) {
       requestBody: { values: [[assignee || '']] },
     });
 
+    // Column W = AssignedAt timestamp (set when first assigned, cleared when unassigned)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${TAB}!W${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[assignee ? new Date().toISOString() : '']] },
+    });
+
     return res.json({ success: true });
   } catch (err) {
     console.error('assign.js error:', err.message);
