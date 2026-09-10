@@ -221,12 +221,12 @@
     .adm-sel:focus,.adm-search:focus { outline:none; border-color:var(--orange); }
     .adm-refresh { background:var(--orange); color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap; }
     .adm-refresh:hover { background:#e05000; }
-    .adm-table-wrap { background:#fff; border-radius:12px; overflow:hidden; border:1px solid #e8e0d8; }
-    .adm-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .adm-table-wrap { background:#fff; border-radius:12px; overflow-x:auto; border:1px solid #e8e0d8; }
+    .adm-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
+    .adm-table td { padding:8px 10px; vertical-align:top; color:#411517; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .adm-table thead th { background:#fff8f4; padding:11px 14px; text-align:left; font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:.9px; border-bottom:1px solid #e8e0d8; white-space:nowrap; }
     .adm-table tbody tr:not(:last-child) { border-bottom:1px solid #f2ece5; }
     .adm-table tbody tr:hover { background:#fdf9f6; }
-    .adm-table td { padding:10px 14px; vertical-align:top; color:#411517; }
     .adm-badge { display:inline-block; padding:3px 11px; border-radius:99px; font-size:11px; font-weight:700; white-space:nowrap; }
     .ab-pending  { background:#fff3e0; color:#e65100; }
     .ab-progress { background:#e3f2fd; color:#1565c0; }
@@ -866,18 +866,30 @@
           <tr>
             <th>Time</th>
             <th>Vendor ID</th>
-            <th>Restaurant</th>
-            <th>Branch</th>
-            <th>Type</th>
-            <th>Item / SKU</th>
-            <th>Reason</th>
+            <th>Chain Name</th>
+            <th>Request Type</th>
+            <th>Branch Name</th>
+            <th>Barcode</th>
+            <th>SKU</th>
+            <th>Item Name</th>
+            <th>Explain Request</th>
+            <th>Photo</th>
+            <th>Upload File</th>
+            <th>Price</th>
+            <th>Items Weight</th>
+            <th>Delist Reason</th>
+            <th>New Barcode</th>
+            <th>New SKU</th>
+            <th>New Item Name</th>
+            <th>Owner</th>
+            <th>Comment</th>
             <th>Assignee</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="a-tbody">
-          <tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>
+          <tr><td colspan="22" class="adm-msg">Loading requests…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1301,7 +1313,7 @@
   }
 
   async function loadAdminRequests() {
-    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
+    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">Loading requests…</td></tr>';
     try {
       const resp = await fetch('/api/requests?t=' + Date.now());
       const json = await resp.json();
@@ -1310,7 +1322,7 @@
       updateAdminStats();
       renderAdminTable();
     } catch(e) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
   }
 
@@ -1369,7 +1381,7 @@
     });
 
     if (filtered.length === 0) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">No requests match the current filter.</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="22" class="adm-msg">No requests match the current filter.</td></tr>';
       return;
     }
 
@@ -1385,8 +1397,12 @@
       const canAct     = !isDone && !isRej;
       const assigned   = r['Assignee'] || '';
       const assignedAt = r['AssignedAt'] || '';
-      const photoLink  = r['PhotoLink'] || '';
-      const photoBtn   = photoLink ? `<br><button class="img-prev-btn" onclick="openImgModal(this)" data-url="${escHtml(photoLink)}">🖼 Photo</button>` : '';
+      const photoLink  = r['PhotoLink'] || r['Upload Item Picture (If needed) / تحميل صورة المنتج'] || '';
+      const photoCell  = photoLink ? `<button class="img-prev-btn" onclick="openImgModal(this)" data-url="${escHtml(photoLink)}">🖼 Preview</button>` : '—';
+      const fileLink   = r['Upload file (if needed) / رفع ملف'] || '';
+      const fileCell   = fileLink ? `<a href="${escHtml(fileLink)}" target="_blank" style="color:var(--orange)">File</a>` : '—';
+
+      const cell = (val, style) => `<td${style ? ` style="${style}"` : ''}>${escHtml(val || '—')}</td>`;
 
       const assigneeCell = isMonitor
         ? `<td><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
@@ -1407,13 +1423,25 @@
         </div>` : `<span style="color:#bbb;font-size:12px">—</span>`;
 
       return `<tr>
-        <td style="white-space:nowrap;color:#999;font-size:12px">${ts}</td>
+        <td style="color:#999;font-size:11px;white-space:nowrap">${ts}</td>
         <td style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
-        <td>${escHtml(r['Restaurant'] || '—')}</td>
-        <td style="color:#999;font-size:12px">${escHtml(r['Branch'] || '—')}</td>
-        <td style="white-space:nowrap">${escHtml(r['Request Type'] || '—')}</td>
-        <td style="max-width:140px;word-break:break-word">${escHtml(r['Item Name'] || r['SKU'] || '—')}${photoBtn}</td>
-        <td style="max-width:160px;word-break:break-word;color:#888;font-size:12px">${escHtml(r['Notes'] || r['Reason'] || '—')}</td>
+        ${cell(r['Restaurant'] || r['Chain Name / اسم السلسة'])}
+        ${cell(r['Request Type'] || r['Request Type / نوع الطلب'])}
+        ${cell(r['Branch'] || r['Branch Name / اسم الفرع'])}
+        ${cell(r['Barcode / الباركود'])}
+        ${cell(r['SKU/ الباركود الداخلى'])}
+        ${cell(r['Item Name'] || r['Item Name / اسم المنتج'])}
+        <td title="${escHtml(r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '')}">${escHtml((r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '—').substring(0,40))}${(r['Notes'] || r['Explain your request (if needed) / توضيح الطلب'] || '').length > 40 ? '…' : ''}</td>
+        <td>${photoCell}</td>
+        <td>${fileCell}</td>
+        ${cell(r['Price/ السعر'])}
+        ${cell(r['Items Weight / وزن المنتج'])}
+        ${cell(r['يرجى ذكر السبب فى حالة طلب "حذف منتج" / Kindly mention the reason for delisted cases'])}
+        ${cell(r['الباركود الجديد اذا يوجد / New Barcode If Found'])}
+        ${cell(r['الكود الداخلى الجديد اذا وجد / New SKU If Found'])}
+        ${cell(r['New Item Name / اسم المنتج الجديد'])}
+        ${cell(r['Owner'])}
+        ${cell(r['Comment'] || r['Rejection Reason'])}
         ${assigneeCell}
         <td><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status)}</td>
         <td>${actions}</td>
