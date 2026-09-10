@@ -478,7 +478,7 @@
               </div>
             </div>
           </div>
-          <div class="limit-banner" id="limit-banner" data-i18n="limitBanner">⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.</div>
+          <div class="limit-banner" id="limit-banner" data-i18n="limitBanner">⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow or contact your account manager for urgent assistance.</div>
           <button class="btn-back-dash" data-i18n="backBtn" style="margin-top:18px" onclick="backTo('s2')">← Back</button>
         </div>
 
@@ -891,7 +891,7 @@
       addTypeChip:'Add New Item', addTypeTitle:'How would you like to add items?',
       urgentName:'Urgent Add Item', urgentDesc:'Single item — limited to 5 requests per day',
       masterName:'Add Master File', masterDesc:'Upload a list of items via CSV/Excel template',
-      limitBanner:'⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow.',
+      limitBanner:'⚠️ You have reached the daily limit of 5 Urgent Add Item requests. Please try again tomorrow or contact your account manager for urgent assistance.',
       masterTypeChip:'Add Master File', masterTypeTitle:'Select your store type',
       pharmacyName:'Pharmacy', pharmacyDesc:'Pharmaceutical products & medications',
       groceryName:'Grocery', groceryDesc:'Food, beverages & household items',
@@ -945,7 +945,7 @@
       addTypeChip:'إضافة منتج جديد', addTypeTitle:'كيف تريد إضافة المنتجات؟',
       urgentName:'إضافة عاجلة', urgentDesc:'منتج واحد - محدود بـ ٥ طلبات يومياً',
       masterName:'رفع ملف رئيسي', masterDesc:'رفع قائمة منتجات عبر قالب CSV/Excel',
-      limitBanner:'⚠️ لقد وصلت إلى الحد اليومي لطلبات الإضافة العاجلة (٥ طلبات). يرجى المحاولة غداً.',
+      limitBanner:'⚠️ لقد وصلت إلى الحد اليومي لطلبات الإضافة العاجلة (٥ طلبات). يرجى المحاولة غداً أو التواصل مع مدير حسابك للمساعدة العاجلة.',
       masterTypeChip:'رفع ملف رئيسي', masterTypeTitle:'اختر نوع متجرك',
       pharmacyName:'صيدلية', pharmacyDesc:'منتجات صيدلانية وأدوية',
       groceryName:'بقالة', groceryDesc:'مواد غذائية ومشروبات ومنتجات منزلية',
@@ -1736,7 +1736,7 @@
     const btn = document.querySelector('#s4 .btn-next');
 
     if (reqType === 'add' && getAddCount() >= MAX) {
-      alert('You have reached the daily limit of 5 "Add Item" requests. Please try again tomorrow.');
+      alert('You have reached the daily limit of 5 "Add Item" requests. Please try again tomorrow or contact your account manager for urgent assistance.');
       return;
     }
 
