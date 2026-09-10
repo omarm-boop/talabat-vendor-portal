@@ -225,6 +225,13 @@
     .adm-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
     .adm-table td { padding:8px 10px; vertical-align:top; color:#411517; }
     .adm-td-clip { max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* Sticky first 2 cols + last col (Actions) */
+    .adm-table th:nth-child(1), .adm-table td:nth-child(1) { position:sticky; left:0; z-index:2; background:#fff8f4; }
+    .adm-table tbody td:nth-child(1) { background:#fff; }
+    .adm-table th:nth-child(2), .adm-table td:nth-child(2) { position:sticky; left:90px; z-index:2; background:#fff8f4; box-shadow:1px 0 0 #e8e0d8; }
+    .adm-table tbody td:nth-child(2) { background:#fff; box-shadow:1px 0 0 #e8e0d8; }
+    .adm-table th:last-child, .adm-table td:last-child { position:sticky; right:0; z-index:2; background:#fff8f4; box-shadow:-2px 0 6px rgba(0,0,0,.07); }
+    .adm-table tbody td:last-child { background:#fff; }
 
     /* ── DETAIL MODAL ── */
     .detail-modal-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; }
