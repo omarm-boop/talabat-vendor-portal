@@ -52,14 +52,22 @@ module.exports = async function handler(req, res) {
         if (/^\d+$/.test(mn)) obj['Vendor ID'] = mn;
       }
 
-      // Request Type: new rows → first line of Explanation col (I)
-      //               old rows → col G (SKU col was misused for request type)
+      // Request Type:
+      //   new rows (post-fix) → col E "Request Type / نوع الطلب" has the value directly
+      //   mid-era rows        → first line of col I Explanation (requestType was prepended)
+      //   old rows            → col G "SKU / الباركود الداخلى" was misused for request type
       if (!obj['Request Type']) {
-        const exp = String(obj['Explain your request (if needed) / توضيح الطلب'] || '');
-        obj['Request Type'] = exp.split('\n')[0] || obj['SKU/ الباركود الداخلى'] || '';
+        const colE = String(obj['Request Type / نوع الطلب'] || '');
+        if (colE) {
+          obj['Request Type'] = colE;
+        } else {
+          const exp = String(obj['Explain your request (if needed) / توضيح الطلب'] || '');
+          obj['Request Type'] = exp.split('\n')[0] || obj['SKU/ الباركود الداخلى'] || '';
+        }
       }
 
       // Status fallback: old rows stored 'Pending' in col M "Price/ السعر"
+      // New rows have 'Pending' in col T directly so this only fires for very old rows.
       if (!obj['Status']) obj['Status'] = obj['Price/ السعر'] || '';
 
       // Assignee: col U "Owner" (new rows), col O "Items Weight" (old rows)
@@ -69,7 +77,9 @@ module.exports = async function handler(req, res) {
 
       // Convenience aliases for frontend display
       if (!obj['Restaurant'])       obj['Restaurant']       = obj['Chain Name / اسم السلسة'] || '';
-      if (!obj['Branch'])           obj['Branch']           = obj['Request Type / نوع الطلب'] || '';
+      // Branch: new rows → col N "Branch Name / اسم الفرع" (location only)
+      //         old rows → col E "Request Type / نوع الطلب" was misused for branch
+      if (!obj['Branch'])           obj['Branch']           = obj['Branch Name / اسم الفرع'] || obj['Request Type / نوع الطلب'] || '';
       if (!obj['Item Name'])        obj['Item Name']        = obj['Item Name / اسم المنتج'] || '';
       if (!obj['Notes'])            obj['Notes']            = obj['Explain your request (if needed) / توضيح الطلب'] || '';
       if (!obj['Rejection Reason']) obj['Rejection Reason'] = obj['Reason'] || obj['Branch Name / اسم الفرع'] || '';

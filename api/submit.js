@@ -40,8 +40,25 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const itemName   = body.itemName || body.itemNameEn || body.currentName || '';
-    const explainText = [body.requestType, body.notes].filter(Boolean).join('\n');
+    const itemName = body.itemName || body.itemNameEn || body.currentName || '';
+
+    // Build explanation from whichever description fields were submitted
+    const explanation = [
+      body.notes,
+      body.description,
+      body.currentDesc && body.newDesc ? `Current: ${body.currentDesc} → New: ${body.newDesc}` : null,
+      body.currentName && body.newName ? `Current name: ${body.currentName} → New: ${body.newName}` : null,
+      body.currentBarcode && body.newBarcode ? `Current barcode: ${body.currentBarcode} → New: ${body.newBarcode}` : null,
+    ].filter(Boolean).join('\n');
+
+    // Strip chain name prefix from branch to get location only
+    // e.g. "Abu Auf - Mohandseen Syria" with chain "Abu Auf" → "Mohandseen Syria"
+    const chainName  = body.restaurant || '';
+    const fullBranch = body.branch     || '';
+    const chainPrefix = chainName + ' - ';
+    const branchOnly = fullBranch.startsWith(chainPrefix)
+      ? fullBranch.slice(chainPrefix.length)
+      : fullBranch;
 
     // Auto-calculate month name and week-of-month to match legacy form columns
     const now = new Date();
@@ -51,23 +68,26 @@ module.exports = async function handler(req, res) {
     const weekOfMonth = Math.ceil(now.getUTCDate() / 7);
 
     // Column positions match actual Sheet1 headers (legacy Google Form structure):
-    // A=Timestamp, B=Month Name, C=Week number, D=Chain Name, E=Branch,
+    // A=Timestamp, B=Month Name, C=Week number, D=Chain Name, E=Request Type,
     // F=Barcode, G=SKU, H=Item Name, I=Explanation, J=Email,
-    // K=Image(empty), L=File link, M-O=empty, P=Delist reason, Q-S=empty, T=Status
+    // K=Image link, L=File link, M=Price, N=Branch Name, O=unused,
+    // P=Delist reason, Q-S=unused, T=Status
     const row = [
       now.toISOString(),          // A: Timestamp
       monthName,                  // B: Month Name (e.g. "September")
       weekOfMonth,                // C: Week number (1–5 within month)
-      body.restaurant  || '',     // D: Chain Name
-      body.branch      || '',     // E: Branch
-      body.barcode     || '',     // F: Barcode
-      body.sku         || '',     // G: SKU / Internal Code
-      itemName,                   // H: Item Name
-      explainText,                // I: Explanation (Request Type + Notes)
-      body.email       || '',     // J: Email (vendorId@vendor.portal — used to identify vendor)
-      '',                         // K: Image upload (not applicable)
-      body.fileLink    || '',     // L: File link
-      '', '', '',                 // M, N, O: unused
+      body.restaurant  || '',     // D: Chain Name / اسم السلسة
+      body.requestType || '',     // E: Request Type / نوع الطلب
+      body.barcode     || '',     // F: Barcode / الباركود
+      body.sku         || '',     // G: SKU / الباركود الداخلى
+      itemName,                   // H: Item Name / اسم المنتج
+      explanation,                // I: Explain your request (notes/description only)
+      body.email       || '',     // J: Email Address (vendorId@vendor.portal)
+      body.photoLink   || '',     // K: Upload Item Picture / تحميل صورة المنتج
+      body.fileLink    || '',     // L: Upload file
+      body.price       || '',     // M: Price / السعر
+      branchOnly,                 // N: Branch Name / اسم الفرع (location only)
+      '',                         // O: unused
       body.reason      || '',     // P: Delist reason
       '', '', '',                 // Q, R, S: unused
       'Pending',                  // T: Status
