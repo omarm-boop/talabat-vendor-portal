@@ -1213,7 +1213,7 @@
         const tsRaw    = row['Timestamp'];
         const ts       = tsRaw ? new Date(tsRaw).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
         const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
-        const reqType  = row['Request Type / نوع الطلب'] || row['Request Type'] || '—';
+        const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
         const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
         return `<div class="req-card">
           <div class="req-left">

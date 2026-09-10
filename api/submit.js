@@ -43,22 +43,28 @@ module.exports = async function handler(req, res) {
     const itemName   = body.itemName || body.itemNameEn || body.currentName || '';
     const explainText = [body.requestType, body.notes].filter(Boolean).join('\n');
 
+    // Auto-calculate month name and week-of-month to match legacy form columns
+    const now = new Date();
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const monthName   = MONTHS[now.getUTCMonth()];
+    const weekOfMonth = Math.ceil(now.getUTCDate() / 7);
+
     // Column positions match actual Sheet1 headers (legacy Google Form structure):
-    // A=Timestamp, B=Vendor ID (Month Name), C=Contact Name (Week number),
-    // D=Chain Name, E=Branch (Request Type col), F=Barcode, G=SKU,
-    // H=Item Name, I=Explanation, J=Email, K=Image(empty), L=File link,
-    // M-O=empty, P=Delist reason, Q-S=empty, T=Status
+    // A=Timestamp, B=Month Name, C=Week number, D=Chain Name, E=Branch,
+    // F=Barcode, G=SKU, H=Item Name, I=Explanation, J=Email,
+    // K=Image(empty), L=File link, M-O=empty, P=Delist reason, Q-S=empty, T=Status
     const row = [
-      new Date().toISOString(),   // A: Timestamp
-      body.vendor      || '',     // B: Vendor ID
-      body.name        || '',     // C: Contact Name
+      now.toISOString(),          // A: Timestamp
+      monthName,                  // B: Month Name (e.g. "September")
+      weekOfMonth,                // C: Week number (1–5 within month)
       body.restaurant  || '',     // D: Chain Name
       body.branch      || '',     // E: Branch
       body.barcode     || '',     // F: Barcode
       body.sku         || '',     // G: SKU / Internal Code
       itemName,                   // H: Item Name
       explainText,                // I: Explanation (Request Type + Notes)
-      body.email       || '',     // J: Email
+      body.email       || '',     // J: Email (vendorId@vendor.portal — used to identify vendor)
       '',                         // K: Image upload (not applicable)
       body.fileLink    || '',     // L: File link
       '', '', '',                 // M, N, O: unused

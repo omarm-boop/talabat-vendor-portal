@@ -36,28 +36,43 @@ module.exports = async function handler(req, res) {
       headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
       obj['_rowIndex'] = index + 2;
 
-      // Normalize legacy-form column names → portal field names
-      // (Sheet1 headers come from Google Form; submit.js writes to column positions,
-      //  so each portal field maps to whichever header is at that column.)
-      const alias = (portalKey, ...sheetKeys) => {
-        if (!obj[portalKey]) {
-          for (const k of sheetKeys) {
-            if (obj[k] !== undefined && obj[k] !== '') { obj[portalKey] = obj[k]; break; }
-          }
+      // Normalize sheet column names → portal field names.
+      // Must handle both new rows (correct columns, post-fix) and old rows (pre-fix layout).
+
+      // Vendor ID: new rows → extract from vendorId@vendor.portal email
+      //            old rows → Month Name held a numeric vendor ID
+      if (!obj['Vendor ID']) {
+        const email = String(obj['Email Address'] || '');
+        if (email.endsWith('@vendor.portal')) {
+          obj['Vendor ID'] = email.replace('@vendor.portal', '');
         }
-      };
-      alias('Vendor ID',        'Month Name');
-      alias('Email Address',    'Week number');
-      alias('Restaurant',       'Chain Name / اسم السلسة', 'Chain Name');
-      alias('Branch',           'Request Type / نوع الطلب');
-      alias('Contact Name',     'Barcode / الباركود');
-      alias('Request Type',     'SKU/ الباركود الداخلى', 'SKU');
-      alias('Item Name',        'Item Name / اسم المنتج');
-      alias('Notes',            'Explain your request (if needed) / توضيح الطلب');
-      alias('Barcode',          'Email Address');
-      alias('Status',           'Price/ السعر');
-      alias('Rejection Reason', 'Branch Name / اسم الفرع');
-      alias('Assignee',         'Owner', 'Items Weight / وزن المنتج');
+      }
+      if (!obj['Vendor ID']) {
+        const mn = String(obj['Month Name'] || '');
+        if (/^\d+$/.test(mn)) obj['Vendor ID'] = mn;
+      }
+
+      // Request Type: new rows → first line of Explanation col (I)
+      //               old rows → col G (SKU col was misused for request type)
+      if (!obj['Request Type']) {
+        const exp = String(obj['Explain your request (if needed) / توضيح الطلب'] || '');
+        obj['Request Type'] = exp.split('\n')[0] || obj['SKU/ الباركود الداخلى'] || '';
+      }
+
+      // Status fallback: old rows stored 'Pending' in col M "Price/ السعر"
+      if (!obj['Status']) obj['Status'] = obj['Price/ السعر'] || '';
+
+      // Assignee: col U "Owner" (new rows), col O "Items Weight" (old rows)
+      if (!obj['Assignee']) {
+        obj['Assignee'] = obj['Owner'] || obj['Items Weight / وزن المنتج'] || '';
+      }
+
+      // Convenience aliases for frontend display
+      if (!obj['Restaurant'])       obj['Restaurant']       = obj['Chain Name / اسم السلسة'] || '';
+      if (!obj['Branch'])           obj['Branch']           = obj['Request Type / نوع الطلب'] || '';
+      if (!obj['Item Name'])        obj['Item Name']        = obj['Item Name / اسم المنتج'] || '';
+      if (!obj['Notes'])            obj['Notes']            = obj['Explain your request (if needed) / توضيح الطلب'] || '';
+      if (!obj['Rejection Reason']) obj['Rejection Reason'] = obj['Reason'] || obj['Branch Name / اسم الفرع'] || '';
 
       return obj;
     });
