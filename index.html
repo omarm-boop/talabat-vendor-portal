@@ -380,10 +380,10 @@
       <div class="login-sub" data-i18n="createAccSub">Enter the Vendor ID assigned to your branch. It must exist in our system.</div>
       <div class="li-field">
         <label class="li-label" data-i18n="vendorIdLabel">Chain ID</label>
-        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 12345" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doSignup()">
+        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 12345" data-i18n-ph="vendorIdPh" oninput="suAdaptLabels()" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field">
-        <label class="li-label">Chain Name</label>
+        <label class="li-label" id="su-chainname-label">Chain Name</label>
         <input class="li-input" type="text" id="su-chainname" placeholder="e.g. Pizza Palace" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field">
@@ -1181,6 +1181,13 @@
     }
   }
 
+  function suAdaptLabels() {
+    const val    = (document.getElementById('su-vendorid').value || '').toLowerCase().trim();
+    const isTeam = val.endsWith('@talabat.com');
+    document.getElementById('su-chainname-label').textContent = isTeam ? 'Your Name' : 'Chain Name';
+    document.getElementById('su-chainname').placeholder       = isTeam ? 'e.g. Sarah Ahmed' : 'e.g. Pizza Palace';
+  }
+
   async function doSignup() {
     const vendorId   = document.getElementById('su-vendorid').value.trim();
     const chainName  = (document.getElementById('su-chainname') || {}).value || '';
@@ -1220,9 +1227,7 @@
       tag.className = 'adm-role-tag ' + (currentAdminUser.role === 'monitor' ? 'adm-role-monitor' : 'adm-role-agent');
       tag.style.display = '';
       document.getElementById('pg-admin').style.display = 'flex';
-      initAdminView();
-      loadAdminRequests();
-      startAdminRefresh();
+      initAdminView().then(() => { loadAdminRequests(); startAdminRefresh(); });
     } else {
       document.getElementById('ph-vendor-name').textContent = vendor.chainName || vendor.vendorId;
       document.getElementById('dash-name').textContent = vendor.branchName || vendor.chainName || '';
@@ -1392,13 +1397,17 @@
 
 
   // ═══════════════ ADMIN PANEL ═══════════════
-  // Keep in sync with the names in api/auth.js
-  const TEAM_AGENTS = ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4'];
+  let TEAM_AGENTS = [];
 
   let adminRequests   = [];
   let currentAdminUser = { name: '', role: 'monitor' };
 
-  function initAdminView() {
+  async function initAdminView() {
+    try {
+      const tr = await fetch('/api/team');
+      const td = await tr.json();
+      TEAM_AGENTS = td.names || [];
+    } catch (_) {}
     const isMonitor = currentAdminUser.role === 'monitor';
     // Assignee filter — monitor only
     const assigneeSel = document.getElementById('a-filter-assignee');

@@ -69,7 +69,7 @@ module.exports = async function handler(req, res) {
               success: true,
               vendor: {
                 vendorId:   obj['Vendor ID'],
-                name:       obj['Vendor ID'],
+                name:       (obj['Chain Name'] && obj['Chain Name'] !== 'Talabat') ? obj['Chain Name'] : obj['Vendor ID'],
                 role:       obj['Branch Name'] || 'agent',
                 chainId:    '0',
                 chainName:  'Talabat',

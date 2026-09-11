@@ -53,15 +53,16 @@ module.exports = async function handler(req, res) {
     const now = new Date().toISOString();
 
     if (isTeam) {
+      const displayName = (chainName && chainName.trim()) ? chainName.trim() : id;
       await sheets.spreadsheets.values.append({
         spreadsheetId: TRACKING_SHEET_ID,
         range: `${CREDENTIALS_TAB}!A:F`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[id, password, '0', 'Talabat', 'agent', now]] },
+        requestBody: { values: [[id, password, '0', displayName, 'agent', now]] },
       });
       return res.json({
         success: true,
-        vendor: { vendorId: id, name: id, role: 'agent', chainId: '0', chainName: 'Talabat', branchName: 'Admin Panel' },
+        vendor: { vendorId: id, name: displayName, role: 'agent', chainId: '0', chainName: 'Talabat', branchName: 'Admin Panel' },
       });
     }
 
