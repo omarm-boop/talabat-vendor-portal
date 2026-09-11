@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { signToken } = require('../lib/verify');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
@@ -60,8 +61,11 @@ module.exports = async function handler(req, res) {
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [[id, password, '0', displayName, 'agent', now]] },
       });
+      const ts = Date.now();
       return res.json({
         success: true,
+        sessionToken: signToken(id, 'agent', ts),
+        sessionTs: ts,
         vendor: { vendorId: id, name: displayName, role: 'agent', chainId: '0', chainName: 'Talabat', branchName: 'Admin Panel' },
       });
     }
@@ -74,8 +78,11 @@ module.exports = async function handler(req, res) {
       requestBody: { values: [[id, password, id, chainName || '', '', now]] },
     });
 
+    const ts = Date.now();
     return res.json({
       success: true,
+      sessionToken: signToken(id, 'vendor', ts),
+      sessionTs: ts,
       vendor: { vendorId: id, chainId: id, chainName: chainName || '', branchName: '' },
     });
 

@@ -1,13 +1,17 @@
 const { google } = require('googleapis');
+const { signToken } = require('../lib/verify');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
 const TEAM_TAB          = 'Team';
+const CORS_HEADERS      = 'Content-Type, X-Portal-Email, X-Portal-Role, X-Portal-Ts, X-Portal-Token';
+
+const delay2s = () => new Promise(r => setTimeout(r, 2000));
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -38,12 +42,16 @@ module.exports = async function handler(req, res) {
         m => String(m.email).toLowerCase().trim() === email && m.password === password
       );
       if (envMatch) {
+        const role = (envMatch.role || 'agent').toLowerCase();
+        const ts   = Date.now();
         return res.json({
           success: true,
+          sessionToken: signToken(envMatch.email, role, ts),
+          sessionTs: ts,
           vendor: {
             vendorId:   envMatch.email,
             name:       envMatch.name || envMatch.email,
-            role:       (envMatch.role || 'agent').toLowerCase(),
+            role,
             chainId:    '0',
             chainName:  'Talabat',
             branchName: 'Admin Panel',
@@ -65,12 +73,16 @@ module.exports = async function handler(req, res) {
           if (String(obj['Vendor ID']).toLowerCase().trim() === email
               && obj['Password'] === password
               && String(obj['Chain ID']).trim() === '0') {
+            const role = obj['Branch Name'] || 'agent';
+            const ts   = Date.now();
             return res.json({
               success: true,
+              sessionToken: signToken(obj['Vendor ID'], role, ts),
+              sessionTs: ts,
               vendor: {
                 vendorId:   obj['Vendor ID'],
                 name:       (obj['Chain Name'] && obj['Chain Name'] !== 'Talabat') ? obj['Chain Name'] : obj['Vendor ID'],
-                role:       obj['Branch Name'] || 'agent',
+                role,
                 chainId:    '0',
                 chainName:  'Talabat',
                 branchName: 'Admin Panel',
@@ -80,6 +92,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      await delay2s();
       return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
@@ -100,7 +113,6 @@ module.exports = async function handler(req, res) {
     for (const row of rows) {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-      // Try Chain ID (col C) first; fall back to Vendor ID (col A) for older accounts
       const matchKey = (obj['Chain ID'] && obj['Chain ID'].trim())
         ? obj['Chain ID'].trim()
         : obj['Vendor ID'].trim();
@@ -111,13 +123,19 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    if (!matched)
+    if (!matched) {
+      await delay2s();
       return res.status(401).json({ error: 'Incorrect Chain ID or password.' });
+    }
 
+    const vid = matched['Chain ID'] || matched['Vendor ID'];
+    const ts  = Date.now();
     return res.json({
       success: true,
+      sessionToken: signToken(vid, 'vendor', ts),
+      sessionTs: ts,
       vendor: {
-        vendorId:   matched['Chain ID'] || matched['Vendor ID'],
+        vendorId:   vid,
         chainId:    matched['Chain ID'],
         chainName:  matched['Chain Name'],
         branchName: matched['Branch Name'],
