@@ -156,6 +156,17 @@
     .sla-yellow { background:#fff3cd; color:#856404; }
     .sla-red    { background:#f8d7da; color:#721c24; }
 
+    /* ── FILE UPLOAD ZONE ── */
+    .fu-zone { border:2px dashed #ddd; border-radius:10px; padding:18px 16px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; }
+    .fu-zone:hover,.fu-zone.over { border-color:var(--orange); background:#fff8f4; }
+    .fu-zone.done { border-color:#27ae60; border-style:solid; background:#f5fff8; }
+    .fu-zone input[type=file] { display:none; }
+    .fu-label { font-size:13px; color:#888; line-height:1.6; }
+    .fu-label strong { color:var(--orange); }
+    .fu-preview { max-width:100%; max-height:110px; border-radius:6px; object-fit:contain; margin-top:10px; }
+    .fu-spinner { display:inline-block; width:16px; height:16px; border:2px solid #ddd; border-top-color:var(--orange); border-radius:50%; animation:fu-spin .7s linear infinite; vertical-align:middle; margin-right:4px; }
+    @keyframes fu-spin { to { transform:rotate(360deg); } }
+
     /* ── IMAGE PREVIEW ── */
     .img-prev-btn { background:none; border:1px solid #ddd; border-radius:6px; padding:2px 8px; font-size:11px; cursor:pointer; color:#666; margin-top:4px; display:inline-block; font-family:'Poppins',sans-serif; }
     .img-prev-btn:hover { border-color:var(--orange); color:var(--orange); }
@@ -650,11 +661,15 @@
               <textarea id="f-add-desc" placeholder="Short description of the item…" maxlength="150"></textarea>
             </div>
             <div class="fg">
-              <label class="lbl">Item Photo – Google Drive Link <span class="req">*</span></label>
+              <label class="lbl">Item Photo <span class="req">*</span></label>
               <div class="warn"><span class="wi">⚠️</span> A photo must be attached. Requests without an image may be rejected.</div>
-              <input type="url" id="f-add-photo" placeholder="https://drive.google.com/...">
-              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
-              <div class="ferr" id="e-add-photo">Photo link is required for new items</div>
+              <div class="fu-zone" id="fz-add-photo" onclick="document.getElementById('fi-add-photo').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,'add-photo')">
+                <input type="file" id="fi-add-photo" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'add-photo')" onclick="event.stopPropagation()">
+                <input type="hidden" id="f-add-photo">
+                <div class="fu-label" id="fl-add-photo"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
+                <img class="fu-preview" id="fp-add-photo" style="display:none" alt="">
+              </div>
+              <div class="ferr" id="e-add-photo">Photo is required for new items</div>
             </div>
           </div>
 
@@ -732,10 +747,14 @@
             </div>
             <div class="sec-label">Photo Update</div>
             <div class="fg">
-              <label class="lbl">New Photo – Google Drive Link <span class="req">*</span></label>
-              <input type="url" id="f-ph-link" placeholder="https://drive.google.com/...">
-              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
-              <div class="ferr" id="e-ph-link">Photo link is required</div>
+              <label class="lbl">New Photo <span class="req">*</span></label>
+              <div class="fu-zone" id="fz-ph-link" onclick="document.getElementById('fi-ph-link').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,'ph-link')">
+                <input type="file" id="fi-ph-link" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'ph-link')" onclick="event.stopPropagation()">
+                <input type="hidden" id="f-ph-link">
+                <div class="fu-label" id="fl-ph-link"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
+                <img class="fu-preview" id="fp-ph-link" style="display:none" alt="">
+              </div>
+              <div class="ferr" id="e-ph-link">Photo is required</div>
             </div>
           </div>
 
@@ -783,10 +802,14 @@
               <div class="ferr" id="e-nm-new">New item name is required</div>
             </div>
             <div class="fg">
-              <label class="lbl">New Product Image – Google Drive Link <span class="req">*</span></label>
-              <input type="url" id="f-nm-proof" placeholder="https://drive.google.com/...">
-              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
-              <div class="ferr" id="e-nm-proof">New product image link is required</div>
+              <label class="lbl">New Product Image <span class="req">*</span></label>
+              <div class="fu-zone" id="fz-nm-proof" onclick="document.getElementById('fi-nm-proof').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,'nm-proof')">
+                <input type="file" id="fi-nm-proof" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'nm-proof')" onclick="event.stopPropagation()">
+                <input type="hidden" id="f-nm-proof">
+                <div class="fu-label" id="fl-nm-proof"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
+                <img class="fu-preview" id="fp-nm-proof" style="display:none" alt="">
+              </div>
+              <div class="ferr" id="e-nm-proof">Product image is required</div>
             </div>
           </div>
 
@@ -819,10 +842,14 @@
               </div>
             </div>
             <div class="fg">
-              <label class="lbl">Product Image / Proof – Google Drive Link <span class="req">*</span></label>
-              <input type="url" id="f-bc-proof" placeholder="https://drive.google.com/...">
-              <div class="drive-hint">📁 Share the link with viewer access enabled</div>
-              <div class="ferr" id="e-bc-proof">Product image proof link is required</div>
+              <label class="lbl">Product Image / Proof <span class="req">*</span></label>
+              <div class="fu-zone" id="fz-bc-proof" onclick="document.getElementById('fi-bc-proof').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,'bc-proof')">
+                <input type="file" id="fi-bc-proof" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'bc-proof')" onclick="event.stopPropagation()">
+                <input type="hidden" id="f-bc-proof">
+                <div class="fu-label" id="fl-bc-proof"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
+                <img class="fu-preview" id="fp-bc-proof" style="display:none" alt="">
+              </div>
+              <div class="ferr" id="e-bc-proof">Product image proof is required</div>
             </div>
           </div>
 
@@ -1870,12 +1897,12 @@
       [t.rvBranch, v('f-branch') || '—'], [t.rvName, v('f-name') || '—'],
       [t.rvVendorId, v('f-vendor') || '—'], [t.rvReqType, getTypeLabel(reqType) || '—'],
     ];
-    if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo')]); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
+    if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo') ? '📷 Photo uploaded' : '—']); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
     if (reqType === 'master')  { rows.push([t.rvStoreType, masterType === 'pharmacy' ? t.pharmacyName : t.groceryName], [t.rvFileLink, v('f-master-link')]); if (v('f-master-notes')) rows.push([t.rvNotes, v('f-master-notes')]); }
     if (reqType === 'desc')    { rows.push([t.rvItemName, v('f-desc-item')], [t.rvSKU, v('f-desc-sku')], [t.rvBarcode, v('f-desc-barcode')], [t.rvCurrentDesc, v('f-desc-current')], [t.rvNewDesc, v('f-desc-new')]); }
-    if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link')]); }
-    if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof')]); }
-    if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof')]); }
+    if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link') ? '📷 Photo uploaded' : '—']); }
+    if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof') ? '📷 Photo uploaded' : '—']); }
+    if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof') ? '📷 Photo uploaded' : '—']); }
     if (reqType === 'remove')  { rows.push([t.rvFileLink, v('f-rm-link')], [t.rvReason, v('f-rm-reason')]); }
     $('rv-body').innerHTML = rows.map(([k, val]) =>
       `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
@@ -1986,6 +2013,72 @@
     else if (remaining <= 8)  { cls = 'sla-yellow'; label = `⏳ ${remaining.toFixed(1)}h left`; }
     else                      { cls = 'sla-green';  label = `✓ ${remaining.toFixed(1)}h left`; }
     return `<span class="sla-badge ${cls}">${label}</span>`;
+  }
+
+  // ═══════════════ FILE UPLOAD ═══════════════
+  async function fuCompress(file) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1920;
+          let w = img.width, h = img.height;
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          c.toBlob(resolve, 'image/jpeg', 0.82);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function fuProcess(file, key) {
+    const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!TYPES.includes(file.type)) { alert('Only JPG, PNG, or WEBP images are allowed.'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10 MB.'); return; }
+    const zone  = $('fz-' + key);
+    const label = $('fl-' + key);
+    const prev  = $('fp-' + key);
+    label.innerHTML = '<span class="fu-spinner"></span> Uploading…';
+    zone.classList.remove('done');
+    try {
+      const compressed = await fuCompress(file);
+      const b64 = await new Promise(res => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.readAsDataURL(compressed);
+      });
+      const result = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: 'image/jpeg', data: b64 })
+      });
+      if (!result.ok) { const e = await result.json(); throw new Error(e.error || 'Upload failed'); }
+      const { url } = await result.json();
+      $('f-' + key).value = url;
+      clr('f-' + key, 'e-' + key);
+      prev.src = URL.createObjectURL(compressed);
+      prev.style.display = 'block';
+      label.innerHTML = '✓ Photo uploaded — click to replace';
+      zone.classList.add('done');
+    } catch (ex) {
+      label.innerHTML = '<strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span>';
+      alert('Upload error: ' + ex.message);
+    }
+  }
+
+  function fuSelect(inp, key) { if (inp.files && inp.files[0]) fuProcess(inp.files[0], key); }
+  function fuDragOver(e, zone) { e.preventDefault(); zone.classList.add('over'); }
+  function fuDragLeave(zone) { zone.classList.remove('over'); }
+  function fuDrop(e, key) {
+    e.preventDefault();
+    $('fz-' + key).classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) fuProcess(f, key);
   }
 
   // ═══════════════ IMAGE PREVIEW ═══════════════
