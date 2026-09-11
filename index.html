@@ -225,11 +225,13 @@
     .adm-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
     .adm-table td { padding:8px 10px; vertical-align:top; color:#411517; }
     .adm-td-clip { max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    /* Sticky first 2 cols + last col (Actions) */
-    .adm-table th:nth-child(1), .adm-table td:nth-child(1) { position:sticky; left:0; z-index:2; background:#fff8f4; }
+    /* Sticky: checkbox + time + vendor cols + last col (Actions) */
+    .adm-table th:nth-child(1), .adm-table td:nth-child(1) { position:sticky; left:0; z-index:2; background:#fff8f4; min-width:36px; width:36px; }
     .adm-table tbody td:nth-child(1) { background:#fff; }
-    .adm-table th:nth-child(2), .adm-table td:nth-child(2) { position:sticky; left:90px; z-index:2; background:#fff8f4; box-shadow:1px 0 0 #e8e0d8; }
-    .adm-table tbody td:nth-child(2) { background:#fff; box-shadow:1px 0 0 #e8e0d8; }
+    .adm-table th:nth-child(2), .adm-table td:nth-child(2) { position:sticky; left:36px; z-index:2; background:#fff8f4; }
+    .adm-table tbody td:nth-child(2) { background:#fff; }
+    .adm-table th:nth-child(3), .adm-table td:nth-child(3) { position:sticky; left:126px; z-index:2; background:#fff8f4; box-shadow:1px 0 0 #e8e0d8; }
+    .adm-table tbody td:nth-child(3) { background:#fff; box-shadow:1px 0 0 #e8e0d8; }
     .adm-table th:last-child, .adm-table td:last-child { position:sticky; right:0; z-index:2; background:#fff8f4; box-shadow:-2px 0 6px rgba(0,0,0,.07); }
     .adm-table tbody td:last-child { background:#fff; }
 
@@ -297,7 +299,40 @@
     .btn-template-dl { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--orange); border-radius:10px; padding:13px 18px; color:var(--orange); font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; text-decoration:none; transition:all .15s; }
     .btn-template-dl:hover { background:var(--orange); color:#fff; }
     .btn-template-dl .dl-icon { font-size:20px; }
+
+    /* ── STATUS FILTER (vendor dashboard) ── */
+    .dash-filter { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .df-btn { background:#fff; border:1.5px solid #e0d8d0; border-radius:99px; padding:6px 16px; font-family:'Poppins',sans-serif; font-size:12px; font-weight:700; color:#888; cursor:pointer; transition:all .18s; }
+    .df-btn:hover { border-color:var(--orange); color:var(--orange); }
+    .df-btn.active { background:var(--orange); border-color:var(--orange); color:#fff; }
+
+    /* ── PRIORITY BADGE ── */
+    .adm-priority { display:inline-block; font-size:10px; font-weight:800; color:#fff; background:#e74c3c; border-radius:4px; padding:1px 6px; margin-left:4px; vertical-align:middle; }
+
+    /* ── ADMIN TABS ── */
+    .adm-tabs { display:flex; gap:0; background:#fff; border-bottom:2px solid #f0ebe4; padding:0 28px; }
+    .adm-tab { background:none; border:none; border-bottom:3px solid transparent; padding:14px 20px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; color:#aaa; cursor:pointer; margin-bottom:-2px; transition:all .18s; }
+    .adm-tab.active { color:var(--orange); border-bottom-color:var(--orange); }
+    .adm-tab:hover { color:var(--orange); }
+
+    /* ── BULK BAR ── */
+    .bulk-bar { background:#411517; color:#fff; padding:12px 20px; display:none; align-items:center; gap:12px; flex-wrap:wrap; border-radius:10px; margin-bottom:12px; }
+    .bulk-bar.on { display:flex; }
+    .bulk-count { font-size:13px; font-weight:700; flex:1; }
+    .bulk-sel { background:#fff; color:#411517; border:none; border-radius:8px; padding:8px 12px; font-family:'Poppins',sans-serif; font-size:12px; font-weight:700; }
+    .bulk-btn { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-family:'Poppins',sans-serif; font-size:12px; font-weight:700; cursor:pointer; }
+    .bulk-btn.cancel { background:rgba(255,255,255,.2); }
+    .bulk-btn:hover { opacity:.85; }
+
+    /* ── ANALYTICS ── */
+    .analytics-wrap { padding:0; }
+    .analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .chart-card { background:#fff; border-radius:14px; padding:20px; border:1px solid #e8e0d8; }
+    .chart-card h3 { font-size:12px; font-weight:800; color:#411517; margin-bottom:14px; text-transform:uppercase; letter-spacing:.6px; }
+    .chart-wide { grid-column:1/-1; }
+    @media(max-width:768px) { .analytics-grid { grid-template-columns:1fr; } }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -313,8 +348,8 @@
       <div class="login-title" data-i18n="signIn">Sign in</div>
       <div class="login-sub" data-i18n="signInSub">Enter your Vendor ID and password to continue.</div>
       <div class="li-field">
-        <label class="li-label" data-i18n="vendorIdLabel">Vendor ID</label>
-        <input class="li-input" type="text" id="li-vendorid" placeholder="e.g. 503747" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doLogin()">
+        <label class="li-label" data-i18n="vendorIdLabel">Chain ID</label>
+        <input class="li-input" type="text" id="li-vendorid" placeholder="e.g. 12345" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doLogin()">
       </div>
       <div class="li-field">
         <label class="li-label" data-i18n="passwordLabel">Password</label>
@@ -333,8 +368,12 @@
       <div class="login-title" data-i18n="createAcc">Create Account</div>
       <div class="login-sub" data-i18n="createAccSub">Enter the Vendor ID assigned to your branch. It must exist in our system.</div>
       <div class="li-field">
-        <label class="li-label" data-i18n="vendorIdLabel">Vendor ID</label>
-        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 503747" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doSignup()">
+        <label class="li-label" data-i18n="vendorIdLabel">Chain ID</label>
+        <input class="li-input" type="text" id="su-vendorid" placeholder="e.g. 12345" data-i18n-ph="vendorIdPh" onkeydown="if(event.key==='Enter') doSignup()">
+      </div>
+      <div class="li-field">
+        <label class="li-label">Chain Name</label>
+        <input class="li-input" type="text" id="su-chainname" placeholder="e.g. Pizza Palace" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field">
         <label class="li-label" data-i18n="createPassLabel">Create Password</label>
@@ -411,6 +450,13 @@
           <div class="notif-hd">🔔 Updates on your requests</div>
           <div id="notif-list"></div>
           <button class="notif-dismiss" onclick="dismissNotifs()">Got it ✓</button>
+        </div>
+        <div class="dash-filter" id="dash-filter">
+          <button class="df-btn active" data-status="" onclick="setDashFilter(this)">All</button>
+          <button class="df-btn" data-status="pending" onclick="setDashFilter(this)">Pending</button>
+          <button class="df-btn" data-status="in progress" onclick="setDashFilter(this)">In Progress</button>
+          <button class="df-btn" data-status="done" onclick="setDashFilter(this)">Done</button>
+          <button class="df-btn" data-status="rejected" onclick="setDashFilter(this)">Rejected</button>
         </div>
         <div id="dash-loading" class="dash-loading" data-i18n="loadingReqs">Loading your requests…</div>
         <div id="dash-empty" class="dash-empty" data-i18n="noReqs">No requests submitted yet.</div>
@@ -841,7 +887,12 @@
     <div class="adm-brand">talabat <span>· Content Team</span><span id="adm-user-tag" class="adm-role-tag" style="display:none"></span></div>
     <button class="adm-out" onclick="doLogout()">Sign Out</button>
   </div>
+  <div class="adm-tabs">
+    <button class="adm-tab active" id="tab-requests" onclick="showAdmTab('requests')">📋 Requests</button>
+    <button class="adm-tab" id="tab-analytics" onclick="showAdmTab('analytics')" style="display:none">📊 Analytics</button>
+  </div>
   <div class="adm-body">
+  <div id="adm-requests-view">
 
     <!-- Stats -->
     <div class="adm-stats">
@@ -854,6 +905,18 @@
 
     <!-- Per-agent breakdown (monitor only) -->
     <div id="adm-breakdown" class="adm-breakdown" style="display:none"></div>
+
+    <!-- Bulk actions bar -->
+    <div class="bulk-bar" id="bulk-bar">
+      <span class="bulk-count" id="bulk-count">0 selected</span>
+      <select class="bulk-sel" id="bulk-agent-sel">
+        <option value="">Assign to agent…</option>
+      </select>
+      <button class="bulk-btn" onclick="bulkAssign()">Assign</button>
+      <button class="bulk-btn" onclick="bulkSetStatus('Done')">✓ Mark Done</button>
+      <button class="bulk-btn" onclick="bulkSetStatus('In Progress')">⏳ In Progress</button>
+      <button class="bulk-btn cancel" onclick="clearBulk()">✕ Cancel</button>
+    </div>
 
     <!-- Toolbar -->
     <div class="adm-toolbar">
@@ -886,6 +949,7 @@
       <table class="adm-table">
         <thead>
           <tr>
+            <th style="text-align:center"><input type="checkbox" id="bulk-all-cb" onchange="toggleAllBulk(this)" style="cursor:pointer"></th>
             <th>Time</th>
             <th>Vendor ID</th>
             <th>Chain Name</th>
@@ -898,10 +962,27 @@
           </tr>
         </thead>
         <tbody id="a-tbody">
-          <tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>
+          <tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>
         </tbody>
       </table>
     </div>
+  </div><!-- /adm-requests-view -->
+
+  <div id="adm-analytics-view" style="display:none">
+    <div class="analytics-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2 style="font-size:20px;font-weight:800;color:#411517">Analytics</h2>
+        <button class="adm-refresh" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="analytics-grid">
+        <div class="chart-card"><h3>Requests per Day (Last 30)</h3><canvas id="chart-daily"></canvas></div>
+        <div class="chart-card"><h3>By Request Type</h3><canvas id="chart-type"></canvas></div>
+        <div class="chart-card"><h3>Top Vendors</h3><canvas id="chart-vendor"></canvas></div>
+        <div class="chart-card"><h3>Agent Performance</h3><canvas id="chart-agent"></canvas></div>
+        <div class="chart-card chart-wide"><h3>SLA Compliance</h3><canvas id="chart-sla" style="max-height:200px"></canvas></div>
+      </div>
+    </div>
+  </div><!-- /adm-analytics-view -->
 
   </div>
 </div><!-- /pg-admin -->
@@ -911,11 +992,11 @@
   const T = {
     en: {
       tagline:'Vendor Menu Update Portal',
-      signIn:'Sign in', signInSub:'Vendors: enter your Branch ID. Team members: enter your @talabat.com email.',
-      vendorIdLabel:'Branch ID / Email', vendorIdPh:'Branch ID or your@talabat.com', passwordLabel:'Password',
+      signIn:'Sign in', signInSub:'Vendors: enter your Chain ID. Team members: enter your @talabat.com email.',
+      vendorIdLabel:'Chain ID / Email', vendorIdPh:'Chain ID or your@talabat.com', passwordLabel:'Password',
       signInBtn:'Sign In →', signingIn:'Signing in…',
       noAccount:"Don't have an account?", createAccLink:'Create Account',
-      createAcc:'Create Account', createAccSub:'Vendors: enter your Branch ID. Talabat team: enter your company email.',
+      createAcc:'Create Account', createAccSub:'Vendors: enter your Chain ID and Chain Name. Talabat team: enter your company email.',
       createPassLabel:'Create Password', createPassPh:'At least 6 characters',
       confirmPassLabel:'Confirm Password', confirmPassPh:'Repeat your password',
       createAccBtn:'Create Account →', creatingAcc:'Creating account…',
@@ -1055,7 +1136,7 @@
     const errEl    = document.getElementById('li-err');
     const btn      = document.getElementById('btn-signin');
     errEl.textContent = '';
-    if (!vendorId || !pass) { errEl.textContent = 'Please enter your Vendor ID and password.'; return; }
+    if (!vendorId || !pass) { errEl.textContent = 'Please enter your Chain ID and password.'; return; }
     btn.textContent = T[lang].signingIn; btn.disabled = true;
     try {
       const resp = await fetch('/api/auth', {
@@ -1074,13 +1155,14 @@
   }
 
   async function doSignup() {
-    const vendorId = document.getElementById('su-vendorid').value.trim();
-    const pass     = document.getElementById('su-pass').value;
-    const confirm  = document.getElementById('su-confirm').value;
-    const errEl    = document.getElementById('su-err');
-    const btn      = document.getElementById('btn-signup');
+    const vendorId   = document.getElementById('su-vendorid').value.trim();
+    const chainName  = (document.getElementById('su-chainname') || {}).value || '';
+    const pass       = document.getElementById('su-pass').value;
+    const confirm    = document.getElementById('su-confirm').value;
+    const errEl      = document.getElementById('su-err');
+    const btn        = document.getElementById('btn-signup');
     errEl.textContent = '';
-    if (!vendorId)        { errEl.textContent = 'Please enter your Vendor ID.'; return; }
+    if (!vendorId)        { errEl.textContent = 'Please enter your Chain ID.'; return; }
     if (pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
     if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
     btn.textContent = T[lang].creatingAcc; btn.disabled = true;
@@ -1088,7 +1170,7 @@
       const resp = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendorId, password: pass }),
+        body: JSON.stringify({ vendorId, chainName: chainName.trim(), password: pass }),
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Registration failed.'; return; }
@@ -1113,16 +1195,20 @@
       document.getElementById('pg-admin').style.display = 'flex';
       initAdminView();
       loadAdminRequests();
+      startAdminRefresh();
     } else {
-      document.getElementById('ph-vendor-name').textContent = vendor.chainName;
-      document.getElementById('dash-name').textContent = vendor.branchName;
+      document.getElementById('ph-vendor-name').textContent = vendor.chainName || vendor.vendorId;
+      document.getElementById('dash-name').textContent = vendor.branchName || vendor.chainName || '';
       document.getElementById('pg-portal').style.display = 'block';
       showView('dash');
       loadDashboard();
+      startVendorRefresh();
     }
   }
 
   function doLogout() {
+    stopVendorRefresh();
+    stopAdminRefresh();
     currentVendor = null;
     currentAdminUser = { name: '', role: 'monitor' };
     const tag = document.getElementById('adm-user-tag');
@@ -1241,7 +1327,7 @@
       const rows = json.data || [];
       loadEl.style.display = 'none';
 
-      if (rows.length === 0) { emptyEl.style.display = 'block'; setStats(0,0,0,0); return; }
+      if (rows.length === 0) { emptyEl.style.display = 'block'; listEl.innerHTML = ''; setStats(0,0,0,0); return; }
 
       rows.sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
 
@@ -1255,29 +1341,8 @@
         else pending++;
       });
       setStats(done, pending, rejected, rows.length);
-
-      listEl.innerHTML = rows.map(row => {
-        const status   = row['Status'] || 'Pending';
-        const reason   = row['Reason'] || row['Comment'] || '';
-        const sl       = status.toLowerCase();
-        const isDone   = sl === 'done' || sl === 'completed' || sl === 'complete';
-        const isRej    = sl.includes('reject') || sl.includes('daily limit');
-        const bClass   = isDone ? 'badge-done' : isRej ? 'badge-rejected' : 'badge-pending';
-        const tsRaw    = row['Timestamp'];
-        const ts       = tsRaw ? new Date(tsRaw).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-        const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
-        const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
-        const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
-        return `<div class="req-card">
-          <div class="req-left">
-            <div class="req-type">${escHtml(reqType)}</div>
-            <div class="req-item">Item: ${escHtml(itemName)}</div>
-            <div class="req-ts">${ts}</div>
-            ${reasonHtml}
-          </div>
-          <span class="badge ${bClass}">${escHtml(status)}</span>
-        </div>`;
-      }).join('');
+      cachedDashRows = rows;
+      renderDashList();
 
     } catch(err) {
       loadEl.style.display = 'none';
@@ -1319,10 +1384,19 @@
     }
     // Per-agent breakdown cards — monitor only
     document.getElementById('adm-breakdown').style.display = isMonitor ? 'grid' : 'none';
+    // Analytics tab — monitor only
+    const analyticsTab = document.getElementById('tab-analytics');
+    if (analyticsTab) analyticsTab.style.display = isMonitor ? '' : 'none';
+    // Bulk agent select
+    const bulkAgentSel = document.getElementById('bulk-agent-sel');
+    if (bulkAgentSel) {
+      bulkAgentSel.innerHTML = '<option value="">Assign to agent…</option>' +
+        TEAM_AGENTS.map(n => `<option value="${n}">${escHtml(n)}</option>`).join('');
+    }
   }
 
   async function loadAdminRequests() {
-    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Loading requests…</td></tr>';
+    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
     try {
       const resp = await fetch('/api/requests?t=' + Date.now());
       const json = await resp.json();
@@ -1331,7 +1405,7 @@
       updateAdminStats();
       renderAdminTable();
     } catch(e) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
   }
 
@@ -1389,8 +1463,15 @@
       return true;
     });
 
+    filtered.sort((a, b) => {
+      const ap = a['Priority'] === 'high' ? 1 : 0;
+      const bp = b['Priority'] === 'high' ? 1 : 0;
+      if (bp !== ap) return bp - ap;
+      return new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0);
+    });
+
     if (filtered.length === 0) {
-      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="9" class="adm-msg">No requests match the current filter.</td></tr>';
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">No requests match the current filter.</td></tr>';
       return;
     }
 
@@ -1406,6 +1487,8 @@
       const canAct     = !isDone && !isRej;
       const assigned   = r['Assignee'] || '';
       const assignedAt = r['AssignedAt'] || '';
+      const priority   = r['Priority'] || '';
+      const priBadge   = priority === 'high' ? '<span class="adm-priority">🔴 HIGH</span>' : '';
       const photoLink  = r['PhotoLink'] || r['Upload Item Picture (If needed) / تحميل صورة المنتج'] || '';
       const photoCell  = photoLink ? `<button class="img-prev-btn" onclick="openImgModal(this)" data-url="${escHtml(photoLink)}">🖼 Preview</button>` : '—';
       const fileLink   = r['Upload file (if needed) / رفع ملف'] || '';
@@ -1420,8 +1503,12 @@
            </select></td>`
         : `<td><span class="${assigned ? 'adm-assigned' : 'adm-unassigned'}">${escHtml(assigned || 'Unassigned')}</span></td>`;
 
+      const priorityBtn = isMonitor
+        ? `<button class="adm-btn" style="background:${priority==='high'?'#fde8e8;color:#e74c3c;border:1px solid #f5c6cb':'#f9f9f9;color:#888;border:1px solid #ddd'}" onclick="togglePriority(${rowIdx},this)">🔴 ${priority==='high'?'High Priority':'Set Priority'}</button>`
+        : '';
       const actions = `<div style="display:flex;flex-direction:column;gap:4px;min-width:100px">
           <button class="adm-btn" style="background:#f0f4ff;color:#3a5bc7;border:1px solid #c5d0f0" onclick="openDetailModal(${rowIdx})">📋 View Details</button>
+          ${priorityBtn}
           ${canAct ? `
             ${!isProg ? `<button class="adm-btn adm-btn-prog" onclick="adminUpdateStatus(${rowIdx},'In Progress',this)">⏳ In Progress</button>` : ''}
             <button class="adm-btn adm-btn-done" onclick="adminUpdateStatus(${rowIdx},'Done',this)">✓ Done</button>
@@ -1433,14 +1520,15 @@
         </div>`;
 
       return `<tr>
+        <td style="text-align:center"><input type="checkbox" class="bulk-cb" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer"></td>
         <td style="color:#999;font-size:11px;white-space:nowrap">${ts}</td>
         <td style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
-        ${cell(r['Restaurant'] || r['Chain Name / اسم السلسة'])}
+        <td class="adm-td-clip">${escHtml(r['Restaurant'] || r['Chain Name / اسم السلسة'] || '—')}${priBadge}</td>
         ${cell(r['Request Type'] || r['Request Type / نوع الطلب'])}
         ${cell(r['Branch'] || r['Branch Name / اسم الفرع'])}
         ${cell(r['Item Name'] || r['Item Name / اسم المنتج'])}
         ${assigneeCell}
-        <td style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status)}</td>
+        <td style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status, priority)}</td>
         <td>${actions}</td>
       </tr>`;
     }).join('');
@@ -1885,12 +1973,13 @@
     return ms / 3600000;
   }
 
-  function slaBadge(assignedAt, status) {
+  function slaBadge(assignedAt, status, priority) {
     const sl = (status || '').toLowerCase();
     if (!assignedAt || sl === 'done' || sl === 'completed' || sl.includes('reject')) return '';
     const elapsed   = workingHoursSince(assignedAt);
     if (elapsed === null) return '';
-    const remaining = 24 - elapsed;
+    const slaHours  = priority === 'high' ? 8 : 24;
+    const remaining = slaHours - elapsed;
     let cls, label;
     if (remaining <= 0)       { cls = 'sla-red';    label = '⚠ SLA Breached'; }
     else if (remaining <= 4)  { cls = 'sla-red';    label = `⏰ ${remaining.toFixed(1)}h left`; }
@@ -2000,6 +2089,244 @@
 
   function dismissNotifs() {
     document.getElementById('notif-banner').classList.remove('on');
+  }
+
+  // ═══════════════ AUTO-REFRESH TIMERS ═══════════════
+  let vendorTimer = null;
+  let adminTimer  = null;
+  function startVendorRefresh() {
+    stopVendorRefresh();
+    vendorTimer = setInterval(() => {
+      if (document.getElementById('view-dash').style.display !== 'none') loadDashboard();
+    }, 60000);
+  }
+  function stopVendorRefresh() { if (vendorTimer) { clearInterval(vendorTimer); vendorTimer = null; } }
+  function startAdminRefresh() {
+    stopAdminRefresh();
+    adminTimer = setInterval(loadAdminRequests, 60000);
+  }
+  function stopAdminRefresh() { if (adminTimer) { clearInterval(adminTimer); adminTimer = null; } }
+
+  // ═══════════════ VENDOR DASHBOARD STATUS FILTER ═══════════════
+  let dashStatusFilter = '';
+  let cachedDashRows = [];
+
+  function setDashFilter(btn) {
+    dashStatusFilter = btn.dataset.status;
+    document.querySelectorAll('.df-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderDashList();
+  }
+
+  function renderDashList() {
+    const listEl  = document.getElementById('dash-list');
+    const emptyEl = document.getElementById('dash-empty');
+    const rows = dashStatusFilter
+      ? cachedDashRows.filter(r => (r['Status'] || 'Pending').toLowerCase().includes(dashStatusFilter))
+      : cachedDashRows;
+    if (rows.length === 0) {
+      emptyEl.style.display = 'block';
+      listEl.innerHTML = '';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = rows.map(row => {
+      const status   = row['Status'] || 'Pending';
+      const reason   = row['Reason'] || row['Comment'] || '';
+      const sl       = status.toLowerCase();
+      const isDone   = sl === 'done' || sl === 'completed' || sl === 'complete';
+      const isRej    = sl.includes('reject') || sl.includes('daily limit');
+      const bClass   = isDone ? 'badge-done' : isRej ? 'badge-rejected' : 'badge-pending';
+      const tsRaw    = row['Timestamp'];
+      const ts       = tsRaw ? new Date(tsRaw).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
+      const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
+      const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
+      return `<div class="req-card">
+        <div class="req-left">
+          <div class="req-type">${escHtml(reqType)}</div>
+          <div class="req-item">Item: ${escHtml(itemName)}</div>
+          <div class="req-ts">${ts}</div>
+          ${reasonHtml}
+        </div>
+        <span class="badge ${bClass}">${escHtml(status)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ═══════════════ ADMIN TABS ═══════════════
+  function showAdmTab(tab) {
+    document.getElementById('adm-requests-view').style.display = tab === 'requests' ? '' : 'none';
+    document.getElementById('adm-analytics-view').style.display = tab === 'analytics' ? '' : 'none';
+    document.getElementById('tab-requests').classList.toggle('active', tab === 'requests');
+    document.getElementById('tab-analytics').classList.toggle('active', tab === 'analytics');
+    if (tab === 'analytics') renderAnalytics();
+  }
+
+  // ═══════════════ ANALYTICS ═══════════════
+  let chartInstances = {};
+
+  function renderAnalytics() {
+    const rows = adminRequests;
+    if (!rows.length) { return; }
+    Object.values(chartInstances).forEach(c => c.destroy());
+    chartInstances = {};
+
+    // Chart 1: Requests per day (last 30 days)
+    const days = {};
+    const nowDate = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(nowDate); d.setDate(d.getDate() - i);
+      days[d.toISOString().slice(0,10)] = 0;
+    }
+    rows.forEach(r => { const d = (r['Timestamp'] || '').slice(0,10); if (d in days) days[d]++; });
+    chartInstances.daily = new Chart(document.getElementById('chart-daily'), {
+      type: 'line',
+      data: { labels: Object.keys(days).map(d => d.slice(5)), datasets: [{ label:'Requests', data:Object.values(days), borderColor:'#FF5900', backgroundColor:'rgba(255,89,0,.1)', fill:true, tension:.4, pointRadius:3 }] },
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+    });
+
+    // Chart 2: By request type
+    const typeCounts = {};
+    rows.forEach(r => { const t = r['Request Type'] || 'Unknown'; typeCounts[t] = (typeCounts[t]||0)+1; });
+    chartInstances.type = new Chart(document.getElementById('chart-type'), {
+      type: 'doughnut',
+      data: { labels: Object.keys(typeCounts), datasets: [{ data:Object.values(typeCounts), backgroundColor:['#FF5900','#411517','#22a86e','#f39c12','#8318D8','#e74c3c','#3498db'] }] },
+      options: { plugins:{legend:{position:'right',labels:{font:{size:11}}}} }
+    });
+
+    // Chart 3: Top vendors
+    const vendorCounts = {};
+    rows.forEach(r => { const v = r['Restaurant'] || r['Vendor ID'] || 'Unknown'; vendorCounts[v] = (vendorCounts[v]||0)+1; });
+    const topVendors = Object.entries(vendorCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    chartInstances.vendor = new Chart(document.getElementById('chart-vendor'), {
+      type: 'bar',
+      data: { labels: topVendors.map(([k])=>k), datasets: [{ label:'Requests', data:topVendors.map(([,v])=>v), backgroundColor:'#FF5900' }] },
+      options: { indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+    });
+
+    // Chart 4: Agent performance
+    const agentStats = {};
+    TEAM_AGENTS.forEach(a => { agentStats[a] = {done:0,progress:0,pending:0}; });
+    rows.forEach(r => {
+      const a = r['Assignee']; if (!a || !agentStats[a]) return;
+      const s = (r['Status']||'').toLowerCase();
+      if (s==='done'||s==='completed') agentStats[a].done++;
+      else if (s.includes('progress')) agentStats[a].progress++;
+      else agentStats[a].pending++;
+    });
+    chartInstances.agent = new Chart(document.getElementById('chart-agent'), {
+      type: 'bar',
+      data: { labels: TEAM_AGENTS, datasets: [
+        { label:'Done',        data:TEAM_AGENTS.map(a=>agentStats[a].done),     backgroundColor:'#22a86e' },
+        { label:'In Progress', data:TEAM_AGENTS.map(a=>agentStats[a].progress), backgroundColor:'#f39c12' },
+        { label:'Pending',     data:TEAM_AGENTS.map(a=>agentStats[a].pending),  backgroundColor:'#e0d8d0' },
+      ]},
+      options: { plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
+    });
+
+    // Chart 5: SLA compliance
+    let withinSLA = 0, breached = 0, unassigned = 0;
+    rows.forEach(r => {
+      const s = (r['Status']||'').toLowerCase();
+      if (s==='done'||s==='completed'||s.includes('reject')) return;
+      if (!r['AssignedAt']) { unassigned++; return; }
+      const slaH = r['Priority']==='high' ? 8 : 24;
+      const elapsed = workingHoursSince(r['AssignedAt']);
+      if (elapsed === null) return;
+      if (elapsed <= slaH) withinSLA++; else breached++;
+    });
+    chartInstances.sla = new Chart(document.getElementById('chart-sla'), {
+      type: 'doughnut',
+      data: { labels:['Within SLA','Breached','Unassigned'], datasets:[{ data:[withinSLA,breached,unassigned], backgroundColor:['#22a86e','#e74c3c','#e0d8d0'] }] },
+      options: { plugins:{legend:{position:'right'}} }
+    });
+  }
+
+  function exportCSV() {
+    const cols = ['Timestamp','Vendor ID','Restaurant','Request Type','Branch','Item Name','Status','Assignee','AssignedAt','Rejection Reason','Priority'];
+    const lines = [cols.join(',')];
+    adminRequests.forEach(r => {
+      lines.push(cols.map(c => '"' + String(r[c]||'').replace(/"/g,'""') + '"').join(','));
+    });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'requests_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ═══════════════ BULK ACTIONS ═══════════════
+  function toggleAllBulk(cb) {
+    document.querySelectorAll('.bulk-cb').forEach(c => c.checked = cb.checked);
+    updateBulkBar();
+  }
+
+  function updateBulkBar() {
+    const checked = document.querySelectorAll('.bulk-cb:checked');
+    const bar = document.getElementById('bulk-bar');
+    document.getElementById('bulk-count').textContent = checked.length + ' selected';
+    if (checked.length > 0) bar.classList.add('on'); else bar.classList.remove('on');
+    const allCb = document.getElementById('bulk-all-cb');
+    const all = document.querySelectorAll('.bulk-cb');
+    if (allCb) {
+      allCb.indeterminate = checked.length > 0 && checked.length < all.length;
+      allCb.checked = all.length > 0 && checked.length === all.length;
+    }
+  }
+
+  function clearBulk() {
+    document.querySelectorAll('.bulk-cb, #bulk-all-cb').forEach(c => { c.checked = false; c.indeterminate = false; });
+    document.getElementById('bulk-bar').classList.remove('on');
+  }
+
+  async function bulkAssign() {
+    const agent = document.getElementById('bulk-agent-sel').value;
+    if (!agent) { alert('Please select an agent first.'); return; }
+    const checked = document.querySelectorAll('.bulk-cb:checked');
+    if (!checked.length) return;
+    const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
+    try {
+      const resp = await fetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'assign',rowIndexes,assignee:agent}) });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      const now = new Date().toISOString();
+      rowIndexes.forEach(idx => {
+        const row = adminRequests.find(r => r['_rowIndex'] === idx);
+        if (row) { row['Assignee'] = agent; if (!row['AssignedAt']) row['AssignedAt'] = now; }
+      });
+      clearBulk(); renderAgentBreakdown(adminRequests); renderAdminTable();
+    } catch(e) { alert('Bulk assign failed: ' + e.message); }
+  }
+
+  async function bulkSetStatus(status) {
+    const checked = document.querySelectorAll('.bulk-cb:checked');
+    if (!checked.length) return;
+    const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
+    try {
+      const resp = await fetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'status',rowIndexes,status}) });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      rowIndexes.forEach(idx => {
+        const row = adminRequests.find(r => r['_rowIndex'] === idx);
+        if (row) row['Status'] = status;
+      });
+      clearBulk(); updateAdminStats(); renderAdminTable();
+    } catch(e) { alert('Bulk status update failed: ' + e.message); }
+  }
+
+  // ═══════════════ HIGH PRIORITY ═══════════════
+  async function togglePriority(rowIdx, btn) {
+    const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
+    if (!row) return;
+    const newPriority = row['Priority'] === 'high' ? '' : 'high';
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/api/set-priority', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({rowIndex:rowIdx,priority:newPriority}) });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      row['Priority'] = newPriority;
+      renderAdminTable();
+    } catch(e) { alert('Priority update failed: ' + e.message); btn.disabled = false; }
   }
 
 </script>

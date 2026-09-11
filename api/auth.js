@@ -100,7 +100,11 @@ module.exports = async function handler(req, res) {
     for (const row of rows) {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-      if (String(obj['Vendor ID']).trim() === String(vendorId).trim() &&
+      // Try Chain ID (col C) first; fall back to Vendor ID (col A) for older accounts
+      const matchKey = (obj['Chain ID'] && obj['Chain ID'].trim())
+        ? obj['Chain ID'].trim()
+        : obj['Vendor ID'].trim();
+      if (matchKey.toLowerCase() === String(vendorId).toLowerCase().trim() &&
           obj['Password'] === password) {
         matched = obj;
         break;
@@ -108,12 +112,12 @@ module.exports = async function handler(req, res) {
     }
 
     if (!matched)
-      return res.status(401).json({ error: 'Incorrect Vendor ID or password.' });
+      return res.status(401).json({ error: 'Incorrect Chain ID or password.' });
 
     return res.json({
       success: true,
       vendor: {
-        vendorId:   matched['Vendor ID'],
+        vendorId:   matched['Chain ID'] || matched['Vendor ID'],
         chainId:    matched['Chain ID'],
         chainName:  matched['Chain Name'],
         branchName: matched['Branch Name'],

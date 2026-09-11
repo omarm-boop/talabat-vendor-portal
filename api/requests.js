@@ -95,6 +95,9 @@ module.exports = async function handler(req, res) {
       // SLA assignment timestamp — col W (index 22), written by assign.js
       obj['AssignedAt'] = row[22] !== undefined ? row[22] : '';
 
+      // Priority flag — col X (index 23), written by set-priority.js
+      obj['Priority'] = row[23] !== undefined ? row[23] : '';
+
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
 

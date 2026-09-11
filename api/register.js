@@ -12,10 +12,11 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
-  const { vendorId, password } = body || {};
+  const { vendorId, chainName, password } = body || {};
+  const chainId = vendorId; // frontend sends Chain ID in the vendorId field
 
-  if (!vendorId || !password)
-    return res.status(400).json({ error: 'Vendor ID and password are required' });
+  if (!chainId || !password)
+    return res.status(400).json({ error: 'Chain ID and password are required' });
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
@@ -27,20 +28,25 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    const isTeam = String(vendorId).toLowerCase().trim().endsWith('@talabat.com');
-    const id     = isTeam ? String(vendorId).toLowerCase().trim() : String(vendorId).trim();
+    const isTeam = String(chainId).toLowerCase().trim().endsWith('@talabat.com');
+    const id     = isTeam ? String(chainId).toLowerCase().trim() : String(chainId).trim();
 
-    // Check not already registered
+    // Check not already registered (col A and col C)
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: TRACKING_SHEET_ID,
-      range: `${CREDENTIALS_TAB}!A:A`,
+      range: `${CREDENTIALS_TAB}!A:C`,
     });
-    const existingIds = (existing.data.values || []).flat().map(v => String(v).toLowerCase().trim());
-    if (existingIds.includes(id.toLowerCase())) {
+    const existingRows = existing.data.values || [];
+    const alreadyExists = existingRows.slice(1).some(row => {
+      const colA = String(row[0] || '').toLowerCase().trim();
+      const colC = String(row[2] || '').toLowerCase().trim();
+      return colA === id.toLowerCase() || (colC && colC === id.toLowerCase());
+    });
+    if (alreadyExists) {
       return res.status(409).json({
         error: isTeam
           ? 'This email is already registered. Please log in instead.'
-          : 'This Vendor ID is already registered. Please log in instead.',
+          : 'This Chain ID is already registered. Please log in instead.',
       });
     }
 
@@ -59,17 +65,17 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Vendor: save with empty chain/branch info (filled later from vendor DB if needed)
+    // Vendor: store Chain ID in both col A and col C for consistent lookup
     await sheets.spreadsheets.values.append({
       spreadsheetId: TRACKING_SHEET_ID,
       range: `${CREDENTIALS_TAB}!A:F`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[id, password, '', '', '', now]] },
+      requestBody: { values: [[id, password, id, chainName || '', '', now]] },
     });
 
     return res.json({
       success: true,
-      vendor: { vendorId: id, chainId: '', chainName: '', branchName: '' },
+      vendor: { vendorId: id, chainId: id, chainName: chainName || '', branchName: '' },
     });
 
   } catch (err) {
