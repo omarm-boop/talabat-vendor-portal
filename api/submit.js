@@ -1,9 +1,9 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
+const { setCors } = require('../lib/cors');
 
-const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB          = 'Sheet1';
-const CORS_HEADERS = 'Content-Type, X-Portal-Email, X-Portal-Role, X-Portal-Ts, X-Portal-Token';
+const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
+const TAB      = 'Sheet1';
 const HEADERS  = [
   'Timestamp', 'Vendor ID', 'Email Address', 'Restaurant', 'Branch',
   'Contact Name', 'Request Type', 'Item Name', 'SKU', 'Barcode',
@@ -11,9 +11,7 @@ const HEADERS  = [
 ];
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);
+  setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   if (!verifyRequest(req))     return res.status(401).json({ error: 'Unauthorized' });
