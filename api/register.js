@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const bcrypt = require('bcryptjs');
 const { signToken } = require('../lib/verify');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
@@ -51,7 +52,8 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const now = new Date().toISOString();
+    const now    = new Date().toISOString();
+    const hashed = await bcrypt.hash(password, 10);
 
     if (isTeam) {
       const displayName = (chainName && chainName.trim()) ? chainName.trim() : id;
@@ -59,7 +61,7 @@ module.exports = async function handler(req, res) {
         spreadsheetId: TRACKING_SHEET_ID,
         range: `${CREDENTIALS_TAB}!A:F`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[id, password, '0', displayName, 'agent', now]] },
+        requestBody: { values: [[id, hashed, '0', displayName, 'agent', now]] },
       });
       const ts = Date.now();
       return res.json({
@@ -75,7 +77,7 @@ module.exports = async function handler(req, res) {
       spreadsheetId: TRACKING_SHEET_ID,
       range: `${CREDENTIALS_TAB}!A:F`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[id, password, id, chainName || '', '', now]] },
+      requestBody: { values: [[id, hashed, id, chainName || '', '', now]] },
     });
 
     const ts = Date.now();

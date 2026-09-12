@@ -1,12 +1,33 @@
 const { google } = require('googleapis');
+const bcrypt = require('bcryptjs');
 const { signToken } = require('../lib/verify');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
-const TEAM_TAB          = 'Team';
 const CORS_HEADERS      = 'Content-Type, X-Portal-Email, X-Portal-Role, X-Portal-Ts, X-Portal-Token';
 
 const delay2s = () => new Promise(r => setTimeout(r, 2000));
+
+// Verify password and lazily migrate plain-text to bcrypt hash in-place.
+// rowNum is the 1-indexed sheet row (header = row 1, so first data row = 2).
+async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
+  const isHashed = stored.startsWith('$2b$') || stored.startsWith('$2a$');
+  if (isHashed) return bcrypt.compare(candidate, stored);
+  if (stored !== candidate) return false;
+  // Plain-text matched — silently upgrade to bcrypt hash
+  try {
+    const hashed = await bcrypt.hash(candidate, 10);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: TRACKING_SHEET_ID,
+      range: `${CREDENTIALS_TAB}!B${rowNum}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[hashed]] },
+    });
+  } catch (err) {
+    console.error('Password migration failed at row', rowNum, ':', err.message);
+  }
+  return true;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,10 +45,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    // Full scope needed so verifyAndMigrate can write the hashed password back
     const auth = new google.auth.JWT({
       email: credentials.client_email,
       key:   credentials.private_key,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
@@ -35,7 +57,8 @@ module.exports = async function handler(req, res) {
     if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
       const email = String(vendorId).toLowerCase().trim();
 
-      // 1. Check TEAM_CREDENTIALS env var (pre-configured accounts, e.g. monitor)
+      // 1. TEAM_CREDENTIALS env var (pre-configured monitor etc.) — plain-text,
+      //    stored in a secure Vercel env var so hashing here is not necessary
       let team = [];
       try { team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]'); } catch(_) {}
       const envMatch = team.find(
@@ -59,7 +82,7 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // 2. Check Credentials tab for self-registered agents (chainId = '0')
+      // 2. Self-registered agents in the Credentials sheet (chainId = '0')
       const credsResp = await sheets.spreadsheets.values.get({
         spreadsheetId: TRACKING_SHEET_ID,
         range: CREDENTIALS_TAB,
@@ -67,28 +90,32 @@ module.exports = async function handler(req, res) {
       const credsValues = credsResp.data.values || [];
       if (credsValues.length > 1) {
         const headers = credsValues[0];
-        for (const row of credsValues.slice(1)) {
+        for (let i = 0; i < credsValues.length - 1; i++) {
+          const row = credsValues[i + 1];
           const obj = {};
-          headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-          if (String(obj['Vendor ID']).toLowerCase().trim() === email
-              && obj['Password'] === password
-              && String(obj['Chain ID']).trim() === '0') {
-            const role = obj['Branch Name'] || 'agent';
-            const ts   = Date.now();
-            return res.json({
-              success: true,
-              sessionToken: signToken(obj['Vendor ID'], role, ts),
-              sessionTs: ts,
-              vendor: {
-                vendorId:   obj['Vendor ID'],
-                name:       (obj['Chain Name'] && obj['Chain Name'] !== 'Talabat') ? obj['Chain Name'] : obj['Vendor ID'],
-                role,
-                chainId:    '0',
-                chainName:  'Talabat',
-                branchName: 'Admin Panel',
-              },
-            });
-          }
+          headers.forEach((h, idx) => { obj[h] = row[idx] || ''; });
+          if (String(obj['Vendor ID']).toLowerCase().trim() !== email) continue;
+          if (String(obj['Chain ID']).trim() !== '0') continue;
+
+          const rowNum  = i + 2; // 1-indexed; +1 to skip header row
+          const matches = await verifyAndMigrate(obj['Password'], password, sheets, rowNum);
+          if (!matches) continue;
+
+          const role = obj['Branch Name'] || 'agent';
+          const ts   = Date.now();
+          return res.json({
+            success: true,
+            sessionToken: signToken(obj['Vendor ID'], role, ts),
+            sessionTs: ts,
+            vendor: {
+              vendorId:   obj['Vendor ID'],
+              name:       (obj['Chain Name'] && obj['Chain Name'] !== 'Talabat') ? obj['Chain Name'] : obj['Vendor ID'],
+              role,
+              chainId:    '0',
+              chainName:  'Talabat',
+              branchName: 'Admin Panel',
+            },
+          });
         }
       }
 
@@ -110,17 +137,17 @@ module.exports = async function handler(req, res) {
     const rows    = values.slice(1);
 
     let matched = null;
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
       const obj = {};
-      headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      headers.forEach((h, idx) => { obj[h] = rows[i][idx] || ''; });
       const matchKey = (obj['Chain ID'] && obj['Chain ID'].trim())
         ? obj['Chain ID'].trim()
         : obj['Vendor ID'].trim();
-      if (matchKey.toLowerCase() === String(vendorId).toLowerCase().trim() &&
-          obj['Password'] === password) {
-        matched = obj;
-        break;
-      }
+      if (matchKey.toLowerCase() !== String(vendorId).toLowerCase().trim()) continue;
+
+      const rowNum  = i + 2;
+      const matches = await verifyAndMigrate(obj['Password'], password, sheets, rowNum);
+      if (matches) { matched = obj; break; }
     }
 
     if (!matched) {
