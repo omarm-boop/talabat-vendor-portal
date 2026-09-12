@@ -57,13 +57,19 @@ module.exports = async function handler(req, res) {
     if (String(vendorId).toLowerCase().trim().endsWith('@talabat.com')) {
       const email = String(vendorId).toLowerCase().trim();
 
-      // 1. TEAM_CREDENTIALS env var (pre-configured monitor etc.) — plain-text,
-      //    stored in a secure Vercel env var so hashing here is not necessary
+      // 1. TEAM_CREDENTIALS env var (pre-configured monitor etc.)
+      //    Passwords may be plain-text (legacy) or bcrypt hashes (current).
+      //    Plain-text still accepted so existing deployments aren't broken.
       let team = [];
       try { team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]'); } catch(_) {}
-      const envMatch = team.find(
-        m => String(m.email).toLowerCase().trim() === email && m.password === password
-      );
+      let envMatch = null;
+      for (const m of team) {
+        if (String(m.email).toLowerCase().trim() !== email) continue;
+        const stored   = m.password || '';
+        const isHashed = stored.startsWith('$2b$') || stored.startsWith('$2a$');
+        const ok = isHashed ? await bcrypt.compare(password, stored) : stored === password;
+        if (ok) { envMatch = m; break; }
+      }
       if (envMatch) {
         const role = (envMatch.role || 'agent').toLowerCase();
         const ts   = Date.now();
