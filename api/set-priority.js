@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!X${rowIndex}`,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       requestBody: { values: [[priority ? 'high' : '']] },
     });
 

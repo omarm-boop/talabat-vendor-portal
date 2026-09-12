@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
     if (data.length) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SHEET_ID,
-        requestBody: { valueInputOption: 'USER_ENTERED', data },
+        requestBody: { valueInputOption: 'RAW', data },
       });
     }
 
