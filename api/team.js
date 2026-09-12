@@ -8,7 +8,7 @@ const CREDS_TAB = 'Credentials';
 module.exports = async function handler(req, res) {
   setCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   const names = new Set();
 

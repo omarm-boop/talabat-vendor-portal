@@ -1251,7 +1251,8 @@
     } catch (_) { return {}; }
   }
 
-  function doLogout() {
+  async function doLogout() {
+    try { await fetch('/api/logout', { method: 'POST', headers: getAuthHeaders() }); } catch (_) {}
     stopVendorRefresh();
     stopAdminRefresh();
     currentVendor = null;

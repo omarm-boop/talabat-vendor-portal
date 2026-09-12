@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const session = verifyRequest(req);
+  const session = await verifyRequest(req);
   if (!session) return res.status(401).json({ error: 'Unauthorized' });
 
   const vendorIdParam = (req.query.vendorId || '').trim();

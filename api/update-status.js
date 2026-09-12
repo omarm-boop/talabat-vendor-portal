@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!verifyRequest(req))     return res.status(401).json({ error: 'Unauthorized' });
+  if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
@@ -30,13 +30,13 @@ module.exports = async function handler(req, res) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!T${rowIndex}`,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       requestBody: { values: [[status]] },
     });
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!V${rowIndex}`,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       requestBody: { values: [[rejectionReason || '']] },
     });
 
