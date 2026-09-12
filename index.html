@@ -1364,7 +1364,7 @@
 
     try {
       const url = APPS_SCRIPT_URL + '?vendorId=' + encodeURIComponent(currentVendor.vendorId) + '&t=' + Date.now();
-      const resp = await fetch(url);
+      const resp = await fetch(url, { headers: getAuthHeaders() });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const json = await resp.json();
       if (json.error) throw new Error(json.error);
@@ -2076,7 +2076,7 @@
       });
       const result = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ filename: file.name, contentType: 'image/jpeg', data: b64 })
       });
       if (!result.ok) { const e = await result.json(); throw new Error(e.error || 'Upload failed'); }

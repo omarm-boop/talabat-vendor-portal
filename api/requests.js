@@ -13,9 +13,21 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Admin access (no vendorId param) requires a valid session token
+  const session = verifyRequest(req);
+  if (!session) return res.status(401).json({ error: 'Unauthorized' });
+
   const vendorIdParam = (req.query.vendorId || '').trim();
-  if (!vendorIdParam && !verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+  if (vendorIdParam) {
+    // Vendor dashboard: token email must match requested vendorId
+    if (session.email.toLowerCase() !== vendorIdParam.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  } else {
+    // Admin access (no vendorId): must be a team member
+    if (session.role !== 'monitor' && session.role !== 'agent') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+  }
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
