@@ -1946,7 +1946,7 @@
       const payload = buildPayload();
       const resp = await fetch('/api/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload),
       });
       const json = await resp.json();
