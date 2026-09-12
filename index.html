@@ -372,7 +372,7 @@
       <div class="li-error" id="li-err"></div>
       <button class="btn-login" id="btn-signin" data-i18n="signInBtn" onclick="doLogin()">Sign In →</button>
     </div>
-    <div class="login-switch"><span data-i18n="noAccount">Don't have an account?</span> <button data-i18n="createAccLink" onclick="showPanel('signup')">Create Account</button></div>
+    <div class="login-switch" id="switch-signin"><span data-i18n="noAccount">Don't have an account?</span> <button data-i18n="createAccLink" onclick="showPanel('signup')">Create Account</button> &nbsp;·&nbsp; <button onclick="showPanel('reset')">Forgot Password?</button></div>
 
     <!-- SIGN UP -->
     <div class="login-card" id="card-signup" style="display:none">
@@ -401,6 +401,30 @@
       <button class="btn-login" id="btn-signup" data-i18n="createAccBtn" onclick="doSignup()">Create Account →</button>
     </div>
     <div class="login-switch" id="switch-signup" style="display:none"><span data-i18n="haveAccount">Already have an account?</span> <button data-i18n="signInLink" onclick="showPanel('signin')">Sign In</button></div>
+
+    <!-- RESET PASSWORD -->
+    <div class="login-card" id="card-reset" style="display:none">
+      <div class="login-title">Reset Password</div>
+      <div class="login-sub">Enter your Chain ID, the 6-character code from your admin, and your new password.</div>
+      <div class="li-field">
+        <label class="li-label">Chain ID / Email</label>
+        <input class="li-input" type="text" id="rp-vendorid" placeholder="e.g. 12345 or you@talabat.com" onkeydown="if(event.key==='Enter') doResetPassword()">
+      </div>
+      <div class="li-field">
+        <label class="li-label">Reset Code</label>
+        <input class="li-input" type="text" id="rp-token" placeholder="6-character code" style="text-transform:uppercase;letter-spacing:4px" onkeydown="if(event.key==='Enter') doResetPassword()">
+      </div>
+      <div class="li-field">
+        <label class="li-label">New Password</label>
+        <div class="li-pass-wrap">
+          <input class="li-input" type="password" id="rp-pass" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter') doResetPassword()">
+          <button class="li-eye" type="button" onclick="togglePass('rp-pass')">👁</button>
+        </div>
+      </div>
+      <div class="li-error" id="rp-err"></div>
+      <button class="btn-login" id="btn-reset" onclick="doResetPassword()">Reset Password →</button>
+    </div>
+    <div class="login-switch" id="switch-reset" style="display:none"><span>Remember your password?</span> <button onclick="showPanel('signin')">Sign In</button></div>
 
   </div>
 </div>
@@ -969,6 +993,27 @@
       </select>
       <input class="adm-search" id="a-search" placeholder="Search vendor, restaurant, SKU…" oninput="renderAdminTable()">
       <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
+      <button class="adm-refresh" style="background:#411517" id="btn-gen-reset" onclick="openResetTokenModal()" title="Generate a one-time password reset code for a vendor">🔑 Reset Pwd</button>
+    </div>
+
+    <!-- Reset Token Modal -->
+    <div id="reset-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:14px;padding:28px 32px;width:340px;max-width:94vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+        <div style="font-size:16px;font-weight:800;color:#411517;margin-bottom:6px">Generate Reset Code</div>
+        <div style="font-size:12px;color:#888;margin-bottom:18px">Creates a 1-hour one-time code the vendor enters on the Forgot Password screen.</div>
+        <label style="font-size:12px;font-weight:700;color:#411517;display:block;margin-bottom:6px">Chain ID or Email</label>
+        <input id="reset-modal-input" class="li-input" type="text" placeholder="e.g. 12345 or vendor@talabat.com" style="width:100%;box-sizing:border-box;margin-bottom:14px">
+        <div id="reset-modal-result" style="display:none;background:#f4ede3;border-radius:8px;padding:12px 14px;margin-bottom:14px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Reset Code (share with vendor)</div>
+          <div id="reset-modal-code" style="font-size:28px;font-weight:800;color:var(--orange);letter-spacing:6px"></div>
+          <div style="font-size:11px;color:#aaa;margin-top:4px">Expires in 1 hour · single use</div>
+        </div>
+        <div id="reset-modal-err" style="color:#c62828;font-size:12px;margin-bottom:10px;display:none"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="adm-refresh" style="background:#e0d8ce;color:#411517" onclick="closeResetTokenModal()">Close</button>
+          <button class="adm-refresh" id="btn-gen-submit" onclick="doGenResetToken()">Generate</button>
+        </div>
+      </div>
     </div>
 
     <!-- Table -->
@@ -992,6 +1037,13 @@
           <tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>
         </tbody>
       </table>
+    </div>
+    <div id="adm-pagination" style="display:none;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px;color:#411517">
+      <span id="adm-page-info" style="color:#888"></span>
+      <div style="display:flex;gap:8px">
+        <button class="adm-refresh" style="padding:7px 16px" id="adm-prev" onclick="adminChangePage(-1)">← Prev</button>
+        <button class="adm-refresh" style="padding:7px 16px" id="adm-next" onclick="adminChangePage(1)">Next →</button>
+      </div>
     </div>
   </div><!-- /adm-requests-view -->
 
@@ -1275,15 +1327,46 @@
   }
 
   function showPanel(panel) {
-    const isSignup = panel === 'signup';
-    document.getElementById('card-signin').style.display  = isSignup ? 'none' : 'block';
-    document.getElementById('card-signup').style.display  = isSignup ? 'block' : 'none';
-    document.getElementById('switch-signup').style.display = isSignup ? 'block' : 'none';
-    // find the signin switch (first .login-switch)
-    const switches = document.querySelectorAll('.login-switch');
-    if (switches[0]) switches[0].style.display = isSignup ? 'none' : 'block';
+    document.getElementById('card-signin').style.display   = panel === 'signin' ? 'block' : 'none';
+    document.getElementById('card-signup').style.display   = panel === 'signup' ? 'block' : 'none';
+    document.getElementById('card-reset').style.display    = panel === 'reset'  ? 'block' : 'none';
+    document.getElementById('switch-signin').style.display = panel === 'signin' ? 'block' : 'none';
+    document.getElementById('switch-signup').style.display = panel === 'signup' ? 'block' : 'none';
+    document.getElementById('switch-reset').style.display  = panel === 'reset'  ? 'block' : 'none';
     document.getElementById('li-err').textContent = '';
     document.getElementById('su-err').textContent = '';
+    const rpErr = document.getElementById('rp-err');
+    if (rpErr) rpErr.textContent = '';
+  }
+
+  async function doResetPassword() {
+    const vendorId    = (document.getElementById('rp-vendorid').value || '').trim();
+    const token       = (document.getElementById('rp-token').value    || '').trim();
+    const newPassword = (document.getElementById('rp-pass').value     || '');
+    const errEl       = document.getElementById('rp-err');
+    const btn         = document.getElementById('btn-reset');
+    errEl.textContent = '';
+    if (!vendorId || !token || !newPassword) { errEl.textContent = 'All fields are required.'; return; }
+    btn.disabled = true; btn.textContent = 'Resetting…';
+    try {
+      const r = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId, token, newPassword }),
+      });
+      const d = await r.json();
+      if (!r.ok) { errEl.textContent = d.error || 'Failed. Try again.'; return; }
+      document.getElementById('rp-vendorid').value = '';
+      document.getElementById('rp-token').value    = '';
+      document.getElementById('rp-pass').value     = '';
+      showPanel('signin');
+      document.getElementById('li-err').style.color = '#2e7d32';
+      document.getElementById('li-err').textContent = 'Password reset! Please sign in with your new password.';
+    } catch(e) {
+      errEl.textContent = 'Network error. Try again.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Reset Password →';
+    }
   }
 
   function showView(view) {
@@ -1413,8 +1496,11 @@
   // ═══════════════ ADMIN PANEL ═══════════════
   let TEAM_AGENTS = [];
 
-  let adminRequests   = [];
+  let adminRequests    = [];
   let currentAdminUser = { name: '', role: 'monitor' };
+  let adminPage        = 1;
+  let adminFiltered    = [];
+  const ADMIN_PAGE_SIZE = 50;
 
   async function initAdminView() {
     try {
@@ -1520,12 +1606,36 @@
       return new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0);
     });
 
-    if (filtered.length === 0) {
+    adminPage = 1;
+    adminFiltered = filtered;
+    renderAdminPage();
+  }
+
+  function renderAdminPage() {
+    const isMonitor = currentAdminUser.role === 'monitor';
+    const total  = adminFiltered.length;
+    const pages  = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+    adminPage    = Math.min(adminPage, pages);
+    const start  = (adminPage - 1) * ADMIN_PAGE_SIZE;
+    const slice  = adminFiltered.slice(start, start + ADMIN_PAGE_SIZE);
+
+    const pag = document.getElementById('adm-pagination');
+    if (total > ADMIN_PAGE_SIZE) {
+      pag.style.display = 'flex';
+      document.getElementById('adm-page-info').textContent =
+        `Showing ${start + 1}–${Math.min(start + ADMIN_PAGE_SIZE, total)} of ${total}`;
+      document.getElementById('adm-prev').disabled = adminPage <= 1;
+      document.getElementById('adm-next').disabled = adminPage >= pages;
+    } else {
+      pag.style.display = 'none';
+    }
+
+    if (slice.length === 0) {
       document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">No requests match the current filter.</td></tr>';
       return;
     }
 
-    document.getElementById('a-tbody').innerHTML = filtered.map(r => {
+    document.getElementById('a-tbody').innerHTML = slice.map(r => {
       const status     = r['Status'] || 'Pending';
       const sl         = status.toLowerCase();
       const isDone     = sl === 'done' || sl === 'completed';
@@ -1582,6 +1692,45 @@
         <td>${actions}</td>
       </tr>`;
     }).join('');
+  }
+
+  function adminChangePage(dir) {
+    const pages = Math.max(1, Math.ceil(adminFiltered.length / ADMIN_PAGE_SIZE));
+    adminPage = Math.max(1, Math.min(pages, adminPage + dir));
+    renderAdminPage();
+  }
+
+  function openResetTokenModal() {
+    document.getElementById('reset-modal-result').style.display = 'none';
+    document.getElementById('reset-modal-err').style.display    = 'none';
+    document.getElementById('reset-modal-input').value = '';
+    document.getElementById('reset-modal').style.display = 'flex';
+  }
+  function closeResetTokenModal() {
+    document.getElementById('reset-modal').style.display = 'none';
+  }
+  async function doGenResetToken() {
+    const vendorId = (document.getElementById('reset-modal-input').value || '').trim();
+    const errEl    = document.getElementById('reset-modal-err');
+    const btn      = document.getElementById('btn-gen-submit');
+    errEl.style.display = 'none';
+    if (!vendorId) { errEl.textContent = 'Enter a Chain ID or email.'; errEl.style.display = 'block'; return; }
+    btn.disabled = true; btn.textContent = 'Generating…';
+    try {
+      const r = await fetch('/api/reset-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ vendorId }),
+      });
+      const d = await r.json();
+      if (!r.ok) { errEl.textContent = d.error || 'Failed.'; errEl.style.display = 'block'; return; }
+      document.getElementById('reset-modal-code').textContent = d.token;
+      document.getElementById('reset-modal-result').style.display = 'block';
+    } catch(e) {
+      errEl.textContent = 'Network error.'; errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Generate';
+    }
   }
 
   function adminShowReject(btn) {

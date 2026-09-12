@@ -41,6 +41,32 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Deduplication: block if a Pending/In-Progress row exists for same chain + type + barcode
+    const chainCheck   = (body.restaurant  || '').trim().toLowerCase();
+    const typeCheck    = (body.requestType || '').trim().toLowerCase();
+    const barcodeCheck = (body.barcode     || '').trim();
+    if (chainCheck && typeCheck) {
+      const dupResp = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${TAB}!D:T`,
+      });
+      const dupRows = (dupResp.data.values || []).slice(1);
+      const isDup = dupRows.some(row => {
+        const st = String(row[16] || '').trim().toLowerCase();
+        if (st !== 'pending' && !st.includes('progress')) return false;
+        if (String(row[0] || '').trim().toLowerCase() !== chainCheck) return false;
+        if (String(row[1] || '').trim().toLowerCase() !== typeCheck)  return false;
+        if (barcodeCheck) {
+          const rowBarcode = String(row[2] || '').trim();
+          if (rowBarcode && rowBarcode !== barcodeCheck) return false;
+        }
+        return true;
+      });
+      if (isDup) return res.status(409).json({
+        error: 'A Pending or In Progress request for this item already exists. Please wait for it to be resolved before submitting again.',
+      });
+    }
+
     const itemName = body.itemName || body.itemNameEn || body.currentName || '';
 
     // Build explanation from whichever description fields were submitted
