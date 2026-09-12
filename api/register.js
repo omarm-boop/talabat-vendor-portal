@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const bcrypt = require('bcryptjs');
 const { signToken } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { checkRegisterLimit } = require('../lib/ratelimit');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
@@ -20,6 +21,8 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Chain ID and password are required' });
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  if (!await checkRegisterLimit(req, res)) return;
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
@@ -59,7 +62,7 @@ module.exports = async function handler(req, res) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: TRACKING_SHEET_ID,
         range: `${CREDENTIALS_TAB}!A:F`,
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: { values: [[id, hashed, '0', displayName, 'agent', now]] },
       });
       const ts = Date.now();

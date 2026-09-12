@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const bcrypt = require('bcryptjs');
 const { signToken } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { checkLoginLimit } = require('../lib/ratelimit');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
@@ -20,7 +21,7 @@ async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: TRACKING_SHEET_ID,
       range: `${CREDENTIALS_TAB}!B${rowNum}`,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       requestBody: { values: [[hashed]] },
     });
   } catch (err) {
@@ -40,6 +41,8 @@ module.exports = async function handler(req, res) {
 
   if (!vendorId || !password)
     return res.status(400).json({ error: 'Email / Vendor ID and password are required' });
+
+  if (!await checkLoginLimit(req, res, vendorId)) return;
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
