@@ -27,6 +27,45 @@ module.exports = async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
 
+  // ── WITHDRAW (vendor withdraws their own pending request) ─────────────────
+  if (body && body.rowIndex) {
+    const { rowIndex } = body;
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+      const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      const peek = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID, range: `${TAB}!A${rowIndex}:T${rowIndex}`,
+      });
+      const row       = (peek.data.values || [[]])[0] || [];
+      const rowEmail  = String(row[9]  || '').toLowerCase().trim();
+      const rowStatus = String(row[19] || '').toLowerCase().trim();
+
+      if (rowEmail !== sess.email.toLowerCase().trim())
+        return res.status(403).json({ error: 'Forbidden: this request does not belong to your account' });
+      if (rowStatus !== 'pending' && rowStatus !== '')
+        return res.status(409).json({ error: 'Only Pending requests can be withdrawn' });
+
+      const now = new Date().toISOString();
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: [
+            { range: `${TAB}!T${rowIndex}`, values: [['Withdrawn']] },
+            { range: `${TAB}!Y${rowIndex}`, values: [[`${sess.email} → Withdrawn at ${now}`]] },
+          ],
+        },
+      });
+      if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('withdraw error:', err.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   // Server-side daily submission limit (configurable via DAILY_SUBMIT_LIMIT, default 5)
   const dailyLimit = parseInt(process.env.DAILY_SUBMIT_LIMIT || '5', 10);
   let dailyKey = null;

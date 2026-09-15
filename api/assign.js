@@ -22,9 +22,30 @@ module.exports = async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
 
-  const { rowIndex, assignee } = body || {};
+  const { rowIndex, assignee, priority } = body || {};
   if (!rowIndex) return res.status(400).json({ error: 'rowIndex is required' });
 
+  // ── SET PRIORITY (monitor-only) ───────────────────────────────────────────
+  if (priority !== undefined) {
+    if (sess.role !== 'monitor') return res.status(403).json({ error: 'Monitor access required' });
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+      const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${TAB}!X${rowIndex}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[priority ? 'high' : '']] },
+      });
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('set-priority error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── ASSIGN ────────────────────────────────────────────────────────────────
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
