@@ -174,6 +174,7 @@ module.exports = async function handler(req, res) {
       sessionTs: ts,
       vendor: {
         vendorId:   vid,
+        role:       'vendor',
         chainId:    matched['Chain ID'],
         chainName:  matched['Chain Name'],
         branchName: matched['Branch Name'],
