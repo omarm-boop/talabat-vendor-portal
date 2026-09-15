@@ -11,7 +11,7 @@ function getRedis() {
 }
 
 const SHEET_ID  = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB       = 'Form Responses 1';
+const TAB       = 'Sheet1';
 const CREDS_TAB = 'Credentials';
 
 module.exports = async function handler(req, res) {

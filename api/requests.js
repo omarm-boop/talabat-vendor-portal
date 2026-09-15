@@ -4,7 +4,7 @@ const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB_NAME     = 'Form Responses 1';
+const TAB_NAME     = 'Sheet1';
 const CACHE_KEY    = 'sheet:v1:all';
 const CACHE_TTL    = 30; // seconds
 
@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
         getRedis().set(CACHE_KEY, JSON.stringify(values), { ex: CACHE_TTL }).catch(() => {});
       }
     }
-    if (values.length < 2) return res.json({ data: [], _dbg: { tab: TAB_NAME, rows: values.length, h0: (values[0]||[]).slice(0,5) } });
+    if (values.length < 2) return res.json({ data: [] });
 
     const headers = values[0].map(h => String(h).trim());
     const dataRows = values.slice(1);
@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    return res.json({ data: rows, _dbg: { tab: TAB_NAME, total: dataRows.length, filtered: rows.length } });
+    return res.json({ data: rows });
 
   } catch (err) {
     console.error('requests.js error:', err.message);
