@@ -130,7 +130,7 @@ module.exports = async function handler(req, res) {
       if (!obj['Branch'])           obj['Branch']           = obj['Branch Name / اسم الفرع'] || obj['Request Type / نوع الطلب'] || '';
       if (!obj['Item Name'])        obj['Item Name']        = obj['Item Name / اسم المنتج'] || '';
       if (!obj['Notes'])            obj['Notes']            = obj['Explain your request (if needed) / توضيح الطلب'] || '';
-      if (!obj['Rejection Reason']) obj['Rejection Reason'] = obj['Reason'] || obj['Branch Name / اسم الفرع'] || '';
+      if (!obj['Rejection Reason']) obj['Rejection Reason'] = obj['Reason'] || '';
 
       // SLA assignment timestamp — col W (index 22), written by assign.js
       obj['AssignedAt'] = row[22] !== undefined ? row[22] : '';
