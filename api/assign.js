@@ -9,7 +9,8 @@ module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
@@ -24,21 +25,18 @@ module.exports = async function handler(req, res) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
+    const now = new Date().toISOString();
 
-    // Column U = Owner (Assignee)
-    await sheets.spreadsheets.values.update({
+    await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!U${rowIndex}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[assignee || '']] },
-    });
-
-    // Column W = AssignedAt timestamp (set when first assigned, cleared when unassigned)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${TAB}!W${rowIndex}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[assignee ? new Date().toISOString() : '']] },
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: [
+          { range: `${TAB}!U${rowIndex}`, values: [[assignee || '']] },
+          { range: `${TAB}!W${rowIndex}`, values: [[assignee ? now : '']] },
+          { range: `${TAB}!Y${rowIndex}`, values: [[`${sess.email} → Assigned:${assignee||'(unassigned)'} at ${now}`]] },
+        ],
+      },
     });
 
     return res.json({ success: true });

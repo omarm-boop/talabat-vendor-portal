@@ -9,7 +9,8 @@ module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
@@ -27,13 +28,16 @@ module.exports = async function handler(req, res) {
     const data = [];
     const now = new Date().toISOString();
 
+    const actor = sess.email;
     for (const rowIndex of rowIndexes) {
       if (action === 'assign') {
         data.push({ range: `${TAB}!U${rowIndex}`, values: [[assignee || '']] });
         if (assignee) data.push({ range: `${TAB}!W${rowIndex}`, values: [[now]] });
+        data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → Assigned:${assignee||'(unassigned)'} at ${now}`]] });
       } else if (action === 'status') {
         data.push({ range: `${TAB}!T${rowIndex}`, values: [[status || '']] });
         if (rejectionReason) data.push({ range: `${TAB}!V${rowIndex}`, values: [[rejectionReason]] });
+        data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → ${status} at ${now}`]] });
       }
     }
 

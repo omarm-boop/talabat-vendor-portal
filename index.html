@@ -1021,6 +1021,7 @@
           <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Reset Code (share with vendor)</div>
           <div id="reset-modal-code" style="font-size:28px;font-weight:800;color:var(--orange);letter-spacing:6px"></div>
           <div style="font-size:11px;color:#aaa;margin-top:4px">Expires in 1 hour · single use</div>
+          <div id="reset-modal-email-status" style="font-size:11px;margin-top:6px"></div>
         </div>
         <div id="reset-modal-err" style="color:#c62828;font-size:12px;margin-bottom:10px;display:none"></div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -1063,9 +1064,15 @@
 
   <div id="adm-analytics-view" style="display:none">
     <div class="analytics-wrap">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <h2 style="font-size:20px;font-weight:800;color:#411517">Analytics</h2>
-        <button class="adm-refresh" onclick="exportCSV()">⬇ Export CSV</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+        <h2 style="font-size:20px;font-weight:800;color:#411517;margin:0">Analytics</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="adm-refresh ar-range-btn" id="ar-7"   onclick="setAnalyticsRange(7)"  >Last 7d</button>
+          <button class="adm-refresh ar-range-btn" id="ar-30"  onclick="setAnalyticsRange(30)" style="background:#411517">Last 30d</button>
+          <button class="adm-refresh ar-range-btn" id="ar-90"  onclick="setAnalyticsRange(90)" >Last 90d</button>
+          <button class="adm-refresh ar-range-btn" id="ar-all" onclick="setAnalyticsRange(0)"  >All time</button>
+          <button class="adm-refresh" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
       </div>
       <div class="analytics-grid">
         <div class="chart-card"><h3>Requests per Day (Last 30)</h3><canvas id="chart-daily"></canvas></div>
@@ -1537,9 +1544,9 @@
     }
     // Per-agent breakdown cards — monitor only
     document.getElementById('adm-breakdown').style.display = isMonitor ? 'grid' : 'none';
-    // Analytics tab — monitor only
+    // Analytics tab — visible to all admin roles
     const analyticsTab = document.getElementById('tab-analytics');
-    if (analyticsTab) analyticsTab.style.display = isMonitor ? '' : 'none';
+    if (analyticsTab) analyticsTab.style.display = '';
     // Bulk agent select
     const bulkAgentSel = document.getElementById('bulk-agent-sel');
     if (bulkAgentSel) {
@@ -1756,6 +1763,11 @@
       const d = await r.json();
       if (!r.ok) { errEl.textContent = d.error || 'Failed.'; errEl.style.display = 'block'; return; }
       document.getElementById('reset-modal-code').textContent = d.token;
+      const emailEl = document.getElementById('reset-modal-email-status');
+      emailEl.textContent = d.emailSent
+        ? '✅ Code emailed to vendor automatically'
+        : '📋 Copy and share this code manually';
+      emailEl.style.color = d.emailSent ? '#22a86e' : '#888';
       document.getElementById('reset-modal-result').style.display = 'block';
     } catch(e) {
       errEl.textContent = 'Network error.'; errEl.style.display = 'block';
@@ -1778,11 +1790,12 @@
   async function adminUpdateStatus(rowIdx, status, btn, rejectionReason) {
     const orig = btn.textContent;
     btn.textContent = '…'; btn.disabled = true;
+    const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
     try {
       const resp = await fetch('/api/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ rowIndex: rowIdx, status, rejectionReason }),
+        body: JSON.stringify({ rowIndex: rowIdx, status, rejectionReason, vendorId: row?.['Vendor ID'] }),
       });
       const json = await resp.json();
       if (!json.success) throw new Error(json.error || 'Unknown error');
@@ -2331,6 +2344,7 @@
       ['Assigned At',     at],
       ['Status',          r['Status']],
       ['Comment',         r['Comment'] || r['Rejection Reason']],
+      ['Last Action',     r['LastAction']],
     ];
 
     const rows = fields
@@ -2421,6 +2435,33 @@
   }
   function stopAdminRefresh() { if (adminTimer) { clearInterval(adminTimer); adminTimer = null; } }
 
+  // ═══════════════ VENDOR WITHDRAW ═══════════════
+  async function doWithdraw(rowIdx, btn) {
+    if (!confirm('Withdraw this request? This cannot be undone.')) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const resp = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ rowIndex: rowIdx }),
+      });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error || 'Unknown error');
+      // Update card in-place
+      const card = document.getElementById('req-card-' + rowIdx);
+      if (card) {
+        const badge = card.querySelector('.badge');
+        if (badge) { badge.textContent = 'Withdrawn'; badge.className = 'badge badge-rejected'; }
+        btn.remove();
+      }
+      // Refresh stats
+      loadDashboard();
+    } catch(e) {
+      btn.disabled = false; btn.textContent = 'Withdraw';
+      alert('Withdraw failed: ' + e.message);
+    }
+  }
+
   // ═══════════════ VENDOR DASHBOARD STATUS FILTER ═══════════════
   let dashStatusFilter = '';
   let cachedDashRows = [];
@@ -2455,8 +2496,13 @@
       const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
       const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
       const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
-      const vendorSla  = (!isDone && !isRej) ? slaBadge('', status, row['Priority'] || '', row['Timestamp'] || '') : '';
-      return `<div class="req-card">
+      const vendorSla   = (!isDone && !isRej) ? slaBadge('', status, row['Priority'] || '', row['Timestamp'] || '') : '';
+      const rowIdx      = row['_rowIndex'];
+      const canWithdraw = sl === 'pending' && rowIdx;
+      const withdrawBtn = canWithdraw
+        ? `<button onclick="doWithdraw(${rowIdx}, this)" style="margin-top:4px;font-size:11px;background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:3px 10px;cursor:pointer">Withdraw</button>`
+        : '';
+      return `<div class="req-card" id="req-card-${rowIdx}">
         <div class="req-left">
           <div class="req-type">${escHtml(reqType)}</div>
           <div class="req-item">Item: ${escHtml(itemName)}</div>
@@ -2466,6 +2512,7 @@
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
           <span class="badge ${bClass}">${escHtml(status)}</span>
           ${vendorSla}
+          ${withdrawBtn}
         </div>
       </div>`;
     }).join('');
@@ -2481,18 +2528,46 @@
   }
 
   // ═══════════════ ANALYTICS ═══════════════
-  let chartInstances = {};
+  let chartInstances    = {};
+  let analyticsRangeDays = 30;
+
+  function setAnalyticsRange(days) {
+    analyticsRangeDays = days;
+    document.querySelectorAll('.ar-range-btn').forEach(b => b.style.background = '');
+    const active = document.getElementById(days === 0 ? 'ar-all' : 'ar-' + days);
+    if (active) active.style.background = '#411517';
+    renderAnalytics();
+  }
+
+  function drillToType(type) {
+    document.getElementById('a-filter-type').value = type;
+    showAdmTab('requests');
+    renderAdminTable();
+  }
+
+  function drillToStatus(status) {
+    document.getElementById('a-filter-status').value = status;
+    showAdmTab('requests');
+    renderAdminTable();
+  }
 
   function renderAnalytics() {
-    const rows = adminRequests;
-    if (!rows.length) { return; }
+    if (!adminRequests.length) return;
     Object.values(chartInstances).forEach(c => c.destroy());
     chartInstances = {};
 
-    // Chart 1: Requests per day (last 30 days)
+    // Apply date range filter
+    const cutoff = analyticsRangeDays > 0
+      ? new Date(Date.now() - analyticsRangeDays * 86400000) : null;
+    const rows = cutoff
+      ? adminRequests.filter(r => r['Timestamp'] && new Date(r['Timestamp']) >= cutoff)
+      : adminRequests;
+
+    // Chart 1: Requests per day
+    const spanDays = analyticsRangeDays > 0 ? analyticsRangeDays : 30;
     const days = {};
     const nowDate = new Date();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = spanDays - 1; i >= 0; i--) {
       const d = new Date(nowDate); d.setDate(d.getDate() - i);
       days[d.toISOString().slice(0,10)] = 0;
     }
@@ -2503,13 +2578,19 @@
       options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
     });
 
-    // Chart 2: By request type
+    // Chart 2: By request type (click to drill down)
     const typeCounts = {};
     rows.forEach(r => { const t = r['Request Type'] || 'Unknown'; typeCounts[t] = (typeCounts[t]||0)+1; });
+    const typeLabels = Object.keys(typeCounts);
     chartInstances.type = new Chart(document.getElementById('chart-type'), {
       type: 'doughnut',
-      data: { labels: Object.keys(typeCounts), datasets: [{ data:Object.values(typeCounts), backgroundColor:['#FF5900','#411517','#22a86e','#f39c12','#8318D8','#e74c3c','#3498db'] }] },
-      options: { plugins:{legend:{position:'right',labels:{font:{size:11}}}} }
+      data: { labels: typeLabels, datasets: [{ data:Object.values(typeCounts), backgroundColor:['#FF5900','#411517','#22a86e','#f39c12','#8318D8','e74c3c','#3498db'] }] },
+      options: {
+        plugins:{legend:{position:'right',labels:{font:{size:11}}}},
+        onClick(_, elems) {
+          if (elems.length) drillToType(typeLabels[elems[0].index]);
+        },
+      }
     });
 
     // Chart 3: Top vendors
@@ -2542,14 +2623,14 @@
       options: { plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
     });
 
-    // Chart 5: SLA compliance (clock starts from submission if unassigned)
+    // Chart 5: SLA compliance — open rows only, click to drill into breached
     let withinSLA = 0, breached = 0;
     rows.forEach(r => {
       const s = (r['Status']||'').toLowerCase();
-      if (s==='done'||s==='completed'||s.includes('reject')) return;
+      if (s==='done'||s==='completed'||s.includes('reject')||s==='withdrawn') return;
       const clockStart = r['AssignedAt'] || r['Timestamp'];
       if (!clockStart) return;
-      const slaH = r['Priority']==='high' ? 8 : 24;
+      const slaH    = r['Priority']==='high' ? 8 : 24;
       const elapsed = workingHoursSince(clockStart);
       if (elapsed === null) return;
       if (elapsed <= slaH) withinSLA++; else breached++;
@@ -2557,7 +2638,12 @@
     chartInstances.sla = new Chart(document.getElementById('chart-sla'), {
       type: 'doughnut',
       data: { labels:['Within SLA','Breached'], datasets:[{ data:[withinSLA,breached], backgroundColor:['#22a86e','#e74c3c'] }] },
-      options: { plugins:{legend:{position:'right'}} }
+      options: {
+        plugins:{legend:{position:'right'}},
+        onClick(_, elems) {
+          if (elems.length && elems[0].index === 1) drillToStatus('Pending');
+        },
+      }
     });
   }
 

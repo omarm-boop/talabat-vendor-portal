@@ -1,9 +1,18 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { Redis } = require('@upstash/redis');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
+const CACHE_KEY    = 'sheet:v1:all';
+const CACHE_TTL    = 30; // seconds
+
+let redis = null;
+function getRedis() {
+  if (!redis) redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  return redis;
+}
 
 module.exports = async function handler(req, res) {
   setCors(req, res, 'GET, OPTIONS');
@@ -36,12 +45,27 @@ module.exports = async function handler(req, res) {
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: TAB_NAME,
-    });
 
-    const values = response.data.values || [];
+    // Try Redis cache first (30s TTL reduces Sheets API calls)
+    let values = null;
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+      try {
+        const cached = await getRedis().get(CACHE_KEY);
+        if (cached) values = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      } catch (e) {
+        console.warn('cache read error (falling through to Sheets):', e.message);
+      }
+    }
+    if (!values) {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: TAB_NAME,
+      });
+      values = response.data.values || [];
+      if (process.env.UPSTASH_REDIS_REST_URL && values.length) {
+        getRedis().set(CACHE_KEY, JSON.stringify(values), { ex: CACHE_TTL }).catch(() => {});
+      }
+    }
     if (values.length < 2) return res.json({ data: [] });
 
     const headers = values[0].map(h => String(h).trim());
@@ -113,6 +137,9 @@ module.exports = async function handler(req, res) {
 
       // Priority flag — col X (index 23), written by set-priority.js
       obj['Priority'] = row[23] !== undefined ? row[23] : '';
+
+      // Audit log — col Y (index 24), written by update-status/assign/bulk-action/withdraw
+      obj['LastAction'] = row[24] !== undefined ? row[24] : '';
 
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';

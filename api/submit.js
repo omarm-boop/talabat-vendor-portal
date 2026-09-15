@@ -1,6 +1,13 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { Redis } = require('@upstash/redis');
+
+let redis = null;
+function getRedis() {
+  if (!redis) redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  return redis;
+}
 
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB      = 'Sheet1';
@@ -14,10 +21,35 @@ module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
+
+  // Server-side daily submission limit (configurable via DAILY_SUBMIT_LIMIT, default 5)
+  const dailyLimit = parseInt(process.env.DAILY_SUBMIT_LIMIT || '5', 10);
+  if (dailyLimit > 0 && process.env.UPSTASH_REDIS_REST_URL) {
+    try {
+      const dateKey    = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+      const vendorKey  = `daily:${sess.email}:${dateKey}`;
+      const count      = await getRedis().incr(vendorKey);
+      if (count === 1) {
+        // Set TTL to expire at end of day (seconds until midnight UTC)
+        const now     = new Date();
+        const midnight = new Date(now);
+        midnight.setUTCHours(24, 0, 0, 0);
+        await getRedis().expire(vendorKey, Math.ceil((midnight - now) / 1000));
+      }
+      if (count > dailyLimit) {
+        return res.status(429).json({
+          error: `Daily submission limit reached (${dailyLimit} per day). Please try again tomorrow.`,
+        });
+      }
+    } catch (e) {
+      console.warn('daily-limit Redis error (failing open):', e.message);
+    }
+  }
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
@@ -126,6 +158,11 @@ module.exports = async function handler(req, res) {
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
     });
+
+    // Invalidate the requests cache so the new row appears immediately
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+      getRedis().del('sheet:v1:all').catch(() => {});
+    }
 
     return res.json({ success: true });
 
