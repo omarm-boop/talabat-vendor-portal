@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
         getRedis().set(CACHE_KEY, JSON.stringify(values), { ex: CACHE_TTL }).catch(() => {});
       }
     }
-    if (values.length < 2) return res.json({ data: [] });
+    if (values.length < 2) return res.json({ data: [], _dbg: { tab: TAB_NAME, rows: values.length } });
 
     const headers = values[0].map(h => String(h).trim());
     const dataRows = values.slice(1);
@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    return res.json({ data: rows });
+    return res.json({ data: rows, _dbg: { tab: TAB_NAME, total: dataRows.length, filtered: rows.length } });
 
   } catch (err) {
     console.error('requests.js error:', err.message);
