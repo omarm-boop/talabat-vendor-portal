@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
-  const { action, rowIndexes, assignee, status } = body || {};
+  const { action, rowIndexes, assignee, status, rejectionReason } = body || {};
   if (!rowIndexes || !rowIndexes.length) return res.status(400).json({ error: 'rowIndexes required' });
 
   try {
@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
         if (assignee) data.push({ range: `${TAB}!W${rowIndex}`, values: [[now]] });
       } else if (action === 'status') {
         data.push({ range: `${TAB}!T${rowIndex}`, values: [[status || '']] });
+        if (rejectionReason) data.push({ range: `${TAB}!V${rowIndex}`, values: [[rejectionReason]] });
       }
     }
 

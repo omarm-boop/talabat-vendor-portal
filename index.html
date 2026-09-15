@@ -455,6 +455,7 @@
         <div class="dash-actions">
           <button class="btn-new-req" data-i18n="newReqBtn" onclick="goToForm()">＋ Submit New Request</button>
           <button class="btn-refresh" data-i18n="refreshBtn" onclick="loadDashboard()">↻ Refresh</button>
+          <span id="dash-refresh-ts" style="font-size:11px;color:#aaa;margin-left:6px"></span>
         </div>
       </div>
 
@@ -467,6 +468,10 @@
         <div class="stat-card stat-pending">
           <div class="stat-num" id="cnt-pending">—</div>
           <div class="stat-label" data-i18n="statPending">Pending</div>
+        </div>
+        <div class="stat-card" style="border-top:4px solid #1565c0">
+          <div class="stat-num" id="cnt-progress" style="color:#1565c0">—</div>
+          <div class="stat-label">In Progress</div>
         </div>
         <div class="stat-card stat-rejected">
           <div class="stat-num" id="cnt-rejected">—</div>
@@ -966,6 +971,11 @@
       <button class="bulk-btn" onclick="bulkAssign()">Assign</button>
       <button class="bulk-btn" onclick="bulkSetStatus('Done')">✓ Mark Done</button>
       <button class="bulk-btn" onclick="bulkSetStatus('In Progress')">⏳ In Progress</button>
+      <button class="bulk-btn" style="background:#c62828" onclick="showBulkReject()">✕ Reject</button>
+      <span id="bulk-reject-wrap" style="display:none;align-items:center;gap:6px">
+        <input id="bulk-reject-reason" class="adm-search" style="width:200px;margin:0" placeholder="Rejection reason…">
+        <button class="bulk-btn" style="background:#c62828" onclick="bulkReject()">Confirm Reject</button>
+      </span>
       <button class="bulk-btn cancel" onclick="clearBulk()">✕ Cancel</button>
     </div>
 
@@ -992,7 +1002,11 @@
         <option value="">All Agents</option>
       </select>
       <input class="adm-search" id="a-search" placeholder="Search vendor, restaurant, SKU…" oninput="renderAdminTable()">
+      <input type="date" class="adm-sel" id="a-date-from" onchange="renderAdminTable()" title="From date" style="width:130px;cursor:pointer">
+      <input type="date" class="adm-sel" id="a-date-to"   onchange="renderAdminTable()" title="To date"   style="width:130px;cursor:pointer">
+      <button class="adm-refresh" style="background:#e0d8ce;color:#411517" onclick="clearDateFilter()" title="Clear date filter">✕ Date</button>
       <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
+      <span id="adm-refresh-ts" style="font-size:11px;color:#aaa;margin-left:2px"></span>
       <button class="adm-refresh" style="background:#411517" id="btn-gen-reset" onclick="openResetTokenModal()" title="Generate a one-time password reset code for a vendor">🔑 Reset Pwd</button>
     </div>
 
@@ -1436,7 +1450,7 @@
     loadEl.style.display = 'block';
     emptyEl.style.display = 'none';
     errEl.style.display = 'none';
-    ['cnt-done','cnt-pending','cnt-rejected','cnt-total'].forEach(id => document.getElementById(id).textContent = '—');
+    ['cnt-done','cnt-pending','cnt-progress','cnt-rejected','cnt-total'].forEach(id => document.getElementById(id).textContent = '—');
 
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'PASTE_YOUR_APPS_SCRIPT_URL_HERE') {
       loadEl.style.display = 'none';
@@ -1456,22 +1470,24 @@
       const rows = json.data || [];
       loadEl.style.display = 'none';
 
-      if (rows.length === 0) { emptyEl.style.display = 'block'; listEl.innerHTML = ''; setStats(0,0,0,0); return; }
+      if (rows.length === 0) { emptyEl.style.display = 'block'; listEl.innerHTML = ''; setStats(0,0,0,0,0); return; }
 
       rows.sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
 
       checkNotifications(rows, currentVendor.vendorId);
 
-      let done = 0, pending = 0, rejected = 0;
+      let done = 0, pending = 0, progress = 0, rejected = 0;
       rows.forEach(r => {
         const s = (r['Status'] || '').toLowerCase();
         if (s === 'done' || s === 'completed' || s === 'complete') done++;
         else if (s.includes('reject') || s.includes('daily limit')) rejected++;
+        else if (s.includes('progress')) progress++;
         else pending++;
       });
-      setStats(done, pending, rejected, rows.length);
+      setStats(done, pending, progress, rejected, rows.length);
       cachedDashRows = rows;
       renderDashList();
+      setRefreshLabel('dash-refresh-ts');
 
     } catch(err) {
       loadEl.style.display = 'none';
@@ -1481,9 +1497,10 @@
     }
   }
 
-  function setStats(done, pending, rejected, total) {
+  function setStats(done, pending, progress, rejected, total) {
     document.getElementById('cnt-done').textContent     = done;
     document.getElementById('cnt-pending').textContent  = pending;
+    document.getElementById('cnt-progress').textContent = progress;
     document.getElementById('cnt-rejected').textContent = rejected;
     document.getElementById('cnt-total').textContent    = total;
   }
@@ -1540,6 +1557,7 @@
       adminRequests = all;
       updateAdminStats();
       renderAdminTable();
+      setRefreshLabel('adm-refresh-ts');
     } catch(e) {
       document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
@@ -1580,11 +1598,19 @@
     }).join('');
   }
 
+  function clearDateFilter() {
+    document.getElementById('a-date-from').value = '';
+    document.getElementById('a-date-to').value   = '';
+    renderAdminTable();
+  }
+
   function renderAdminTable() {
     const typeFilter     = document.getElementById('a-filter-type').value;
     const statusFilter   = document.getElementById('a-filter-status').value.toLowerCase();
     const assigneeFilter = document.getElementById('a-filter-assignee').value;
     const search         = document.getElementById('a-search').value.toLowerCase();
+    const dateFrom       = document.getElementById('a-date-from').value;
+    const dateTo         = document.getElementById('a-date-to').value;
     const isMonitor      = currentAdminUser.role === 'monitor';
 
     const filtered = adminRequests.filter(r => {
@@ -1596,6 +1622,11 @@
       if (statusFilter   && !status.includes(statusFilter))  return false;
       if (assigneeFilter && assignee !== assigneeFilter)     return false;
       if (search         && !searchStr.includes(search))     return false;
+      if (dateFrom || dateTo) {
+        const ts = r['Timestamp'] ? r['Timestamp'].slice(0, 10) : '';
+        if (dateFrom && ts < dateFrom) return false;
+        if (dateTo   && ts > dateTo)   return false;
+      }
       return true;
     });
 
@@ -1688,7 +1719,7 @@
         ${cell(r['Branch'] || r['Branch Name / اسم الفرع'])}
         ${cell(r['Item Name'] || r['Item Name / اسم المنتج'])}
         ${assigneeCell}
-        <td style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status, priority)}</td>
+        <td style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status, priority, r['Timestamp'])}</td>
         <td>${actions}</td>
       </tr>`;
     }).join('');
@@ -2172,19 +2203,23 @@
     return ms / 3600000;
   }
 
-  function slaBadge(assignedAt, status, priority) {
+  function slaBadge(assignedAt, status, priority, submittedAt) {
     const sl = (status || '').toLowerCase();
-    if (!assignedAt || sl === 'done' || sl === 'completed' || sl.includes('reject')) return '';
-    const elapsed   = workingHoursSince(assignedAt);
+    if (sl === 'done' || sl === 'completed' || sl.includes('reject')) return '';
+    // Use submission time when not yet assigned so the clock runs from day 0
+    const clockStart = assignedAt || submittedAt;
+    if (!clockStart) return '';
+    const elapsed   = workingHoursSince(clockStart);
     if (elapsed === null) return '';
     const slaHours  = priority === 'high' ? 8 : 24;
     const remaining = slaHours - elapsed;
     let cls, label;
+    const unassignedNote = assignedAt ? '' : ' <span style="opacity:.7;font-size:9px">(unassigned)</span>';
     if (remaining <= 0)       { cls = 'sla-red';    label = '⚠ SLA Breached'; }
     else if (remaining <= 4)  { cls = 'sla-red';    label = `⏰ ${remaining.toFixed(1)}h left`; }
     else if (remaining <= 8)  { cls = 'sla-yellow'; label = `⏳ ${remaining.toFixed(1)}h left`; }
     else                      { cls = 'sla-green';  label = `✓ ${remaining.toFixed(1)}h left`; }
-    return `<span class="sla-badge ${cls}">${label}</span>`;
+    return `<span class="sla-badge ${cls}">${label}${unassignedNote}</span>`;
   }
 
   // ═══════════════ FILE UPLOAD ═══════════════
@@ -2359,16 +2394,30 @@
   // ═══════════════ AUTO-REFRESH TIMERS ═══════════════
   let vendorTimer = null;
   let adminTimer  = null;
+
+  function fmtRefreshTime() {
+    return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+  function setRefreshLabel(id) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = 'Last refreshed ' + fmtRefreshTime();
+  }
+
   function startVendorRefresh() {
     stopVendorRefresh();
     vendorTimer = setInterval(() => {
+      if (document.hidden) return;
       if (document.getElementById('view-dash').style.display !== 'none') loadDashboard();
     }, 60000);
   }
   function stopVendorRefresh() { if (vendorTimer) { clearInterval(vendorTimer); vendorTimer = null; } }
+
   function startAdminRefresh() {
     stopAdminRefresh();
-    adminTimer = setInterval(loadAdminRequests, 60000);
+    adminTimer = setInterval(() => {
+      if (document.hidden) return;
+      loadAdminRequests();
+    }, 60000);
   }
   function stopAdminRefresh() { if (adminTimer) { clearInterval(adminTimer); adminTimer = null; } }
 
@@ -2406,6 +2455,7 @@
       const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
       const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
       const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
+      const vendorSla  = (!isDone && !isRej) ? slaBadge('', status, row['Priority'] || '', row['Timestamp'] || '') : '';
       return `<div class="req-card">
         <div class="req-left">
           <div class="req-type">${escHtml(reqType)}</div>
@@ -2413,7 +2463,10 @@
           <div class="req-ts">${ts}</div>
           ${reasonHtml}
         </div>
-        <span class="badge ${bClass}">${escHtml(status)}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span class="badge ${bClass}">${escHtml(status)}</span>
+          ${vendorSla}
+        </div>
       </div>`;
     }).join('');
   }
@@ -2489,20 +2542,21 @@
       options: { plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
     });
 
-    // Chart 5: SLA compliance
-    let withinSLA = 0, breached = 0, unassigned = 0;
+    // Chart 5: SLA compliance (clock starts from submission if unassigned)
+    let withinSLA = 0, breached = 0;
     rows.forEach(r => {
       const s = (r['Status']||'').toLowerCase();
       if (s==='done'||s==='completed'||s.includes('reject')) return;
-      if (!r['AssignedAt']) { unassigned++; return; }
+      const clockStart = r['AssignedAt'] || r['Timestamp'];
+      if (!clockStart) return;
       const slaH = r['Priority']==='high' ? 8 : 24;
-      const elapsed = workingHoursSince(r['AssignedAt']);
+      const elapsed = workingHoursSince(clockStart);
       if (elapsed === null) return;
       if (elapsed <= slaH) withinSLA++; else breached++;
     });
     chartInstances.sla = new Chart(document.getElementById('chart-sla'), {
       type: 'doughnut',
-      data: { labels:['Within SLA','Breached','Unassigned'], datasets:[{ data:[withinSLA,breached,unassigned], backgroundColor:['#22a86e','#e74c3c','#e0d8d0'] }] },
+      data: { labels:['Within SLA','Breached'], datasets:[{ data:[withinSLA,breached], backgroundColor:['#22a86e','#e74c3c'] }] },
       options: { plugins:{legend:{position:'right'}} }
     });
   }
@@ -2510,7 +2564,8 @@
   function exportCSV() {
     const cols = ['Timestamp','Vendor ID','Restaurant','Request Type','Branch','Item Name','Status','Assignee','AssignedAt','Rejection Reason','Priority'];
     const lines = [cols.join(',')];
-    adminRequests.forEach(r => {
+    const source = adminFiltered.length ? adminFiltered : adminRequests;
+    source.forEach(r => {
       lines.push(cols.map(c => '"' + String(r[c]||'').replace(/"/g,'""') + '"').join(','));
     });
     const blob = new Blob([lines.join('\n')], {type:'text/csv'});
@@ -2542,6 +2597,8 @@
   function clearBulk() {
     document.querySelectorAll('.bulk-cb, #bulk-all-cb').forEach(c => { c.checked = false; c.indeterminate = false; });
     document.getElementById('bulk-bar').classList.remove('on');
+    const wrap = document.getElementById('bulk-reject-wrap');
+    if (wrap) { wrap.style.display = 'none'; document.getElementById('bulk-reject-reason').value = ''; }
   }
 
   async function bulkAssign() {
@@ -2561,6 +2618,36 @@
       });
       clearBulk(); renderAgentBreakdown(adminRequests); renderAdminTable();
     } catch(e) { alert('Bulk assign failed: ' + e.message); }
+  }
+
+  function showBulkReject() {
+    const wrap = document.getElementById('bulk-reject-wrap');
+    wrap.style.display = wrap.style.display === 'none' ? 'flex' : 'none';
+    if (wrap.style.display === 'flex') document.getElementById('bulk-reject-reason').focus();
+  }
+
+  async function bulkReject() {
+    const reason  = (document.getElementById('bulk-reject-reason').value || '').trim();
+    if (!reason) { alert('Please enter a rejection reason.'); return; }
+    const checked = document.querySelectorAll('.bulk-cb:checked');
+    if (!checked.length) return;
+    const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
+    try {
+      const resp = await fetch('/api/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ action: 'status', rowIndexes, status: 'Rejected', rejectionReason: reason }),
+      });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error);
+      rowIndexes.forEach(idx => {
+        const row = adminRequests.find(r => r['_rowIndex'] === idx);
+        if (row) { row['Status'] = 'Rejected'; row['Rejection Reason'] = reason; }
+      });
+      document.getElementById('bulk-reject-reason').value = '';
+      document.getElementById('bulk-reject-wrap').style.display = 'none';
+      clearBulk(); updateAdminStats(); renderAdminTable();
+    } catch(e) { alert('Bulk reject failed: ' + e.message); }
   }
 
   async function bulkSetStatus(status) {
