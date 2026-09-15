@@ -42,7 +42,11 @@ module.exports = async function handler(req, res) {
   if (!vendorId || !password)
     return res.status(400).json({ error: 'Email / Vendor ID and password are required' });
 
-  if (!await checkLoginLimit(req, res, vendorId)) return;
+  try {
+    if (!await checkLoginLimit(req, res, vendorId)) return;
+  } catch (rlErr) {
+    console.warn('Rate-limit check failed (failing open):', rlErr.message);
+  }
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
