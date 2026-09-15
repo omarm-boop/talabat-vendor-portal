@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB      = 'Sheet1';
+const TAB      = 'Form Responses 1';
 
 module.exports = async function handler(req, res) {
   // Vercel Cron injects Authorization: Bearer <CRON_SECRET> automatically

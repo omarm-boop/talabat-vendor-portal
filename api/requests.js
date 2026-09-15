@@ -4,7 +4,7 @@ const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB_NAME     = 'Sheet1';
+const TAB_NAME     = 'Form Responses 1';
 const CACHE_KEY    = 'sheet:v1:all';
 const CACHE_TTL    = 30; // seconds
 

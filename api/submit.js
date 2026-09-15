@@ -10,7 +10,7 @@ function getRedis() {
 }
 
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
-const TAB      = 'Sheet1';
+const TAB      = 'Form Responses 1';
 const HEADERS  = [
   'Timestamp', 'Vendor ID', 'Email Address', 'Restaurant', 'Branch',
   'Contact Name', 'Request Type', 'Item Name', 'SKU', 'Barcode',
