@@ -29,19 +29,13 @@ module.exports = async function handler(req, res) {
 
   // Server-side daily submission limit (configurable via DAILY_SUBMIT_LIMIT, default 5)
   const dailyLimit = parseInt(process.env.DAILY_SUBMIT_LIMIT || '5', 10);
+  let dailyKey = null;
   if (dailyLimit > 0 && process.env.UPSTASH_REDIS_REST_URL) {
     try {
-      const dateKey    = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
-      const vendorKey  = `daily:${sess.email}:${dateKey}`;
-      const count      = await getRedis().incr(vendorKey);
-      if (count === 1) {
-        // Set TTL to expire at end of day (seconds until midnight UTC)
-        const now     = new Date();
-        const midnight = new Date(now);
-        midnight.setUTCHours(24, 0, 0, 0);
-        await getRedis().expire(vendorKey, Math.ceil((midnight - now) / 1000));
-      }
-      if (count > dailyLimit) {
+      const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+      dailyKey      = `daily:${sess.email}:${dateKey}`;
+      const current = await getRedis().get(dailyKey);
+      if (current !== null && parseInt(current, 10) >= dailyLimit) {
         return res.status(429).json({
           error: `Daily submission limit reached (${dailyLimit} per day). Please try again tomorrow.`,
         });
@@ -90,7 +84,8 @@ module.exports = async function handler(req, res) {
         if (String(row[1] || '').trim().toLowerCase() !== typeCheck)  return false;
         if (barcodeCheck) {
           const rowBarcode = String(row[2] || '').trim();
-          if (rowBarcode && rowBarcode !== barcodeCheck) return false;
+          // Different barcode means different item — not a duplicate
+          if (rowBarcode !== barcodeCheck) return false;
         }
         return true;
       });
@@ -158,6 +153,17 @@ module.exports = async function handler(req, res) {
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
     });
+
+    // Increment daily counter only after successful write (avoids burning slots on errors)
+    if (dailyKey) {
+      getRedis().incr(dailyKey).then(count => {
+        if (count === 1) {
+          const now = new Date();
+          const midnight = new Date(now); midnight.setUTCHours(24, 0, 0, 0);
+          getRedis().expire(dailyKey, Math.ceil((midnight - now) / 1000)).catch(() => {});
+        }
+      }).catch(() => {});
+    }
 
     // Invalidate the requests cache so the new row appears immediately
     if (process.env.UPSTASH_REDIS_REST_URL) {

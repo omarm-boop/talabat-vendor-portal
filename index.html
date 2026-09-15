@@ -1799,7 +1799,6 @@
       });
       const json = await resp.json();
       if (!json.success) throw new Error(json.error || 'Unknown error');
-      const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
       if (row) { row['Status'] = status; if (rejectionReason) row['Rejection Reason'] = rejectionReason; }
       updateAdminStats();
       renderAdminTable();
@@ -2486,7 +2485,7 @@
     emptyEl.style.display = 'none';
     listEl.innerHTML = rows.map(row => {
       const status   = row['Status'] || 'Pending';
-      const reason   = row['Reason'] || row['Comment'] || '';
+      const reason   = row['Rejection Reason'] || row['Comment'] || '';
       const sl       = status.toLowerCase();
       const isDone   = sl === 'done' || sl === 'completed' || sl === 'complete';
       const isRej    = sl.includes('reject') || sl.includes('daily limit');
@@ -2496,7 +2495,7 @@
       const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
       const reqType  = row['Request Type'] || row['Request Type / نوع الطلب'] || '—';
       const reasonHtml = reason && isRej ? `<div class="req-reason">Reason: ${escHtml(reason)}</div>` : '';
-      const vendorSla   = (!isDone && !isRej) ? slaBadge('', status, row['Priority'] || '', row['Timestamp'] || '') : '';
+      const vendorSla   = (!isDone && !isRej) ? slaBadge(row['AssignedAt'] || '', status, row['Priority'] || '', row['Timestamp'] || '') : '';
       const rowIdx      = row['_rowIndex'];
       const canWithdraw = sl === 'pending' && rowIdx;
       const withdrawBtn = canWithdraw
@@ -2564,14 +2563,31 @@
       : adminRequests;
 
     // Chart 1: Requests per day
-    const spanDays = analyticsRangeDays > 0 ? analyticsRangeDays : 30;
-    const days = {};
+    // For "All time", aggregate by week using the dataset's earliest date
     const nowDate = new Date();
-    for (let i = spanDays - 1; i >= 0; i--) {
-      const d = new Date(nowDate); d.setDate(d.getDate() - i);
-      days[d.toISOString().slice(0,10)] = 0;
+    const days = {};
+    if (analyticsRangeDays === 0) {
+      // Build axis from earliest timestamp in dataset, bucketed by week (Mon)
+      const timestamps = rows.map(r => r['Timestamp']).filter(Boolean).sort();
+      const earliest = timestamps.length ? new Date(timestamps[0]) : new Date(nowDate.getTime() - 90 * 86400000);
+      for (let d = new Date(earliest); d <= nowDate; d.setDate(d.getDate() + 7)) {
+        // round to Monday
+        const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        days[mon.toISOString().slice(0,10)] = 0;
+      }
+      rows.forEach(r => {
+        if (!r['Timestamp']) return;
+        const d = new Date(r['Timestamp']); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        const key = d.toISOString().slice(0,10);
+        if (key in days) days[key]++;
+      });
+    } else {
+      for (let i = analyticsRangeDays - 1; i >= 0; i--) {
+        const d = new Date(nowDate); d.setDate(d.getDate() - i);
+        days[d.toISOString().slice(0,10)] = 0;
+      }
+      rows.forEach(r => { const d = (r['Timestamp'] || '').slice(0,10); if (d in days) days[d]++; });
     }
-    rows.forEach(r => { const d = (r['Timestamp'] || '').slice(0,10); if (d in days) days[d]++; });
     chartInstances.daily = new Chart(document.getElementById('chart-daily'), {
       type: 'line',
       data: { labels: Object.keys(days).map(d => d.slice(5)), datasets: [{ label:'Requests', data:Object.values(days), borderColor:'#FF5900', backgroundColor:'rgba(255,89,0,.1)', fill:true, tension:.4, pointRadius:3 }] },
@@ -2584,7 +2600,7 @@
     const typeLabels = Object.keys(typeCounts);
     chartInstances.type = new Chart(document.getElementById('chart-type'), {
       type: 'doughnut',
-      data: { labels: typeLabels, datasets: [{ data:Object.values(typeCounts), backgroundColor:['#FF5900','#411517','#22a86e','#f39c12','#8318D8','e74c3c','#3498db'] }] },
+      data: { labels: typeLabels, datasets: [{ data:Object.values(typeCounts), backgroundColor:['#FF5900','#411517','#22a86e','#f39c12','#8318D8','#e74c3c','#3498db'] }] },
       options: {
         plugins:{legend:{position:'right',labels:{font:{size:11}}}},
         onClick(_, elems) {
@@ -2641,7 +2657,12 @@
       options: {
         plugins:{legend:{position:'right'}},
         onClick(_, elems) {
-          if (elems.length && elems[0].index === 1) drillToStatus('Pending');
+          if (elems.length && elems[0].index === 1) {
+            // Clear status filter so both Pending + In Progress breaches are visible
+            document.getElementById('a-filter-status').value = '';
+            showAdmTab('requests');
+            renderAdminTable();
+          }
         },
       }
     });

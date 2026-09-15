@@ -1,6 +1,13 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { Redis } = require('@upstash/redis');
+
+let redis = null;
+function getRedis() {
+  if (!redis) redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  return redis;
+}
 
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB      = 'Sheet1';
@@ -39,6 +46,7 @@ module.exports = async function handler(req, res) {
       },
     });
 
+    if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
     return res.json({ success: true });
   } catch (err) {
     console.error('assign.js error:', err.message);
