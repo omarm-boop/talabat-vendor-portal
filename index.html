@@ -648,43 +648,44 @@
           <div class="chip">Step 3 of 4 &nbsp;·&nbsp; <span id="s3-chip">Details</span></div>
           <div class="sh" id="s3-title">Update Details</div>
 
-          <!-- ══ ADD NEW ITEM ══ -->
-          <div id="grp-add" style="display:none">
-            <div class="sec-label">Item Identifiers</div>
-            <div class="row x2">
-              <div class="fg">
-                <label class="lbl">Barcode <span class="req">*</span></label>
-                <input type="text" id="f-add-barcode" placeholder="e.g. 06221067002767">
-                <div class="ferr" id="e-add-barcode">Barcode is required</div>
-              </div>
-              <div class="fg">
-                <label class="lbl">SKU <span class="req">*</span></label>
-                <input type="text" id="f-add-sku" placeholder="e.g. 6985">
-                <div class="ferr" id="e-add-sku">SKU is required</div>
-              </div>
-            </div>
-            <div class="sec-label">New Item Information</div>
-            <div class="fg">
-              <label class="lbl">Item Name (English) <span class="req">*</span></label>
-              <input type="text" id="f-add-name-en" placeholder="e.g. Paracetamol 500mg, 20 Tablets">
-              <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
-              <div class="ferr" id="e-add-name-en">Item name in English is required</div>
-            </div>
-            <div class="fg">
-              <label class="lbl">Item Name (Arabic) <span class="opt">(optional)</span></label>
-              <input type="text" id="f-add-name-ar" placeholder="اسم المنتج بالعربي" dir="rtl">
-            </div>
-            <div class="row x2">
-              <div class="fg">
-                <label class="lbl">Category <span class="opt">(optional)</span></label>
-                <input type="text" id="f-add-cat" placeholder="e.g. Medications, Beverages">
-              </div>
-              <div class="fg">
-                <label class="lbl">Price <span class="req">*</span></label>
-                <input type="text" id="f-add-price" placeholder="e.g. EGP 34.00">
-                <div class="ferr" id="e-add-price">Price is required</div>
-              </div>
-            </div>
+<!-- == ADD NEW ITEM == -->
+<div id="grp-add" style="display:none">
+  <div class="sec-label">Item Identifiers</div>
+  <div class="row x2">
+    <div class="fg">
+      <label class="lbl">Master Product Code / Barcode <span class="req">*</span></label>
+      <input type="text" id="f-add-barcode" placeholder="e.g. 6221067002767">
+      <div class="ferr" id="e-add-barcode">Master product code / barcode is required</div>
+    </div>
+    <div class="fg">
+      <label class="lbl">SKU <span class="opt">(optional)</span></label>
+      <input type="text" id="f-add-sku" placeholder="e.g. 6985">
+      <div class="ferr" id="e-add-sku">SKU is required</div>
+    </div>
+  </div>
+  <div class="sec-label">New Item Information</div>
+  <div class="fg">
+    <label class="lbl">Product Title (English) [productTitle::en_EG] <span class="req">*</span></label>
+    <input type="text" id="f-add-name-en" placeholder="e.g. Paracetamol 500mg, 20 Tablets">
+    <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
+    <div class="ferr" id="e-add-name-en">Item name in English is required</div>
+  </div>
+  <div class="fg">
+    <label class="lbl">Item Name (Arabic) <span class="opt">(optional)</span></label>
+    <input type="text" id="f-add-name-ar" placeholder="اسم المنتج بالعربي" dir="rtl">
+  </div>
+  <div class="row x2">
+    <div class="fg">
+      <label class="lbl">Category [category::en_EG] <span class="req">*</span></label>
+      <input type="text" id="f-add-cat" placeholder="e.g. Medications, Beverages">
+      <div class="ferr" id="e-add-cat">Category is required</div>
+    </div>
+    <div class="fg">
+      <label class="lbl">Price <span class="req">*</span></label>
+      <input type="text" id="f-add-price" placeholder="e.g. EGP 34.00">
+      <div class="ferr" id="e-add-price">Price is required</div>
+    </div>
+  </div>
             <div class="fg">
               <label class="lbl">Description <span class="opt">(optional, max 150 chars)</span></label>
               <textarea id="f-add-desc" placeholder="Short description of the item…" maxlength="150"></textarea>
