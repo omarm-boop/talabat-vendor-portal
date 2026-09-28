@@ -1240,7 +1240,7 @@
     if (!vendorId || !pass) { errEl.textContent = 'Please enter your Chain ID and password.'; return; }
     btn.textContent = T[lang].signingIn; btn.disabled = true;
     try {
-      const resp = await fetch('/api/auth', {
+      const resp = await apiFetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendorId, password: pass }),
@@ -1275,7 +1275,7 @@
     if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
     btn.textContent = T[lang].creatingAcc; btn.disabled = true;
     try {
-      const resp = await fetch('/api/register', {
+      const resp = await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendorId, chainName: chainName.trim(), password: pass }),
@@ -1326,7 +1326,7 @@
   }
 
   async function doLogout() {
-    try { await fetch('/api/logout', { method: 'POST', headers: getAuthHeaders() }); } catch (_) {}
+    try { await apiFetch('/api/logout', { method: 'POST', headers: getAuthHeaders() }); } catch (_) {}
     stopVendorRefresh();
     stopAdminRefresh();
     currentVendor = null;
@@ -1371,7 +1371,7 @@
     if (!vendorId || !token || !newPassword) { errEl.textContent = 'All fields are required.'; return; }
     btn.disabled = true; btn.textContent = 'Resetting…';
     try {
-      const r = await fetch('/api/reset', {
+      const r = await apiFetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendorId, token, newPassword }),
@@ -1529,7 +1529,7 @@
 
   async function initAdminView() {
     try {
-      const tr = await fetch('/api/team', { headers: getAuthHeaders() });
+      const tr = await apiFetch('/api/team', { headers: getAuthHeaders() });
       const td = await tr.json();
       TEAM_AGENTS = td.names || [];
     } catch (_) {}
@@ -1559,7 +1559,7 @@
   async function loadAdminRequests() {
     document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
     try {
-      const resp = await fetch('/api/requests?t=' + Date.now(), { headers: getAuthHeaders() });
+      const resp = await apiFetch('/api/requests?t=' + Date.now(), { headers: getAuthHeaders() });
       const json = await resp.json();
       const all = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
       adminRequests = all;
@@ -1756,7 +1756,7 @@
     if (!vendorId) { errEl.textContent = 'Enter a Chain ID or email.'; errEl.style.display = 'block'; return; }
     btn.disabled = true; btn.textContent = 'Generating…';
     try {
-      const r = await fetch('/api/reset', {
+      const r = await apiFetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ vendorId }),
@@ -1793,7 +1793,7 @@
     btn.textContent = '…'; btn.disabled = true;
     const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
     try {
-      const resp = await fetch('/api/update-status', {
+      const resp = await apiFetch('/api/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ rowIndex: rowIdx, status, rejectionReason, vendorId: row?.['Vendor ID'] }),
@@ -1812,7 +1812,7 @@
   async function adminAssign(rowIdx, assignee, sel) {
     sel.disabled = true;
     try {
-      const resp = await fetch('/api/assign', {
+      const resp = await apiFetch('/api/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ rowIndex: rowIdx, assignee }),
@@ -2138,7 +2138,7 @@
 
     try {
       const payload = buildPayload();
-      const resp = await fetch('/api/submit', {
+      const resp = await apiFetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload),
@@ -2272,7 +2272,7 @@
         r.onload = e => res(e.target.result);
         r.readAsDataURL(compressed);
       });
-      const result = await fetch('/api/upload', {
+      const result = await apiFetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ filename: file.name, contentType: 'image/jpeg', data: b64 })
@@ -2440,7 +2440,7 @@
     if (!confirm('Withdraw this request? This cannot be undone.')) return;
     btn.disabled = true; btn.textContent = '…';
     try {
-      const resp = await fetch('/api/submit', {
+      const resp = await apiFetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ rowIndex: rowIdx }),
@@ -2716,7 +2716,7 @@
     if (!checked.length) return;
     const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
     try {
-      const resp = await fetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({action:'assign',rowIndexes,assignee:agent}) });
+      const resp = await apiFetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({action:'assign',rowIndexes,assignee:agent}) });
       const json = await resp.json();
       if (!json.success) throw new Error(json.error);
       const now = new Date().toISOString();
@@ -2741,7 +2741,7 @@
     if (!checked.length) return;
     const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
     try {
-      const resp = await fetch('/api/bulk-action', {
+      const resp = await apiFetch('/api/bulk-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ action: 'status', rowIndexes, status: 'Rejected', rejectionReason: reason }),
@@ -2763,7 +2763,7 @@
     if (!checked.length) return;
     const rowIndexes = Array.from(checked).map(c => +c.dataset.idx);
     try {
-      const resp = await fetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({action:'status',rowIndexes,status}) });
+      const resp = await apiFetch('/api/bulk-action', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({action:'status',rowIndexes,status}) });
       const json = await resp.json();
       if (!json.success) throw new Error(json.error);
       rowIndexes.forEach(idx => {
@@ -2781,7 +2781,7 @@
     const newPriority = row['Priority'] === 'high' ? '' : 'high';
     btn.disabled = true;
     try {
-      const resp = await fetch('/api/assign', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({rowIndex:rowIdx,priority:newPriority}) });
+      const resp = await apiFetch('/api/assign', { method:'POST', headers:{'Content-Type':'application/json',...getAuthHeaders()}, body:JSON.stringify({rowIndex:rowIdx,priority:newPriority}) });
       const json = await resp.json();
       if (!json.success) throw new Error(json.error);
       row['Priority'] = newPriority;
