@@ -1228,6 +1228,17 @@
     return { add: t.typeUrgent, master: t.typeMaster, desc: t.typeDesc, photo: t.typePhoto, name: t.typeName, barcode: t.typeBarcode, remove: t.typeRemove }[type] || type;
   }
 
+  // ═══════════════ API FETCH WRAPPER ═══════════════
+  async function apiFetch(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...getAuthHeaders(), ...(opts.headers || {}) };
+    const resp = await fetch(path, { ...opts, headers });
+    if (resp.status === 401 || resp.status === 403) {
+      localStorage.removeItem('tlb_session');
+      location.reload();
+    }
+    return resp;
+  }
+
   // ═══════════════ SESSION ═══════════════
   let currentVendor = null;
 
