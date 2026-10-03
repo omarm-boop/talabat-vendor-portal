@@ -1481,7 +1481,7 @@
 
     try {
       const url = APPS_SCRIPT_URL + '?vendorId=' + encodeURIComponent(currentVendor.vendorId) + '&t=' + Date.now();
-      const resp = await fetch(url, { headers: getAuthHeaders() });
+      const resp = await apiFetch(url, { headers: getAuthHeaders() });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const json = await resp.json();
       if (json.error) throw new Error(json.error);
