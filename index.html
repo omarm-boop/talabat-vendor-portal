@@ -429,6 +429,28 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════ CHANGE PASSWORD ═══════════════════════════════════════ -->
+<div id="pg-changepwd" style="display:none; min-height:100vh; background:var(--burgundy); align-items:center; justify-content:center; padding:20px; flex-direction:column; gap:16px;">
+  <div style="color:rgba(255,255,255,.55); font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">talabat · Vendor Portal</div>
+  <div class="login-card" style="display:block">
+    <div class="login-title">Set Your Password</div>
+    <div class="login-sub">Your account is using the default password. Please create a new password before continuing.</div>
+    <div class="li-field">
+      <label class="li-label">New Password</label>
+      <div class="li-pass-wrap">
+        <input class="li-input" type="password" id="cp-newpass" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter') doChangePassword()">
+        <button class="li-eye" type="button" onclick="togglePass('cp-newpass')">👁</button>
+      </div>
+    </div>
+    <div class="li-field">
+      <label class="li-label">Confirm Password</label>
+      <input class="li-input" type="password" id="cp-confirm" placeholder="Repeat your new password" onkeydown="if(event.key==='Enter') doChangePassword()">
+    </div>
+    <div class="li-error" id="cp-err"></div>
+    <button class="btn-login" id="btn-changepwd" onclick="doChangePassword()">Set Password →</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════ VENDOR PORTAL ═══════════════════════════════════════ -->
 <div id="pg-portal" style="display:none">
 
@@ -676,9 +698,8 @@
   </div>
   <div class="row x2">
     <div class="fg">
-      <label class="lbl">Category [category::en_EG] <span class="req">*</span></label>
+      <label class="lbl">Category [category::en_EG] <span class="opt">(optional)</span></label>
       <input type="text" id="f-add-cat" placeholder="e.g. Medications, Beverages">
-      <div class="ferr" id="e-add-cat">Category is required</div>
     </div>
     <div class="fg">
       <label class="lbl">Price <span class="req">*</span></label>
@@ -1258,11 +1279,53 @@
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Login failed.'; return; }
-      startSession(data.vendor, data.sessionToken, data.sessionTs);
+      if (data.mustChangePassword) {
+        currentVendor = data.vendor;
+        localStorage.setItem('tlb_session', JSON.stringify({ vendor: data.vendor, ts: Date.now(), sessionToken: data.sessionToken, sessionTs: data.sessionTs }));
+        document.getElementById('pg-login').style.display = 'none';
+        document.getElementById('pg-changepwd').style.display = 'flex';
+        document.getElementById('cp-newpass').value = '';
+        document.getElementById('cp-confirm').value = '';
+        document.getElementById('cp-err').textContent = '';
+      } else {
+        startSession(data.vendor, data.sessionToken, data.sessionTs);
+      }
     } catch(e) {
       errEl.textContent = 'Connection error. Please try again.';
     } finally {
       btn.textContent = T[lang].signInBtn; btn.disabled = false;
+    }
+  }
+
+  async function doChangePassword() {
+    const newPass  = document.getElementById('cp-newpass').value;
+    const confirm  = document.getElementById('cp-confirm').value;
+    const errEl    = document.getElementById('cp-err');
+    const btn      = document.getElementById('btn-changepwd');
+    errEl.textContent = '';
+    if (newPass.length < 6)    { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+    if (newPass !== confirm)    { errEl.textContent = 'Passwords do not match.'; return; }
+    if (newPass === '123456')   { errEl.textContent = 'Please choose a different password than the default.'; return; }
+    btn.textContent = 'Saving…'; btn.disabled = true;
+    try {
+      const resp = await apiFetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newPass }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Failed to change password.'; return; }
+      document.getElementById('pg-changepwd').style.display = 'none';
+      document.getElementById('ph-vendor-name').textContent = currentVendor.chainName || currentVendor.vendorId;
+      document.getElementById('dash-name').textContent = currentVendor.branchName || currentVendor.chainName || '';
+      document.getElementById('pg-portal').style.display = 'block';
+      showView('dash');
+      loadDashboard();
+      startVendorRefresh();
+    } catch(e) {
+      errEl.textContent = 'Connection error. Please try again.';
+    } finally {
+      btn.textContent = 'Set Password →'; btn.disabled = false;
     }
   }
 
@@ -1347,6 +1410,7 @@
     localStorage.removeItem('tlb_session');
     document.getElementById('pg-portal').style.display = 'none';
     document.getElementById('pg-admin').style.display = 'none';
+    document.getElementById('pg-changepwd').style.display = 'none';
     document.getElementById('pg-login').style.display = 'flex';
     document.getElementById('li-vendorid').value = '';
     document.getElementById('li-pass').value = '';

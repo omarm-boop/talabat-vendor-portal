@@ -170,6 +170,7 @@ module.exports = async function handler(req, res) {
     const ts  = Date.now();
     return res.json({
       success: true,
+      mustChangePassword: password === '123456',
       sessionToken: signToken(vid, 'vendor', ts),
       sessionTs: ts,
       vendor: {

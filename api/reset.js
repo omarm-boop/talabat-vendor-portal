@@ -24,6 +24,51 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
   const { vendorId, token, newPassword } = body || {};
 
+  // ── SELF-CHANGE (authenticated vendor: newPassword only, no token/vendorId) ─
+  if (newPassword && !token && !vendorId) {
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (newPassword === '123456') return res.status(400).json({ error: 'Please choose a different password than the default' });
+
+    const sess = await verifyRequest(req);
+    if (!sess || sess.role !== 'vendor') return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+      const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: CREDS_TAB });
+      const values = resp.data.values || [];
+      if (values.length < 2) return res.status(404).json({ error: 'Account not found' });
+
+      const headers = values[0];
+      const rows    = values.slice(1);
+      const vid     = String(sess.email).toLowerCase().trim();
+      let rowNum = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = rows[i][idx] || ''; });
+        const matchKey = (obj['Chain ID'] && obj['Chain ID'].trim())
+          ? obj['Chain ID'].trim()
+          : obj['Vendor ID'].trim();
+        if (matchKey.toLowerCase() === vid) { rowNum = i + 2; break; }
+      }
+      if (rowNum === -1) return res.status(404).json({ error: 'Account not found' });
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${CREDS_TAB}!B${rowNum}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[hashed]] },
+      });
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('self-change-password error:', err.message);
+      return res.status(500).json({ error: 'Server error. Please try again.' });
+    }
+  }
+
   // ── RESET PASSWORD (public: vendorId + token + newPassword) ──────────────
   if (token && newPassword) {
     if (!vendorId) return res.status(400).json({ error: 'vendorId required' });
