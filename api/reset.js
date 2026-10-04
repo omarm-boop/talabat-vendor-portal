@@ -27,7 +27,6 @@ module.exports = async function handler(req, res) {
   // ── SELF-CHANGE (authenticated vendor: newPassword only, no token/vendorId) ─
   if (newPassword && !token && !vendorId) {
     if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    if (newPassword === '123456') return res.status(400).json({ error: 'Please choose a different password than the default' });
 
     const sess = await verifyRequest(req);
     if (!sess || sess.role !== 'vendor') return res.status(403).json({ error: 'Unauthorized' });
