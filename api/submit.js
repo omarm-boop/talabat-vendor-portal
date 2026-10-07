@@ -186,12 +186,19 @@ module.exports = async function handler(req, res) {
       'Pending',                  // T: Status
     ];
 
-    await sheets.spreadsheets.values.append({
+    const appendResp = await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!A:T`,
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
     });
+
+    // Auto-assign: find the row number we just wrote and assign it to an agent
+    const updatedRange = (appendResp.data.updates && appendResp.data.updates.updatedRange) || '';
+    const rowMatch = updatedRange.match(/(\d+)$/);
+    if (rowMatch) {
+      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
+    }
 
     // Increment daily counter only after successful write (avoids burning slots on errors)
     if (dailyKey) {
@@ -216,3 +223,72 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Server error. Please try again.' });
   }
 };
+
+// Auto-assign the newly submitted row to the correct agent.
+// Rule 1/2: same chain name → same agent who already handles it.
+// Rule 4: new chain → agent with fewest total assignments.
+async function autoAssign(sheets, chainName, newRowNum, now) {
+  try {
+    // Build agent list from TEAM_CREDENTIALS (exclude monitors)
+    let agents = [];
+    try {
+      const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
+      agents = team
+        .filter(m => m.role && m.role.toLowerCase() !== 'monitor')
+        .map(m => String(m.email).toLowerCase().trim());
+    } catch (_) {}
+    if (agents.length === 0) return;
+
+    // Fetch columns D (Chain Name) through U (Assignee) for all existing rows
+    const dataResp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${TAB}!D:U`,
+    });
+    // D=idx0, E=1, F=2, G=3, H=4, I=5, J=6, K=7, L=8, M=9,
+    // N=10, O=11, P=12, Q=13, R=14, S=15, T=16, U=17
+    const allRows = (dataResp.data.values || []).slice(1); // skip header row
+
+    const chainLower = chainName.trim().toLowerCase();
+
+    // Rule 1/2: find existing agent already assigned to this chain
+    let assignedAgent = null;
+    for (const r of allRows) {
+      const rowChain    = String(r[0]  || '').trim().toLowerCase();
+      const rowAssignee = String(r[17] || '').trim().toLowerCase();
+      if (rowChain === chainLower && rowAssignee && agents.includes(rowAssignee)) {
+        assignedAgent = rowAssignee;
+        break;
+      }
+    }
+
+    // Rule 4: new chain → pick the agent with the fewest total assignments
+    if (!assignedAgent) {
+      const counts = {};
+      for (const a of agents) counts[a] = 0;
+      for (const r of allRows) {
+        const rowAssignee = String(r[17] || '').trim().toLowerCase();
+        if (rowAssignee && Object.prototype.hasOwnProperty.call(counts, rowAssignee)) {
+          counts[rowAssignee]++;
+        }
+      }
+      assignedAgent = agents.reduce((min, a) => counts[a] < counts[min] ? a : min, agents[0]);
+    }
+
+    if (!assignedAgent) return;
+
+    const ts = now.toISOString();
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: [
+          { range: `${TAB}!U${newRowNum}`, values: [[assignedAgent]] },
+          { range: `${TAB}!W${newRowNum}`, values: [[ts]] },
+          { range: `${TAB}!Y${newRowNum}`, values: [[`Auto-assigned to ${assignedAgent} at ${ts}`]] },
+        ],
+      },
+    });
+  } catch (err) {
+    console.error('auto-assign error (non-fatal):', err.message);
+  }
+}
