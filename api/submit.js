@@ -229,14 +229,38 @@ module.exports = async function handler(req, res) {
 // Rule 4: new chain → agent with fewest total assignments.
 async function autoAssign(sheets, chainName, newRowNum, now) {
   try {
-    // Build agent list from TEAM_CREDENTIALS (exclude monitors)
-    let agents = [];
+    // Build agent list: TEAM_CREDENTIALS first, then Credentials sheet (Chain ID=0)
+    // Exclude anyone with role explicitly set to 'monitor'
+    const agentSet = new Set();
     try {
       const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
-      agents = team
-        .filter(m => m.role && m.role.toLowerCase() !== 'monitor')
-        .map(m => String(m.email).toLowerCase().trim());
+      for (const m of team) {
+        const role = (m.role || '').toLowerCase();
+        if (role !== 'monitor') agentSet.add(String(m.email).toLowerCase().trim());
+      }
     } catch (_) {}
+
+    // Also check Credentials sheet for team members (Chain ID = '0')
+    if (agentSet.size === 0) {
+      try {
+        const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
+        const credsVals = credsResp.data.values || [];
+        if (credsVals.length > 1) {
+          const headers = credsVals[0];
+          for (let i = 1; i < credsVals.length; i++) {
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h] = credsVals[i][idx] || ''; });
+            if (String(obj['Chain ID']).trim() !== '0') continue;
+            const branchRole = (obj['Branch Name'] || '').toLowerCase();
+            if (branchRole === 'monitor') continue;
+            const email = String(obj['Vendor ID'] || '').toLowerCase().trim();
+            if (email && email.includes('@')) agentSet.add(email);
+          }
+        }
+      } catch (_) {}
+    }
+
+    const agents = [...agentSet];
     if (agents.length === 0) return;
 
     // Fetch columns D (Chain Name) through U (Assignee) for all existing rows
