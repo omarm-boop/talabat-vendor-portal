@@ -196,8 +196,9 @@ module.exports = async function handler(req, res) {
     // Auto-assign: find the row number we just wrote and assign it to an agent
     const updatedRange = (appendResp.data.updates && appendResp.data.updates.updatedRange) || '';
     const rowMatch = updatedRange.match(/(\d+)$/);
+    let _assignDebug = null;
     if (rowMatch) {
-      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
+      _assignDebug = await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
     }
 
     // Increment daily counter only after successful write (avoids burning slots on errors)
@@ -216,7 +217,7 @@ module.exports = async function handler(req, res) {
       getRedis().del('sheet:v1:all').catch(() => {});
     }
 
-    return res.json({ success: true });
+    return res.json({ success: true, _debug: _assignDebug });
 
   } catch (err) {
     console.error('submit.js error:', err.message);
@@ -261,7 +262,7 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
     }
 
     const agents = [...agentSet];
-    if (agents.length === 0) return;
+    if (agents.length === 0) return { reason: 'no-agents', agentSet: [...agentSet] };
 
     // Fetch columns D (Chain Name) through U (Assignee) for all existing rows
     const dataResp = await sheets.spreadsheets.values.get({
@@ -298,7 +299,7 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
       assignedAgent = agents.reduce((min, a) => counts[a] < counts[min] ? a : min, agents[0]);
     }
 
-    if (!assignedAgent) return;
+    if (!assignedAgent) return { reason: 'no-match', agents, chainLower };
 
     const ts = now.toISOString();
     await sheets.spreadsheets.values.batchUpdate({
@@ -312,7 +313,9 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
         ],
       },
     });
+    return { assigned: assignedAgent, row: newRowNum };
   } catch (err) {
     console.error('auto-assign error (non-fatal):', err.message);
+    return { error: err.message };
   }
 }
