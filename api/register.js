@@ -22,7 +22,11 @@ module.exports = async function handler(req, res) {
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
-  if (!await checkRegisterLimit(req, res)) return;
+  try {
+    if (!await checkRegisterLimit(req, res)) return;
+  } catch (rlErr) {
+    console.warn('Register rate-limit check failed (failing open):', rlErr.message);
+  }
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
