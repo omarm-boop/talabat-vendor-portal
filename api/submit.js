@@ -230,8 +230,11 @@ module.exports = async function handler(req, res) {
 async function autoAssign(sheets, chainName, newRowNum, now) {
   try {
     // Build agentMap: { email → displayName }
-    // Exclude anyone with role explicitly set to 'monitor'
+    // Always merge TEAM_CREDENTIALS env var + Credentials sheet (Chain ID='0')
+    // so agents who sign up via the portal are included alongside env-var agents.
     const agentMap = {};
+
+    // Source 1: TEAM_CREDENTIALS env var (pre-configured accounts)
     try {
       const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
       for (const m of team) {
@@ -243,27 +246,26 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
       }
     } catch (_) {}
 
-    // Also check Credentials sheet for team members (Chain ID = '0')
-    if (Object.keys(agentMap).length === 0) {
-      try {
-        const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
-        const credsVals = credsResp.data.values || [];
-        if (credsVals.length > 1) {
-          const headers = credsVals[0];
-          for (let i = 1; i < credsVals.length; i++) {
-            const obj = {};
-            headers.forEach((h, idx) => { obj[h] = credsVals[i][idx] || ''; });
-            if (String(obj['Chain ID']).trim() !== '0') continue;
-            const branchRole = (obj['Branch Name'] || '').toLowerCase();
-            if (branchRole === 'monitor') continue;
-            const email = String(obj['Vendor ID'] || '').toLowerCase().trim();
-            if (email && email.includes('@')) {
-              agentMap[email] = obj['Chain Name'] || email;
-            }
+    // Source 2: Credentials sheet (Chain ID='0') — agents who registered via portal signup
+    try {
+      const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
+      const credsVals = credsResp.data.values || [];
+      if (credsVals.length > 1) {
+        const headers = credsVals[0];
+        for (let i = 1; i < credsVals.length; i++) {
+          const obj = {};
+          headers.forEach((h, idx) => { obj[h] = credsVals[i][idx] || ''; });
+          if (String(obj['Chain ID']).trim() !== '0') continue;
+          const branchRole = (obj['Branch Name'] || '').toLowerCase();
+          if (branchRole === 'monitor') continue;
+          const email = String(obj['Vendor ID'] || '').toLowerCase().trim();
+          if (email && email.includes('@') && !agentMap[email]) {
+            // Sheet name takes priority for signed-up agents; env var name already set above
+            agentMap[email] = obj['Chain Name'] || email;
           }
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
 
     const agentEmails = Object.keys(agentMap);
     if (agentEmails.length === 0) return;
