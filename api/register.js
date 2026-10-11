@@ -8,6 +8,14 @@ const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
 
 module.exports = async function handler(req, res) {
+  try { return await _handle(req, res); }
+  catch (topErr) {
+    console.error('register.js top-level error:', topErr.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Server error: ' + topErr.message });
+  }
+};
+
+async function _handle(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
