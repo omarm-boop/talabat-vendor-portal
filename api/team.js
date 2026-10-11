@@ -10,14 +10,19 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
-  const names = new Set();
+  const names  = new Set();
+  // agents: [{name, email}] for email→name resolution in the frontend
+  const agents = [];
 
   // From TEAM_CREDENTIALS env var — exclude monitors
   try {
     const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
     team.forEach(m => {
       if ((m.role || '').toLowerCase() === 'monitor') return;
-      if (m.name) names.add(m.name); else if (m.email) names.add(m.email);
+      const name = m.name || m.email || '';
+      if (!name) return;
+      names.add(name);
+      agents.push({ name, email: (m.email || '').toLowerCase().trim() });
     });
   } catch (_) {}
 
@@ -39,12 +44,14 @@ module.exports = async function handler(req, res) {
       if (colC !== '0') continue;
       const colE = (row[4] || '').trim().toLowerCase(); // role stored in Branch Name col
       if (colE === 'monitor') continue;
-      const colA = (row[0] || '').trim();   // email
-      const colD = (row[3] || '').trim();   // display name (stored by register.js)
-      const display = (colD && colD !== 'Talabat') ? colD : colA;
-      if (display) names.add(display);
+      const email   = (row[0] || '').trim().toLowerCase();
+      const colD    = (row[3] || '').trim();
+      const display = (colD && colD !== 'Talabat') ? colD : email;
+      if (!display || names.has(display)) continue;
+      names.add(display);
+      agents.push({ name: display, email });
     }
   } catch (_) {}
 
-  return res.json({ names: [...names] });
+  return res.json({ names: [...names], agents });
 };

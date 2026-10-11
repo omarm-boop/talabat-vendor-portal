@@ -71,10 +71,11 @@ module.exports = async function handler(req, res) {
 async function notifyVendor(sheets, vendorId, status, rejectionReason) {
   if (!process.env.RESEND_API_KEY || !vendorId) return;
 
-  // Look up the vendor's real email from Credentials col A→C
+  // Look up the vendor's notification email from Credentials:
+  // col A = Vendor ID, col C = Chain ID, col G (index 6) = notification email
   const creds = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${CREDS_TAB}!A:C`,
+    range: `${CREDS_TAB}!A:G`,
   });
   const rows = (creds.data.values || []).slice(1);
   const key  = String(vendorId).toLowerCase().trim();
@@ -82,8 +83,12 @@ async function notifyVendor(sheets, vendorId, status, rejectionReason) {
     String(r[0] || '').toLowerCase().trim() === key ||
     String(r[2] || '').toLowerCase().trim() === key
   );
-  const email = row ? String(row[2] || '').trim() : '';
-  if (!email || !email.includes('@')) return;
+  // For team members (@talabat.com), col A IS the email.
+  // For vendors, use col G (notification email captured at signup).
+  const colA = row ? String(row[0] || '').trim() : '';
+  const colG = row ? String(row[6] || '').trim() : '';
+  const email = colG.includes('@') ? colG : (colA.includes('@') ? colA : '');
+  if (!email) return;
 
   const statusLabel = status === 'Done' ? '✅ Completed'
     : status === 'Rejected' ? '❌ Rejected'

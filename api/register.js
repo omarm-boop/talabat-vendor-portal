@@ -22,7 +22,7 @@ async function _handle(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
-  const { vendorId, chainName, password } = body || {};
+  const { vendorId, chainName, password, vendorEmail } = body || {};
   const chainId = vendorId; // frontend sends Chain ID in the vendorId field
 
   if (!chainId || !password)
@@ -86,12 +86,14 @@ async function _handle(req, res) {
       });
     }
 
-    // Vendor: store Chain ID in both col A and col C for consistent lookup
+    // Vendor: store Chain ID in both col A and col C, email in col G
+    const notifEmail = (vendorEmail && String(vendorEmail).includes('@'))
+      ? String(vendorEmail).toLowerCase().trim() : '';
     await sheets.spreadsheets.values.append({
       spreadsheetId: TRACKING_SHEET_ID,
-      range: `${CREDENTIALS_TAB}!A:F`,
+      range: `${CREDENTIALS_TAB}!A:G`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[id, hashed, id, chainName || '', '', now]] },
+      requestBody: { values: [[id, hashed, id, chainName || '', '', now, notifEmail]] },
     });
 
     const ts = Date.now();

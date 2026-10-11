@@ -386,6 +386,10 @@
         <label class="li-label" id="su-chainname-label">Chain Name</label>
         <input class="li-input" type="text" id="su-chainname" placeholder="e.g. Pizza Palace" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
+      <div class="li-field" id="su-email-field">
+        <label class="li-label">Email Address <span style="color:#aaa;font-weight:500">(optional — for status notifications)</span></label>
+        <input class="li-input" type="email" id="su-email" placeholder="e.g. you@company.com" onkeydown="if(event.key==='Enter') doSignup()">
+      </div>
       <div class="li-field">
         <label class="li-label" data-i18n="createPassLabel">Create Password</label>
         <div class="li-pass-wrap">
@@ -1029,6 +1033,7 @@
       <button class="adm-refresh" style="background:#e0d8ce;color:#411517" onclick="clearDateFilter()" title="Clear date filter">✕ Date</button>
       <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
       <span id="adm-refresh-ts" style="font-size:11px;color:#aaa;margin-left:2px"></span>
+      <button class="adm-refresh" onclick="exportCSV()" title="Download current filtered view as CSV">⬇ Export CSV</button>
       <button class="adm-refresh" style="background:#411517" id="btn-gen-reset" onclick="openResetTokenModal()" title="Generate a one-time password reset code for a vendor">🔑 Reset Pwd</button>
     </div>
 
@@ -1100,7 +1105,8 @@
         <div class="chart-card"><h3>Requests per Day (Last 30)</h3><canvas id="chart-daily"></canvas></div>
         <div class="chart-card"><h3>By Request Type</h3><canvas id="chart-type"></canvas></div>
         <div class="chart-card"><h3>Top Vendors</h3><canvas id="chart-vendor"></canvas></div>
-        <div class="chart-card"><h3>Agent Performance</h3><canvas id="chart-agent"></canvas></div>
+        <div class="chart-card"><h3>Agent Performance (Total)</h3><canvas id="chart-agent"></canvas></div>
+        <div class="chart-card"><h3>Agent Weekly Throughput (Done tickets)</h3><canvas id="chart-agent-weekly"></canvas></div>
         <div class="chart-card chart-wide"><h3>SLA Compliance</h3><canvas id="chart-sla" style="max-height:200px"></canvas></div>
       </div>
     </div>
@@ -1334,11 +1340,14 @@
     const isTeam = val.endsWith('@talabat.com');
     document.getElementById('su-chainname-label').textContent = isTeam ? 'Your Name' : 'Chain Name';
     document.getElementById('su-chainname').placeholder       = isTeam ? 'e.g. Sarah Ahmed' : 'e.g. Pizza Palace';
+    // Email notification field — only relevant for vendors, not team members
+    document.getElementById('su-email-field').style.display = isTeam ? 'none' : '';
   }
 
   async function doSignup() {
     const vendorId   = document.getElementById('su-vendorid').value.trim();
     const chainName  = (document.getElementById('su-chainname') || {}).value || '';
+    const vendorEmail = (document.getElementById('su-email') || {}).value || '';
     const pass       = document.getElementById('su-pass').value;
     const confirm    = document.getElementById('su-confirm').value;
     const errEl      = document.getElementById('su-err');
@@ -1354,7 +1363,7 @@
       const resp = await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendorId, chainName: chainName.trim(), password: pass }),
+        body: JSON.stringify({ vendorId, chainName: chainName.trim(), password: pass, vendorEmail: vendorEmail.trim() }),
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Registration failed.'; return; }
@@ -1596,7 +1605,8 @@
 
 
   // ═══════════════ ADMIN PANEL ═══════════════
-  let TEAM_AGENTS = [];
+  let TEAM_AGENTS     = [];   // display names
+  let TEAM_EMAIL_MAP  = {};   // email → display name (for old rows with email in Assignee col)
 
   let adminRequests    = [];
   let currentAdminUser = { name: '', role: 'monitor' };
@@ -1609,6 +1619,8 @@
       const tr = await apiFetch('/api/team', { headers: getAuthHeaders() });
       const td = await tr.json();
       TEAM_AGENTS = td.names || [];
+      TEAM_EMAIL_MAP = {};
+      (td.agents || []).forEach(a => { if (a.email) TEAM_EMAIL_MAP[a.email] = a.name; });
     } catch (_) {}
     const isMonitor = currentAdminUser.role === 'monitor';
     // Assignee filter — monitor only
@@ -2698,10 +2710,12 @@
     });
 
     // Chart 4: Agent performance
+    // Normalise assignee: old rows may store email, new rows store display name.
+    const resolveAgent = raw => TEAM_EMAIL_MAP[String(raw||'').toLowerCase().trim()] || raw || '';
     const agentStats = {};
     TEAM_AGENTS.forEach(a => { agentStats[a] = {done:0,progress:0,pending:0}; });
     rows.forEach(r => {
-      const a = r['Assignee']; if (!a || !agentStats[a]) return;
+      const a = resolveAgent(r['Assignee']); if (!a || !agentStats[a]) return;
       const s = (r['Status']||'').toLowerCase();
       if (s==='done'||s==='completed') agentStats[a].done++;
       else if (s.includes('progress')) agentStats[a].progress++;
@@ -2716,6 +2730,46 @@
       ]},
       options: { plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
     });
+
+    // Chart 4b: Agent weekly throughput (Done tickets closed per week, last 8 weeks)
+    const weeklyEl = document.getElementById('chart-agent-weekly');
+    if (weeklyEl) {
+      const weekMs  = 7 * 86400000;
+      const numWeeks = 8;
+      const weekLabels = [];
+      for (let i = numWeeks - 1; i >= 0; i--) {
+        const d = new Date(nowDate - i * weekMs);
+        weekLabels.push(d.toISOString().slice(5, 10));
+      }
+      const weeklyData = {};
+      TEAM_AGENTS.forEach(a => { weeklyData[a] = new Array(numWeeks).fill(0); });
+      adminRequests.forEach(r => {
+        const s = (r['Status']||'').toLowerCase();
+        if (s !== 'done' && s !== 'completed') return;
+        const closeTs = r['AssignedAt'] || r['Timestamp'];
+        if (!closeTs) return;
+        const a = resolveAgent(r['Assignee']); if (!a || !weeklyData[a]) return;
+        const diff = nowDate - new Date(closeTs).getTime();
+        const wIdx = numWeeks - 1 - Math.floor(diff / weekMs);
+        if (wIdx >= 0 && wIdx < numWeeks) weeklyData[a][wIdx]++;
+      });
+      const palette = ['#FF5900','#411517','#22a86e','#f39c12','#8318D8','#3498db','#e74c3c','#1abc9c'];
+      chartInstances.agentWeekly = new Chart(weeklyEl, {
+        type: 'line',
+        data: {
+          labels: weekLabels,
+          datasets: TEAM_AGENTS.map((a, i) => ({
+            label: a,
+            data: weeklyData[a],
+            borderColor: palette[i % palette.length],
+            backgroundColor: 'transparent',
+            tension: .3,
+            pointRadius: 3,
+          })),
+        },
+        options: { plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+      });
+    }
 
     // Chart 5: SLA compliance — open rows only, click to drill into breached
     let withinSLA = 0, breached = 0;
