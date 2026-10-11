@@ -24,6 +24,14 @@ module.exports = async function handler(req, res) {
   const { action, rowIndexes, assignee, status, rejectionReason } = body || {};
   if (!rowIndexes || !rowIndexes.length) return res.status(400).json({ error: 'rowIndexes required' });
 
+  // Only monitor/agent may perform bulk actions; monitor-only for assignment
+  if (sess.role !== 'monitor' && sess.role !== 'agent') {
+    return res.status(403).json({ error: 'Agent or monitor access required' });
+  }
+  if (action === 'assign' && sess.role !== 'monitor') {
+    return res.status(403).json({ error: 'Monitor access required to reassign tickets' });
+  }
+
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({

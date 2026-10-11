@@ -62,9 +62,27 @@ obj['Vendor ID'] = email.replace('@vendor.portal', '')
 | Monitor | omar.m@talabat.com | 123456 |
 | Agent | agent1@talabat.com | 123456 |
 
-## Known Bug (open)
+## Auto-Assign (submit.js)
 
-`api/requests.js` line 133: `Rejection Reason` fallback chain still includes `obj['Branch Name / اسم الفرع']`, which causes the branch name to appear as rejection reason for non-rejected requests. Fix: remove that fallback, keep only `obj['Reason'] || ''`.
+- On every new submission `autoAssign()` runs: finds the agent already handling that chain name (Rule 1/2), or picks the agent with fewest total assignments for new chains (Rule 4).
+- Writes the agent's **display name** (not email) to column U.
+- Agent pool = TEAM_CREDENTIALS (non-monitor) + Credentials sheet rows where Chain ID = '0' and role ≠ 'monitor'.
+- Monitor can override via `assign.js` (monitor-only).
+
+## Role Checks
+
+| API | Allowed roles |
+|-----|---------------|
+| `assign.js` priority | monitor |
+| `assign.js` reassign | monitor |
+| `bulk-action.js` action=assign | monitor |
+| `bulk-action.js` action=status | monitor, agent |
+| `update-status.js` | any authenticated (monitor/agent) |
+| `team.js` | any authenticated |
+
+## SLA Cron
+
+`sla-check.js` is triggered daily at 08:00 UTC via Vercel Cron (`vercel.json`). Set `SLACK_WEBHOOK_URL` env var to receive Slack alerts for Pending tickets older than `SLA_DAYS` (default 3).
 
 ## Do Not Touch
 

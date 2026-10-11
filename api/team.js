@@ -12,13 +12,16 @@ module.exports = async function handler(req, res) {
 
   const names = new Set();
 
-  // From TEAM_CREDENTIALS env var (pre-configured accounts)
+  // From TEAM_CREDENTIALS env var — exclude monitors
   try {
     const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
-    team.forEach(m => { if (m.name) names.add(m.name); else if (m.email) names.add(m.email); });
+    team.forEach(m => {
+      if ((m.role || '').toLowerCase() === 'monitor') return;
+      if (m.name) names.add(m.name); else if (m.email) names.add(m.email);
+    });
   } catch (_) {}
 
-  // From Credentials sheet — rows where chainId col C = '0'
+  // From Credentials sheet — rows where chainId col C = '0', exclude monitors
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
@@ -34,6 +37,8 @@ module.exports = async function handler(req, res) {
     for (const row of rows.slice(1)) {
       const colC = (row[2] || '').trim();
       if (colC !== '0') continue;
+      const colE = (row[4] || '').trim().toLowerCase(); // role stored in Branch Name col
+      if (colE === 'monitor') continue;
       const colA = (row[0] || '').trim();   // email
       const colD = (row[3] || '').trim();   // display name (stored by register.js)
       const display = (colD && colD !== 'Talabat') ? colD : colA;

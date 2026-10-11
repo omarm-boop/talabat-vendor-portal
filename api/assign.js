@@ -45,7 +45,9 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── ASSIGN ────────────────────────────────────────────────────────────────
+  // ── ASSIGN (monitor-only) ─────────────────────────────────────────────────
+  if (sess.role !== 'monitor') return res.status(403).json({ error: 'Monitor access required' });
+
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
