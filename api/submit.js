@@ -229,19 +229,22 @@ module.exports = async function handler(req, res) {
 // Rule 4: new chain → agent with fewest total assignments.
 async function autoAssign(sheets, chainName, newRowNum, now) {
   try {
-    // Build agent list: TEAM_CREDENTIALS first, then Credentials sheet (Chain ID=0)
+    // Build agentMap: { email → displayName }
     // Exclude anyone with role explicitly set to 'monitor'
-    const agentSet = new Set();
+    const agentMap = {};
     try {
       const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
       for (const m of team) {
         const role = (m.role || '').toLowerCase();
-        if (role !== 'monitor') agentSet.add(String(m.email).toLowerCase().trim());
+        if (role !== 'monitor') {
+          const email = String(m.email).toLowerCase().trim();
+          agentMap[email] = m.name || email;
+        }
       }
     } catch (_) {}
 
     // Also check Credentials sheet for team members (Chain ID = '0')
-    if (agentSet.size === 0) {
+    if (Object.keys(agentMap).length === 0) {
       try {
         const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
         const credsVals = credsResp.data.values || [];
@@ -254,14 +257,16 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
             const branchRole = (obj['Branch Name'] || '').toLowerCase();
             if (branchRole === 'monitor') continue;
             const email = String(obj['Vendor ID'] || '').toLowerCase().trim();
-            if (email && email.includes('@')) agentSet.add(email);
+            if (email && email.includes('@')) {
+              agentMap[email] = obj['Chain Name'] || email;
+            }
           }
         }
       } catch (_) {}
     }
 
-    const agents = [...agentSet];
-    if (agents.length === 0) return;
+    const agentEmails = Object.keys(agentMap);
+    if (agentEmails.length === 0) return;
 
     // Fetch columns D (Chain Name) through U (Assignee) for all existing rows
     const dataResp = await sheets.spreadsheets.values.get({
@@ -275,40 +280,46 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
     const chainLower = chainName.trim().toLowerCase();
 
     // Rule 1/2: find existing agent already assigned to this chain
+    // rowAssignee may be an email (old rows) or a display name (new rows)
     let assignedAgent = null;
     for (const r of allRows) {
       const rowChain    = String(r[0]  || '').trim().toLowerCase();
       const rowAssignee = String(r[17] || '').trim().toLowerCase();
-      if (rowChain === chainLower && rowAssignee && agents.includes(rowAssignee)) {
-        assignedAgent = rowAssignee;
-        break;
-      }
+      if (rowChain !== chainLower || !rowAssignee) continue;
+      const matched = agentEmails.find(e =>
+        e === rowAssignee ||                                    // email match (old rows)
+        (agentMap[e] || '').toLowerCase() === rowAssignee      // name match (new rows)
+      );
+      if (matched) { assignedAgent = matched; break; }
     }
 
     // Rule 4: new chain → pick the agent with the fewest total assignments
     if (!assignedAgent) {
       const counts = {};
-      for (const a of agents) counts[a] = 0;
+      for (const e of agentEmails) counts[e] = 0;
       for (const r of allRows) {
         const rowAssignee = String(r[17] || '').trim().toLowerCase();
-        if (rowAssignee && Object.prototype.hasOwnProperty.call(counts, rowAssignee)) {
-          counts[rowAssignee]++;
-        }
+        if (!rowAssignee) continue;
+        const matched = agentEmails.find(e =>
+          e === rowAssignee || (agentMap[e] || '').toLowerCase() === rowAssignee
+        );
+        if (matched) counts[matched]++;
       }
-      assignedAgent = agents.reduce((min, a) => counts[a] < counts[min] ? a : min, agents[0]);
+      assignedAgent = agentEmails.reduce((min, e) => counts[e] < counts[min] ? e : min, agentEmails[0]);
     }
 
     if (!assignedAgent) return;
 
+    const displayName = agentMap[assignedAgent] || assignedAgent;
     const ts = now.toISOString();
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
       requestBody: {
         valueInputOption: 'RAW',
         data: [
-          { range: `${TAB}!U${newRowNum}`, values: [[assignedAgent]] },
+          { range: `${TAB}!U${newRowNum}`, values: [[displayName]] },
           { range: `${TAB}!W${newRowNum}`, values: [[ts]] },
-          { range: `${TAB}!Y${newRowNum}`, values: [[`Auto-assigned to ${assignedAgent} at ${ts}`]] },
+          { range: `${TAB}!Y${newRowNum}`, values: [[`Auto-assigned to ${displayName} at ${ts}`]] },
         ],
       },
     });

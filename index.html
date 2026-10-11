@@ -1344,7 +1344,9 @@
     const errEl      = document.getElementById('su-err');
     const btn        = document.getElementById('btn-signup');
     errEl.textContent = '';
+    const isTeamSignup = vendorId.toLowerCase().endsWith('@talabat.com');
     if (!vendorId)        { errEl.textContent = 'Please enter your Chain ID.'; return; }
+    if (isTeamSignup && !chainName.trim()) { errEl.textContent = 'Please enter your name.'; return; }
     if (pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
     if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
     btn.textContent = T[lang].creatingAcc; btn.disabled = true;
