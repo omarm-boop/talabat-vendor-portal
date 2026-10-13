@@ -8,6 +8,9 @@ const TAB_NAME     = 'Sheet1';
 const CACHE_KEY    = 'sheet:v1:all';
 const CACHE_TTL    = 30; // seconds
 
+// In-memory fallback cache (works within a warm Vercel instance)
+let memCache = null; // { values, expiresAt }
+
 let redis = null;
 function getRedis() {
   if (!redis) redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
@@ -46,9 +49,15 @@ module.exports = async function handler(req, res) {
 
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Try Redis cache first (30s TTL reduces Sheets API calls)
+    // Try in-memory cache first (fastest, same process/instance)
     let values = null;
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    const now = Date.now();
+    if (memCache && memCache.expiresAt > now) {
+      values = memCache.values;
+    }
+
+    // Then try Redis (cross-instance cache)
+    if (!values && process.env.UPSTASH_REDIS_REST_URL) {
       try {
         const cached = await getRedis().get(CACHE_KEY);
         if (cached) values = typeof cached === 'string' ? JSON.parse(cached) : cached;
@@ -56,12 +65,17 @@ module.exports = async function handler(req, res) {
         console.warn('cache read error (falling through to Sheets):', e.message);
       }
     }
+
     if (!values) {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: TAB_NAME,
       });
       values = response.data.values || [];
+      // Populate both caches
+      if (values.length) {
+        memCache = { values, expiresAt: Date.now() + CACHE_TTL * 1000 };
+      }
       if (process.env.UPSTASH_REDIS_REST_URL && values.length) {
         getRedis().set(CACHE_KEY, JSON.stringify(values), { ex: CACHE_TTL }).catch(() => {});
       }

@@ -4,11 +4,19 @@ const { setCors } = require('../lib/cors');
 
 const SHEET_ID  = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDS_TAB = 'Credentials';
+const TEAM_TTL  = 120; // seconds — team list changes rarely
+
+let teamCache = null; // { data, expiresAt }
 
 module.exports = async function handler(req, res) {
   setCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!await verifyRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Serve from in-memory cache when warm (team list changes rarely)
+  if (teamCache && teamCache.expiresAt > Date.now()) {
+    return res.json(teamCache.data);
+  }
 
   const names  = new Set();
   // agents: [{name, email}] for email→name resolution in the frontend
@@ -53,5 +61,7 @@ module.exports = async function handler(req, res) {
     }
   } catch (_) {}
 
-  return res.json({ names: [...names], agents });
+  const data = { names: [...names], agents };
+  teamCache = { data, expiresAt: Date.now() + TEAM_TTL * 1000 };
+  return res.json(data);
 };
