@@ -247,23 +247,20 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
     } catch (_) {}
 
     // Source 2: Credentials sheet (Chain ID='0') — agents who registered via portal signup
+    // Uses index-based parsing (same as team.js) to work regardless of whether
+    // the sheet has a header row: A=email, B=pw, C=chainId, D=displayName, E=role
     try {
-      const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
+      const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `Credentials!A:E` });
       const credsVals = credsResp.data.values || [];
-      if (credsVals.length > 1) {
-        const headers = credsVals[0];
-        for (let i = 1; i < credsVals.length; i++) {
-          const obj = {};
-          headers.forEach((h, idx) => { obj[h] = credsVals[i][idx] || ''; });
-          if (String(obj['Chain ID']).trim() !== '0') continue;
-          const branchRole = (obj['Branch Name'] || '').toLowerCase();
-          if (branchRole === 'monitor') continue;
-          const email = String(obj['Vendor ID'] || '').toLowerCase().trim();
-          if (email && email.includes('@') && !agentMap[email]) {
-            // Sheet name takes priority for signed-up agents; env var name already set above
-            agentMap[email] = obj['Chain Name'] || email;
-          }
-        }
+      for (const row of credsVals) {
+        const colC = String(row[2] || '').trim();
+        if (colC !== '0') continue;                                   // only team accounts
+        const colE = String(row[4] || '').trim().toLowerCase();
+        if (colE === 'monitor') continue;                             // skip monitors
+        const email = String(row[0] || '').toLowerCase().trim();
+        if (!email || !email.includes('@') || agentMap[email]) continue;
+        const colD = String(row[3] || '').trim();
+        agentMap[email] = (colD && colD !== 'Talabat') ? colD : email;
       }
     } catch (_) {}
 
