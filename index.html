@@ -3050,7 +3050,7 @@ if (bcInput && bcDropdown) {
 
       bcTimeout = setTimeout(async () => {
         try {
-          const res = await fetch(`/api/search-barcode?q=${encodeURIComponent(q)}`);
+          const res = await fetch(`/api/submit?q=${encodeURIComponent(q)}`);
           
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
