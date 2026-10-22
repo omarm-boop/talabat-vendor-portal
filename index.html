@@ -884,8 +884,13 @@
               <div class="ferr" id="e-bc-sku">SKU is required</div>
             </div>
             <div class="sec-label">Barcode Change</div>
-            <div class="row x2">
-              <div class="fg"><div class="fg" style="position: relative;">
+      <div class="row x2">
+        <div class="fg">
+          <label class="lbl">Current Barcode <span class="req">*</span></label>
+          <input type="text" id="f-bc-current" placeholder="Existing barcode">
+          <div class="ferr" id="e-bc-current">Current barcode is required</div>
+        </div>
+        <div class="fg" style="position: relative;">
           <label class="lbl" for="f-bc-new">New Barcode <span class="req">*</span></label>
           <input type="text" id="f-bc-new" placeholder="Type barcode or item name..." autocomplete="off">
           <div class="ferr" id="e-bc-new">New barcode is required</div>
@@ -893,22 +898,17 @@
           <!-- Live search dropdown -->
           <div id="bc-suggestions" style="display: none; position: absolute; top: calc(100% - 15px); left: 0; right: 0; background: #ffffff; border: 1.5px solid #e5e7eb; border-radius: 8px; max-height: 220px; overflow-y: auto; z-index: 1000; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.12);"></div>
         </div>
-              <div class="fg">
-                <label class="lbl">New Barcode <span class="req">*</span></label>
-                <input type="text" id="f-bc-new" placeholder="Correct barcode">
-                <div class="ferr" id="e-bc-new">New barcode is required</div>
-              </div>
-            </div>
-            <div class="fg">
-              <label class="lbl">Product Image / Proof <span class="req">*</span></label>
-              <div class="fu-zone" id="fz-bc-proof" onclick="document.getElementById('fi-bc-proof').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,'bc-proof')">
-                <input type="file" id="fi-bc-proof" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'bc-proof')" onclick="event.stopPropagation()">
-                <input type="hidden" id="f-bc-proof">
-                <div class="fu-label" id="fl-bc-proof"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
-                <img class="fu-preview" id="fp-bc-proof" style="display:none" alt="">
-              </div>
-              <div class="ferr" id="e-bc-proof">Product image proof is required</div>
-            </div>
+      </div>
+      <div class="fg">
+        <label class="lbl">Product Image / Proof <span class="req">*</span></label>
+        <div class="fu-zone" id="fz-bc-proof" onclick="document.getElementById('fi-bc-proof').click()" ondragover="fuDragOver(event,this)" ondragleave="fuDragLeave(this)" ondrop="fuDrop(event,this,'bc-proof')">
+          <input type="file" id="fi-bc-proof" accept="image/jpeg,image/png,image/webp" onchange="fuSelect(this,'bc-proof')" onclick="event.stopPropagation()">
+          <input type="hidden" id="f-bc-proof">
+          <div class="fu-label" id="fl-bc-proof"><strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span></div>
+          <img class="fu-preview" id="fp-bc-proof" style="display:none" alt="">
+        </div>
+        <div class="ferr" id="e-bc-proof">Product image proof is required</div>
+      </div>
           </div>
 
           <!-- ══ REMOVE ITEM ══ -->
