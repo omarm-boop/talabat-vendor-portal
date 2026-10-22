@@ -17,10 +17,64 @@ const HEADERS  = [
   'Reason', 'Notes', 'Status', 'Rejection Reason', 'Assignee',
 ];
 
+// In-memory PIM catalog cache (warm Vercel instances; Redis is the persistent layer)
+let pimCache = null; // { rows, expiresAt }
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── PIM CATALOG SEARCH (GET) — no auth required, catalog data is not sensitive ──
+  if (req.method === 'GET') {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (q.length < 2) return res.json({ results: [] });
+    try {
+      const PIM_KEY = 'talabat:pim_catalog';
+      let rows = null;
+
+      // 1. In-memory cache
+      if (pimCache && pimCache.expiresAt > Date.now()) rows = pimCache.rows;
+
+      // 2. Redis cache
+      if (!rows && process.env.UPSTASH_REDIS_REST_URL) {
+        try {
+          const cached = await getRedis().get(PIM_KEY);
+          if (cached) rows = typeof cached === 'string' ? JSON.parse(cached) : cached;
+        } catch (_) {}
+      }
+
+      // 3. Google Sheets (source of truth)
+      if (!rows) {
+        const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+        const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+        const sheets = google.sheets({ version: 'v4', auth });
+        const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'PIM!A:C' });
+        rows = (resp.data.values || []).slice(1); // skip header row
+        if (rows.length) {
+          pimCache = { rows, expiresAt: Date.now() + 3600 * 1000 };
+          if (process.env.UPSTASH_REDIS_REST_URL)
+            getRedis().set(PIM_KEY, JSON.stringify(rows), { ex: 3600 }).catch(() => {});
+        }
+      }
+
+      const results = (rows || [])
+        .filter(r => {
+          const master  = String(r[0] || '').toLowerCase();
+          const barcode = String(r[1] || '').toLowerCase();
+          const name    = String(r[2] || '').toLowerCase();
+          return barcode.includes(q) || master.includes(q) || name.includes(q);
+        })
+        .slice(0, 10)
+        .map(r => ({ masterCode: String(r[0] || ''), barcode: String(r[1] || ''), name: String(r[2] || '') }));
+
+      return res.json({ results });
+    } catch (err) {
+      console.error('pim-search error:', err.message);
+      return res.json({ results: [] }); // fail silently — autocomplete is non-critical
+    }
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const sess = await verifyRequest(req);
   if (!sess) return res.status(401).json({ error: 'Unauthorized' });
 

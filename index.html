@@ -131,6 +131,13 @@
     .wi { flex-shrink:0; }
     .drive-hint { font-size:12px; color:#888; margin-top:6px; }
     .field-hint { font-size:12px; color:var(--orange); margin-top:5px; line-height:1.5; font-weight:500; }
+    .ac-wrap { position:relative; }
+    .ac-dropdown { position:absolute; top:100%; left:0; right:0; background:#fff; border:1.5px solid #e0d6cc; border-top:none; border-radius:0 0 10px 10px; box-shadow:0 6px 20px rgba(0,0,0,.1); z-index:200; max-height:240px; overflow-y:auto; }
+    .ac-item { padding:10px 14px; cursor:pointer; border-bottom:1px solid #f5f0ea; }
+    .ac-item:last-child { border-bottom:none; }
+    .ac-item:hover, .ac-item.ac-active { background:#fff8f0; }
+    .ac-item-main { font-size:13px; font-weight:600; color:var(--burgundy); }
+    .ac-item-sub  { font-size:11px; color:#999; margin-top:2px; }
     .rv { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 0; border-bottom:1px solid #f5f0ea; gap:16px; }
     .rv:last-child { border-bottom:none; }
     .rv-k { font-size:13px; font-weight:700; color:#888; flex-shrink:0; }
@@ -890,9 +897,10 @@
                 <input type="text" id="f-bc-current" placeholder="Existing barcode">
                 <div class="ferr" id="e-bc-current">Current barcode is required</div>
               </div>
-              <div class="fg">
+              <div class="fg ac-wrap">
                 <label class="lbl">New Barcode <span class="req">*</span></label>
-                <input type="text" id="f-bc-new" placeholder="Correct barcode">
+                <input type="text" id="f-bc-new" placeholder="Type barcode or item name to search…" autocomplete="off">
+                <div id="bc-suggestions" class="ac-dropdown" style="display:none"></div>
                 <div class="ferr" id="e-bc-new">New barcode is required</div>
               </div>
             </div>
@@ -2904,6 +2912,87 @@
       clearBulk(); updateAdminStats(); renderAdminTable();
     } catch(e) { alert('Bulk status update failed: ' + e.message); }
   }
+
+  // ═══════════════ PIM AUTOCOMPLETE (New Barcode field) ═══════════════
+  (function () {
+    let acTimer = null;
+    let acActive = -1;
+    const input = () => document.getElementById('f-bc-new');
+    const box   = () => document.getElementById('bc-suggestions');
+
+    function closeDrop() {
+      const b = box(); if (b) { b.style.display = 'none'; b.innerHTML = ''; }
+      acActive = -1;
+    }
+
+    function pickItem(item) {
+      const inp = input(); if (!inp) return;
+      inp.value = item.barcode || item.masterCode;
+      const itemField = document.getElementById('f-bc-item');
+      if (itemField && item.name) itemField.value = item.name;
+      closeDrop();
+      inp.dispatchEvent(new Event('input', { bubbles: true })); // clear error state
+    }
+
+    function renderDrop(results) {
+      const b = box(); if (!b) return;
+      if (!results.length) { closeDrop(); return; }
+      b.innerHTML = results.map((r, i) =>
+        `<div class="ac-item" data-idx="${i}">
+          <div class="ac-item-main">${escHtml(r.name)} &mdash; ${escHtml(r.masterCode)}</div>
+          <div class="ac-item-sub">${escHtml(r.barcode)}</div>
+        </div>`
+      ).join('');
+      b.querySelectorAll('.ac-item').forEach((el, i) => {
+        el.addEventListener('mousedown', e => { e.preventDefault(); pickItem(results[i]); });
+      });
+      b.style.display = 'block';
+      acActive = -1;
+    }
+
+    async function search(q) {
+      try {
+        const resp = await fetch(`/api/submit?q=${encodeURIComponent(q)}`);
+        if (!resp.ok) { closeDrop(); return; }
+        const data = await resp.json();
+        renderDrop(data.results || []);
+      } catch (_) { closeDrop(); }
+    }
+
+    document.addEventListener('input', function (e) {
+      if (e.target.id !== 'f-bc-new') return;
+      clearTimeout(acTimer);
+      const q = e.target.value.trim();
+      if (q.length < 2) { closeDrop(); return; }
+      acTimer = setTimeout(() => search(q), 250);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.target.id !== 'f-bc-new') return;
+      const b = box();
+      if (!b || b.style.display === 'none') return;
+      const items = b.querySelectorAll('.ac-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        acActive = Math.min(acActive + 1, items.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        acActive = Math.max(acActive - 1, 0);
+      } else if (e.key === 'Enter' && acActive >= 0) {
+        e.preventDefault();
+        items[acActive].dispatchEvent(new MouseEvent('mousedown'));
+        return;
+      } else if (e.key === 'Escape') {
+        closeDrop(); return;
+      } else { return; }
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acActive));
+    });
+
+    document.addEventListener('focusout', function (e) {
+      if (e.target.id === 'f-bc-new') setTimeout(closeDrop, 150);
+    });
+  })();
 
   // ═══════════════ HIGH PRIORITY ═══════════════
   async function togglePriority(rowIdx, btn) {
