@@ -901,6 +901,9 @@
                 <label class="lbl">New Barcode <span class="req">*</span></label>
                 <input type="text" id="f-bc-new" placeholder="Type barcode or item name to search…" autocomplete="off">
                 <div id="bc-suggestions" class="ac-dropdown" style="display:none"></div>
+                <div id="bc-selected-confirm" style="display:none;margin-top:6px;padding:8px 12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;font-size:12px;color:#166534;font-weight:600;">
+                  ✓ PIM match: <span id="bc-selected-name"></span> — is this the correct item?
+                </div>
                 <div class="ferr" id="e-bc-new">New barcode is required</div>
               </div>
             </div>
@@ -2930,8 +2933,16 @@
       inp.value = item.barcode || item.masterCode;
       const itemField = document.getElementById('f-bc-item');
       if (itemField && item.name) itemField.value = item.name;
+      // Show confirmation chip so vendor can verify the matched item
+      const chip = document.getElementById('bc-selected-confirm');
+      const nameSpan = document.getElementById('bc-selected-name');
+      if (chip && nameSpan) { nameSpan.textContent = item.name; chip.style.display = 'block'; }
       closeDrop();
-      inp.dispatchEvent(new Event('input', { bubbles: true })); // clear error state
+    }
+
+    function clearConfirm() {
+      const chip = document.getElementById('bc-selected-confirm');
+      if (chip) chip.style.display = 'none';
     }
 
     function renderDrop(results) {
@@ -2962,6 +2973,7 @@
     document.addEventListener('input', function (e) {
       if (e.target.id !== 'f-bc-new') return;
       clearTimeout(acTimer);
+      clearConfirm(); // hide chip whenever vendor types manually
       const q = e.target.value.trim();
       if (q.length < 2) { closeDrop(); return; }
       acTimer = setTimeout(() => search(q), 250);
