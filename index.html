@@ -885,11 +885,14 @@
             </div>
             <div class="sec-label">Barcode Change</div>
             <div class="row x2">
-              <div class="fg">
-                <label class="lbl">Current Barcode <span class="req">*</span></label>
-                <input type="text" id="f-bc-current" placeholder="Existing barcode">
-                <div class="ferr" id="e-bc-current">Current barcode is required</div>
-              </div>
+              <div class="fg"><div class="fg" style="position: relative;">
+          <label class="lbl" for="f-bc-new">New Barcode <span class="req">*</span></label>
+          <input type="text" id="f-bc-new" placeholder="Type barcode or item name..." autocomplete="off">
+          <div class="ferr" id="e-bc-new">New barcode is required</div>
+          
+          <!-- Live search dropdown -->
+          <div id="bc-suggestions" style="display: none; position: absolute; top: calc(100% - 15px); left: 0; right: 0; background: #ffffff; border: 1.5px solid #e5e7eb; border-radius: 8px; max-height: 220px; overflow-y: auto; z-index: 1000; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.12);"></div>
+        </div>
               <div class="fg">
                 <label class="lbl">New Barcode <span class="req">*</span></label>
                 <input type="text" id="f-bc-new" placeholder="Correct barcode">
@@ -2925,7 +2928,73 @@
       renderAdminTable();
     } catch(e) { alert('Priority update failed: ' + e.message); btn.disabled = false; }
   }
+// Autocomplete search for Update Barcode
+const bcInput = document.getElementById('f-bc-new');
+const bcDropdown = document.getElementById('bc-suggestions');
+let bcSearchTimeout = null;
 
+if (bcInput && bcDropdown) {
+  bcInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    clearTimeout(bcSearchTimeout);
+
+    if (query.length < 2) {
+      bcDropdown.style.display = 'none';
+      bcDropdown.innerHTML = '';
+      return;
+    }
+
+    bcSearchTimeout = setTimeout(async () => {
+      try {
+        const res = await apiFetch(`/api/search-barcode?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+          bcDropdown.innerHTML = '<div style="padding: 10px; font-size: 12px; color: #888;">No matching items found in PIM</div>';
+          bcDropdown.style.display = 'block';
+          return;
+        }
+
+        // Format: Item Name (English) - Master Product Code
+        bcDropdown.innerHTML = data.results.map(item => `
+          <div class="bc-opt" data-barcode="${item.barcode}" data-master="${item.masterCode}" data-name="${item.nameEn}" style="padding: 10px 12px; border-bottom: 1px solid #f3f4f6; cursor: pointer; text-align: left; font-size: 13px;">
+            <strong style="color: var(--burgundy);">${item.nameEn}</strong> - <span style="font-weight: 600; color: var(--orange);">${item.masterCode}</span>
+            ${item.barcode ? `<span style="display: block; font-size: 11px; color: #6b7280; margin-top: 2px;">Barcode: ${item.barcode}</span>` : ''}
+          </div>
+        `).join('');
+        bcDropdown.style.display = 'block';
+
+        bcDropdown.querySelectorAll('.bc-opt').forEach(opt => {
+          opt.addEventListener('click', () => {
+            const pickedBarcode = opt.getAttribute('data-barcode');
+            const pickedMaster = opt.getAttribute('data-master');
+            const pickedName = opt.getAttribute('data-name');
+
+            // Fills the input with the barcode (or master code if barcode is blank)
+            bcInput.value = pickedBarcode || pickedMaster;
+
+            // Automatically autofills Item Name if it's currently empty
+            const itemNameField = document.getElementById('f-bc-item');
+            if (itemNameField && !itemNameField.value) {
+              itemNameField.value = pickedName;
+            }
+
+            bcDropdown.style.display = 'none';
+          });
+        });
+      } catch (err) {
+        console.error('Barcode search error:', err);
+      }
+    }, 250);
+  });
+
+  // Close dropdown if user clicks away
+  document.addEventListener('click', (e) => {
+    if (!bcInput.contains(e.target) && !bcDropdown.contains(e.target)) {
+      bcDropdown.style.display = 'none';
+    }
+  });
+}
 </script>
 
 <!-- Image Preview Modal -->
