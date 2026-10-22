@@ -3018,7 +3018,104 @@ if (bcInput && bcDropdown) {
     </div>
   </div>
 </div>
+<script>
+(function() {
+  let bcTimeout = null;
 
+  function initBarcodeSearch() {
+    const bcInput = document.getElementById('f-bc-new');
+    if (!bcInput) return;
+
+    if (bcInput.parentElement) {
+      bcInput.parentElement.style.position = 'relative';
+    }
+
+    let bcDropdown = document.getElementById('bc-suggestions');
+    if (!bcDropdown) {
+      bcDropdown = document.createElement('div');
+      bcDropdown.id = 'bc-suggestions';
+      bcDropdown.style.cssText = 'display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#ffffff; border:1.5px solid #e5e7eb; border-radius:8px; max-height:220px; overflow-y:auto; z-index:9999; box-shadow:0 10px 15px -3px rgba(0,0,0,0.15); text-align:left;';
+      bcInput.parentNode.appendChild(bcDropdown);
+    }
+
+    bcInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      clearTimeout(bcTimeout);
+
+      if (q.length < 2) {
+        bcDropdown.style.display = 'none';
+        bcDropdown.innerHTML = '';
+        return;
+      }
+
+      bcTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/search-barcode?q=${encodeURIComponent(q)}`);
+          
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            bcDropdown.innerHTML = `<div style="padding:10px 12px; font-size:12px; color:#ef4444; font-weight:600;">Error ${res.status}: ${err.error || 'Request failed'}</div>`;
+            bcDropdown.style.display = 'block';
+            return;
+          }
+
+          const data = await res.json();
+          const items = data.results || [];
+
+          if (items.length === 0) {
+            bcDropdown.innerHTML = '<div style="padding:10px 12px; font-size:12px; color:#6b7280;">No matching items found in PIM</div>';
+            bcDropdown.style.display = 'block';
+            return;
+          }
+
+          bcDropdown.innerHTML = items.map(item => `
+            <div class="bc-opt" data-barcode="${item.barcode}" data-master="${item.masterCode}" data-name="${item.nameEn}" style="padding:10px 12px; border-bottom:1px solid #f3f4f6; cursor:pointer; font-size:13px;">
+              <strong style="color:#d9531e;">${item.nameEn}</strong> - <span style="font-weight:600; color:#111827;">${item.masterCode}</span>
+              ${item.barcode ? `<span style="display:block; font-size:11px; color:#6b7280; margin-top:2px;">Barcode: ${item.barcode}</span>` : ''}
+            </div>
+          `).join('');
+          bcDropdown.style.display = 'block';
+
+          bcDropdown.querySelectorAll('.bc-opt').forEach(opt => {
+            opt.addEventListener('mouseenter', () => opt.style.background = '#fef2f2');
+            opt.addEventListener('mouseleave', () => opt.style.background = '#ffffff');
+            opt.addEventListener('click', () => {
+              const barcode = opt.getAttribute('data-barcode');
+              const master = opt.getAttribute('data-master');
+              const name = opt.getAttribute('data-name');
+
+              bcInput.value = barcode || master;
+
+              const nameInput = document.getElementById('f-bc-item');
+              if (nameInput && !nameInput.value) {
+                nameInput.value = name;
+              }
+
+              bcDropdown.style.display = 'none';
+            });
+          });
+
+        } catch (err) {
+          bcDropdown.innerHTML = `<div style="padding:10px 12px; font-size:12px; color:#ef4444;">Network error: ${err.message}</div>`;
+          bcDropdown.style.display = 'block';
+        }
+      }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!bcInput.contains(e.target) && !bcDropdown.contains(e.target)) {
+        bcDropdown.style.display = 'none';
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBarcodeSearch);
+  } else {
+    initBarcodeSearch();
+  }
+})();
+</script>
 </body>
 </html>
 
