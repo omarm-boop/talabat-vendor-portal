@@ -936,9 +936,14 @@
         </div>
 
         <!-- STEP 4: Review -->
+        
         <div class="step" id="s4">
           <div class="chip" data-i18n="s4chip">Step 4 of 4 &nbsp;·&nbsp; Review</div>
           <div class="sh" data-i18n="s4title">Review &amp; Submit</div>
+          <div class="fg" style="margin: 16px 0; text-align: left;">
+  <label class="lbl" for="f-notes">Notes / Instructions <span class="opt">(optional)</span></label>
+  <textarea id="f-notes" rows="3" placeholder="Add any special instructions or remarks for this request..." style="width: 100%; box-sizing: border-box; padding: 10px; border: 1.5px solid #d1d5db; border-radius: 8px; font-family: inherit; font-size: 13px;"></textarea>
+</div>
           <div id="rv-body"></div>
           <button class="btn-next" data-i18n="submitBtn" onclick="submitForm()" style="margin-top:24px">Submit Request ✓</button>
         </div>
@@ -2179,21 +2184,22 @@
       .map(i => i.value.trim()).filter(Boolean);
   }
 
-  function buildPayload() {
-    const base = {
-      email: v('f-email'), restaurant: v('f-restaurant'),
-      branch: v('f-branch'), name: v('f-name'),
-      vendor: v('f-vendor'), requestType: typeLabels[reqType]
-    };
-    if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo') };
-    if (reqType === 'master')  return { ...base, requestType: 'Add Master File – ' + (masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'), photoLink: v('f-master-link'), notes: v('f-master-notes') };
-    if (reqType === 'desc')    return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
-    if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
-    if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
-    if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
-    if (reqType === 'remove')  return { ...base, fileLink: v('f-rm-link'), reason: v('f-rm-reason') };
-    return base;
-  }
+ function buildPayload() {
+  const base = {
+    email: v('f-email'), restaurant: v('f-restaurant'),
+    branch: v('f-branch'), name: v('f-name'),
+    vendor: v('f-vendor'), requestType: typeLabels[reqType],
+    notes: v('f-notes')
+  };
+  if (reqType === 'add')    return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo') };
+  if (reqType === 'master') return { ...base, requestType: 'Add Master File - ' + (masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'), photoLink: v('f-master-link'), notes: v('f-notes') || v('f-master-notes') };
+  if (reqType === 'desc')   return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
+  if (reqType === 'photo')  return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
+  if (reqType === 'name')   return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-link') };
+  if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
+  if (reqType === 'remove') return { ...base, fileLink: v('f-rm-link'), reason: v('f-rm-reason') };
+  return base;
+}
 
   function buildReview() {
     const t = T[lang];
