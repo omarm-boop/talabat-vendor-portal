@@ -16,10 +16,90 @@ const HEADERS  = [
   'Contact Name', 'Request Type', 'Item Name', 'SKU', 'Barcode',
   'Reason', 'Notes', 'Status', 'Rejection Reason', 'Assignee',
 ];
+// --- PIM Catalog Search & Caching ---
+const CATALOG_SHEET_ID = process.env.CATALOG_SHEET_ID || '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
+const CATALOG_TAB = 'PIM';
+const CACHE_KEY = 'talabat:pim_catalog';
 
+let redisClient = null;
+function getPimRedis() {
+  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
+
+async function getPimCatalog() {
+  const r = getPimRedis();
+  if (r) {
+    try {
+      const cached = await r.get(CACHE_KEY);
+      if (cached) return Array.isArray(cached) ? cached : JSON.parse(cached);
+    } catch (e) {
+      console.warn('Redis read failed:', e.message);
+    }
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: CATALOG_SHEET_ID,
+    range: `${CATALOG_TAB}!A2:C`,
+  });
+
+  const rows = resp.data.values || [];
+  const items = rows
+    .filter(row => row[0] && row[2])
+    .map(row => ({
+      masterCode: String(row[0]).trim(),
+      barcode: row[1] ? String(row[1]).trim() : '',
+      nameEn: String(row[2]).trim(),
+    }));
+
+  if (r && items.length > 0) {
+    try {
+      await r.set(CACHE_KEY, JSON.stringify(items), { ex: 3600 });
+    } catch (e) {
+      console.warn('Redis write failed:', e.message);
+    }
+  }
+
+  return items;
+}
 module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  // Handle PIM barcode autocomplete search
+  if (req.method === 'GET') {
+    const sess = await verifyRequest(req);
+    if (!sess) return res.status(401).json({ error: 'Unauthorized' });
+
+    const query = (req.query.q || '').toLowerCase().trim();
+    if (!query || query.length < 2) return res.json({ results: [] });
+
+    try {
+      const catalog = await getPimCatalog();
+      const results = catalog
+        .filter(item =>
+          item.barcode.toLowerCase().includes(query) ||
+          item.masterCode.toLowerCase().includes(query) ||
+          item.nameEn.toLowerCase().includes(query)
+        )
+        .slice(0, 10);
+
+      return res.status(200).json({ results });
+    } catch (err) {
+      console.error('Barcode search error:', err);
+      return res.status(500).json({ error: 'Failed to search catalog' });
+    }
+  }
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   const sess = await verifyRequest(req);
   if (!sess) return res.status(401).json({ error: 'Unauthorized' });
