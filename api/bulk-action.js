@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
+const { ensureColumns } = require('../lib/sheet-columns');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 
 let redis = null;
@@ -44,6 +45,7 @@ module.exports = async function handler(req, res) {
 
     const data = [];
     const now = new Date().toISOString();
+    if (action === 'status' && status === 'Rejected') await ensureColumns(sheets, SHEET_ID, TAB, 28);
 
     // Rejection: reason codes (dropdown) + optional note, same rules as update-status.js
     let rejectCodes = '';

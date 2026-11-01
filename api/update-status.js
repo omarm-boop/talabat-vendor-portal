@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { sendEmail } = require('../lib/email');
+const { ensureColumns } = require('../lib/sheet-columns');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 const { Redis } = require('@upstash/redis');
 
@@ -52,6 +53,8 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
     const now    = new Date().toISOString();
+
+    if (status === 'Rejected') await ensureColumns(sheets, SHEET_ID, TAB, 28);
 
     // Write status + rejection reason + audit log in one call
     await sheets.spreadsheets.values.batchUpdate({

@@ -99,6 +99,13 @@
     .rj-ok { background:#c62828; color:#fff; }
     .rj-ok:disabled { opacity:.4; cursor:not-allowed; }
     .rj-cancel { background:#f0ebe4; color:#411517; }
+    .rj-pick { padding:8px 20px 4px; border-top:1px solid #f0ebe4; }
+    .rj-select { width:100%; border:1.5px solid #e0d8ce; border-radius:8px; padding:9px 10px; font-size:14px; font-family:'Poppins',sans-serif; background:#fff; color:#411517; direction:rtl; }
+    .rj-select:focus { outline:none; border-color:#c62828; }
+    .rj-chips { display:flex; flex-direction:column; gap:6px; margin:10px 0 6px; max-height:200px; overflow-y:auto; }
+    .rj-chip { display:flex; justify-content:space-between; align-items:center; gap:10px; background:#fde8e8; border-radius:8px; padding:7px 10px; font-size:13px; font-weight:600; color:#411517; direction:rtl; }
+    .rj-chip button { border:none; background:none; color:#c62828; font-size:16px; cursor:pointer; line-height:1; }
+    .rj-empty { font-size:12px; color:#aaa; direction:rtl; }
     /* Vendor: rejected card + resubmission */
     .req-resub { margin-top:6px; font-size:12px; font-weight:700; background:#ff5900; color:#fff; border:none; border-radius:8px; padding:6px 14px; cursor:pointer; font-family:'Poppins',sans-serif; }
     .req-link { font-size:11px; color:#888; margin-top:4px; }
@@ -1158,8 +1165,11 @@
 <div class="rj-overlay" id="rj-overlay" onclick="if(event.target===this)closeRejectDialog()">
   <div class="rj-box">
     <div class="rj-head">Reject request <span id="rj-count" style="font-weight:400;color:#888"></span></div>
-    <div class="rj-sub">Select one or more reasons. The vendor sees the Arabic text.</div>
-    <div class="rj-list" id="rj-list"></div>
+    <div class="rj-sub">Pick the rejection reason from the list. You can add more than one. The vendor sees the Arabic text.</div>
+    <div class="rj-pick">
+      <select class="rj-select" id="rj-select" onchange="rjAdd(this)"></select>
+      <div class="rj-chips" id="rj-chips"></div>
+    </div>
     <div class="rj-foot">
       <textarea class="rj-note" id="rj-note" placeholder="سبب آخر أو تفاصيل إضافية (اختياري)…" oninput="rjUpdate()"></textarea>
       <div class="rj-row">
@@ -1543,6 +1553,18 @@
 
   // Resubmission state: row index of the rejected request being fixed (0 = normal new request)
   let resubmitOf = 0;
+  // Attachments: clear every upload slot so a new request never inherits an old photo.
+  const PHOTO_KEYS = ['add-photo', 'ph-link', 'nm-proof', 'bc-proof'];
+  function clearPhotos() {
+    PHOTO_KEYS.forEach(k => {
+      if (!$('f-' + k)) return;
+      $('f-' + k).value = '';
+      const prev = $('fp-' + k); if (prev) { prev.style.display = 'none'; prev.removeAttribute('src'); }
+      const lab = $('fl-' + k);
+      if (lab) lab.innerHTML = '<strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span>';
+      const z = $('fz-' + k); if (z) z.classList.remove('done');
+    });
+  }
   function clearResubmit() {
     resubmitOf = 0;
     const b = document.getElementById('resub-banner');
@@ -1551,6 +1573,7 @@
 
   function goToForm() {
     clearResubmit();
+    clearPhotos();
     showView('form');
     if (currentVendor) {
       document.getElementById('f-email').value      = currentVendor.vendorId + '@vendor.portal';
@@ -1608,10 +1631,23 @@
     } else if (type === 'remove') {
       set('f-rm-reason', pf.delistReason);
     }
+    // Keep the earlier attachment unless the rejection was about the image itself
+    const photoKey = { add: 'add-photo', photo: 'ph-link', name: 'nm-proof', barcode: 'bc-proof' }[type];
+    const oldCodes = String(row['RejectCodes'] || '').split(',');
+    const imageIssue = oldCodes.some(c => ['MISSING_IMAGE', 'BAD_IMAGE', 'IMAGE_NAME_MISMATCH'].includes(c));
+    const oldPhoto = row['PhotoLink'] || '';
+    let photoNote = '';
+    if (photoKey && oldPhoto && !imageIssue) {
+      $('f-' + photoKey).value = oldPhoto;
+      $('fp-' + photoKey).src = oldPhoto; $('fp-' + photoKey).style.display = 'block';
+      $('fl-' + photoKey).innerHTML = '✓ Previous photo attached — click to replace';
+      $('fz-' + photoKey).classList.add('done');
+      photoNote = ' The earlier photo is kept; click it to replace.';
+    }
     resubmitOf = rowIdx;
     const reason = row['Rejection Reason'] || '';
     const b = $('resub-banner');
-    b.innerHTML = '✏️ Resubmitting a rejected request. Fix the issue below and attach any missing file, then submit. It will be handled as a <strong>new request</strong>.'
+    b.innerHTML = '✏️ Resubmitting a rejected request. Correct the details below and attach any missing file, then submit. It will be handled as a <strong>new request</strong>.' + photoNote
       + (reason ? `<div class="ar" dir="auto">${escHtml(reason)}</div>` : '');
     b.style.display = 'block';
     applyType();
@@ -1986,25 +2022,34 @@
     }
   }
 
-  // Reject dialog: multi-select reasons (grouped list) + free-text note
-  let rjRows = [];
+  // Reject dialog: dropdown to pick reasons (several allowed) + free-text note
+  let rjRows = [], rjSel = [];
   function openRejectDialog(rowIdxs) {
-    rjRows = rowIdxs;
-    const groups = {};
-    REJECTION_REASONS.forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
-    document.getElementById('rj-list').innerHTML = Object.keys(groups).map(g => `
-      <div class="rj-grp">${escHtml(g)}</div>
-      ${groups[g].map(r => `<label class="rj-item">
-        <input type="checkbox" value="${r.code}" onchange="rjUpdate()">
-        <span><span class="rj-ar">${escHtml(r.ar)}</span><span class="rj-en">${escHtml(r.en)}</span></span>
-      </label>`).join('')}`).join('');
+    rjRows = rowIdxs; rjSel = [];
     document.getElementById('rj-note').value = '';
     document.getElementById('rj-count').textContent = rowIdxs.length > 1 ? `(${rowIdxs.length} requests)` : '';
     document.getElementById('rj-overlay').style.display = 'flex';
+    rjRender();
+  }
+  function closeRejectDialog() { document.getElementById('rj-overlay').style.display = 'none'; rjRows = []; rjSel = []; }
+  function rjCodes() { return rjSel.slice(); }
+  function rjAdd(sel) {
+    if (sel.value && !rjSel.includes(sel.value)) rjSel.push(sel.value);
+    rjRender();
+  }
+  function rjRemove(code) { rjSel = rjSel.filter(c => c !== code); rjRender(); }
+  function rjRender() {
+    const groups = {};
+    REJECTION_REASONS.filter(r => !rjSel.includes(r.code)).forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
+    document.getElementById('rj-select').innerHTML =
+      `<option value="">${rjSel.length ? '＋ إضافة سبب آخر…' : 'اختر سبب الرفض…'}</option>` +
+      Object.keys(groups).map(g => `<optgroup label="${escHtml(groups[g][0].groupAr)}">` +
+        groups[g].map(r => `<option value="${r.code}" title="${escHtml(r.en)}">${escHtml(r.ar)}</option>`).join('') + '</optgroup>').join('');
+    document.getElementById('rj-chips').innerHTML = rjSel.length
+      ? rjSel.map(c => `<div class="rj-chip"><span>${escHtml(reasonByCode(c).ar)}</span><button type="button" onclick="rjRemove('${c}')" title="Remove">✕</button></div>`).join('')
+      : '<div class="rj-empty">لم يتم اختيار سبب بعد</div>';
     rjUpdate();
   }
-  function closeRejectDialog() { document.getElementById('rj-overlay').style.display = 'none'; rjRows = []; }
-  function rjCodes() { return Array.from(document.querySelectorAll('#rj-list input:checked')).map(i => i.value); }
   function rjUpdate() {
     const codes = rjCodes(), note = document.getElementById('rj-note').value.trim();
     document.getElementById('rj-ok').disabled = !(codes.length || note);
@@ -2764,7 +2809,7 @@
       const rCodes     = String(row['RejectCodes'] || '').split(',').filter(Boolean);
       const noResub    = rCodes.includes(NO_RESUBMIT);
       const reasonHtml = reason && isRej
-        ? `<div class="req-reason"><div>Reason / السبب:</div><div dir="auto">${escHtml(reason)}</div></div>` : '';
+        ? `<div class="req-reason"><div style="font-size:11px;opacity:.8">السبب · Reason</div>${reason.split(' \u2022 ').map(x => `<div dir="auto" style="margin-top:3px">${escHtml(x)}</div>`).join('')}</div>` : '';
       const vendorSla   = (!isDone && !isRej) ? slaBadge(row['AssignedAt'] || '', status, row['Priority'] || '', row['Timestamp'] || '') : '';
       const rowIdx      = row['_rowIndex'];
       const canWithdraw = sl === 'pending' && rowIdx;

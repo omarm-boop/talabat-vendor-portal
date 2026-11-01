@@ -9,6 +9,7 @@ function getRedis() {
   return redis;
 }
 
+const { ensureColumns } = require('../lib/sheet-columns');
 const { NO_RESUBMIT } = require('../lib/rejection-reasons');
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB      = 'Sheet1';
@@ -170,6 +171,7 @@ module.exports = async function handler(req, res) {
     // (new timestamp, new SLA clock, normal auto-assignment) linked to the original.
     const parentRow = body.parentRow ? parseInt(body.parentRow, 10) : 0;
     if (body.parentRow) {
+      await ensureColumns(sheets, SHEET_ID, TAB, 28);
       if (!parentRow || parentRow < 2) return res.status(400).json({ error: 'Invalid original request' });
       const pr = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID, range: `${TAB}!A${parentRow}:AB${parentRow}`,
