@@ -1331,6 +1331,12 @@
     // Only an invalid/expired session (401) ends the session. A 403 means "not allowed for this
     // action" and is shown as a normal error by the caller. A wrong password at sign-in is also a 401.
     if (resp.status === 401 && !String(path).startsWith('/api/auth')) {
+      // Remember why we signed out so it can be shown on the sign-in page (helps diagnose unexpected logouts)
+      let detail = '';
+      try { detail = (await resp.clone().json()).error || ''; } catch (_) {}
+      let age = '';
+      try { age = Math.round((Date.now() - JSON.parse(localStorage.getItem('tlb_session') || '{}').sessionTs) / 60000) + ' min after sign-in'; } catch (_) {}
+      localStorage.setItem('tlb_logout_reason', `${String(path).split('?')[0]} returned 401${detail ? ' (' + detail + ')' : ''}, ${age}`);
       localStorage.removeItem('tlb_session');
       location.reload();
     }
@@ -1685,13 +1691,22 @@
     try {
       const { vendor, ts, sessionToken, sessionTs } = JSON.parse(stored);
       if (!vendor || !vendor.vendorId) { localStorage.removeItem('tlb_session'); return; }
-      if (Date.now() - ts > 8 * 3600 * 1000) { localStorage.removeItem('tlb_session'); return; }
+      if (Date.now() - ts > 8 * 3600 * 1000) { localStorage.setItem('tlb_logout_reason', 'saved session older than 8 hours'); localStorage.removeItem('tlb_session'); return; }
       startSession(vendor, sessionToken, sessionTs);
     } catch(e) { localStorage.removeItem('tlb_session'); }
   })();
 
   // Apply saved language on every page load
   setLang(lang);
+
+  // If the previous session was ended automatically, say why on the sign-in page
+  (function showLogoutReason() {
+    const why = localStorage.getItem('tlb_logout_reason');
+    if (!why) return;
+    localStorage.removeItem('tlb_logout_reason');
+    const el = document.getElementById('li-err');
+    if (el) el.textContent = 'You were signed out: ' + why;
+  })();
 
   // ═══════════════ DASHBOARD ═══════════════
   // IMPORTANT: Set the tracking sheet to "Anyone with link can view" in Google Sheets → Share
