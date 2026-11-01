@@ -10,6 +10,12 @@ function getRedis() {
 }
 
 const { ensureColumns } = require('../lib/sheet-columns');
+
+// Sheet1 stores the vendor as "<vendorId>@vendor.portal"; the session email is just "<vendorId>".
+function sameAccount(rowEmail, sessEmail) {
+  const norm = e => String(e || '').toLowerCase().trim().replace(/@vendor\.portal$/, '');
+  return norm(rowEmail) !== '' && norm(rowEmail) === norm(sessEmail);
+}
 const { NO_RESUBMIT } = require('../lib/rejection-reasons');
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB      = 'Sheet1';
@@ -103,7 +109,7 @@ module.exports = async function handler(req, res) {
       const rowEmail  = String(row[9]  || '').toLowerCase().trim();
       const rowStatus = String(row[19] || '').toLowerCase().trim();
 
-      if (rowEmail !== sess.email.toLowerCase().trim())
+      if (!sameAccount(rowEmail, sess.email))
         return res.status(403).json({ error: 'Forbidden: this request does not belong to your account' });
       if (rowStatus !== 'pending' && rowStatus !== '')
         return res.status(409).json({ error: 'Only Pending requests can be withdrawn' });
@@ -177,7 +183,7 @@ module.exports = async function handler(req, res) {
         spreadsheetId: SHEET_ID, range: `${TAB}!A${parentRow}:AB${parentRow}`,
       });
       const p = (pr.data.values || [[]])[0] || [];
-      if (String(p[9] || '').toLowerCase().trim() !== sess.email.toLowerCase().trim())
+      if (!sameAccount(p[9], sess.email))
         return res.status(403).json({ error: 'Forbidden: this request does not belong to your account' });
       if (!String(p[19] || '').toLowerCase().includes('reject'))
         return res.status(409).json({ error: 'Only Rejected requests can be resubmitted' });

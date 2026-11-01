@@ -1328,7 +1328,9 @@
   async function apiFetch(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...getAuthHeaders(), ...(opts.headers || {}) };
     const resp = await fetch(path, { ...opts, headers });
-    if (resp.status === 401 || resp.status === 403) {
+    // Only an invalid/expired session (401) ends the session. A 403 means "not allowed for this
+    // action" and is shown as a normal error by the caller. A wrong password at sign-in is also a 401.
+    if (resp.status === 401 && !String(path).startsWith('/api/auth')) {
       localStorage.removeItem('tlb_session');
       location.reload();
     }
