@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
+const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 
 let redis = null;
 function getRedis() {
@@ -21,7 +22,8 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
-  const { action, rowIndexes, assignee, status, rejectionReason } = body || {};
+  const { action, rowIndexes, assignee, status } = body || {};
+  let rejectionReason = String((body && body.rejectionReason) || '').trim();
   if (!rowIndexes || !rowIndexes.length) return res.status(400).json({ error: 'rowIndexes required' });
 
   // Only monitor/agent may perform bulk actions; monitor-only for assignment
@@ -43,6 +45,18 @@ module.exports = async function handler(req, res) {
     const data = [];
     const now = new Date().toISOString();
 
+    // Rejection: reason codes (dropdown) + optional note, same rules as update-status.js
+    let rejectCodes = '';
+    if (action === 'status' && status === 'Rejected') {
+      const codes = cleanCodes(body.rejectCodes);
+      const note  = String(body.rejectNote || '').trim();
+      if (!codes.length && !note && !rejectionReason)
+        return res.status(400).json({ error: 'Select a rejection reason or write one' });
+      if (codes.length || note) rejectionReason = composeReason(codes, note);
+      const allow = canResubmit(codes, typeof body.allowResubmit === 'boolean' ? body.allowResubmit : undefined);
+      rejectCodes = codes.concat(allow ? [] : [NO_RESUBMIT]).join(',');
+    }
+
     const actor = sess.email;
     for (const rowIndex of rowIndexes) {
       if (action === 'assign') {
@@ -51,7 +65,10 @@ module.exports = async function handler(req, res) {
         data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → Assigned:${assignee||'(unassigned)'} at ${now}`]] });
       } else if (action === 'status') {
         data.push({ range: `${TAB}!T${rowIndex}`, values: [[status || '']] });
-        if (rejectionReason) data.push({ range: `${TAB}!V${rowIndex}`, values: [[rejectionReason]] });
+        if (status === 'Rejected') {
+          data.push({ range: `${TAB}!V${rowIndex}`, values: [[rejectionReason]] });
+          data.push({ range: `${TAB}!Z${rowIndex}`, values: [[rejectCodes]] });
+        }
         data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → ${status} at ${now}`]] });
       }
     }

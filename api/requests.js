@@ -155,6 +155,12 @@ module.exports = async function handler(req, res) {
       // Audit log — col Y (index 24), written by update-status/assign/bulk-action/withdraw
       obj['LastAction'] = row[24] !== undefined ? row[24] : '';
 
+      // Rejection reason codes (col Z), resubmission links (col AA = this request resubmits row N,
+      // col AB = this request was resubmitted as row N)
+      obj['RejectCodes']    = row[25] !== undefined ? row[25] : '';
+      obj['ResubmitOf']     = row[26] !== undefined ? row[26] : '';
+      obj['ResubmittedAs']  = row[27] !== undefined ? row[27] : '';
+
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
 
@@ -166,6 +172,15 @@ module.exports = async function handler(req, res) {
       rows = rows.filter(r =>
         String(r['Vendor ID'] || '').trim() === vendorId
       );
+      // Raw field values (by column position) so the vendor can pre-fill a resubmission
+      rows.forEach(r => {
+        const raw = dataRows[r['_rowIndex'] - 2] || [];
+        r['_prefill'] = {
+          requestType: raw[4]  || '', barcode: raw[5]  || '', sku:   raw[6]  || '',
+          itemName:    raw[7]  || '', notes:   raw[8]  || '', fileLink: raw[11] || '',
+          price:       raw[12] || '', delistReason: raw[15] || '',
+        };
+      });
     }
 
     return res.json({ data: rows });

@@ -9,6 +9,7 @@ function getRedis() {
   return redis;
 }
 
+const { NO_RESUBMIT } = require('../lib/rejection-reasons');
 const SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB      = 'Sheet1';
 const HEADERS  = [
@@ -165,6 +166,25 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Resubmission: the vendor re-sends a Rejected request after fixing it. It is saved as a NEW row
+    // (new timestamp, new SLA clock, normal auto-assignment) linked to the original.
+    const parentRow = body.parentRow ? parseInt(body.parentRow, 10) : 0;
+    if (body.parentRow) {
+      if (!parentRow || parentRow < 2) return res.status(400).json({ error: 'Invalid original request' });
+      const pr = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID, range: `${TAB}!A${parentRow}:AB${parentRow}`,
+      });
+      const p = (pr.data.values || [[]])[0] || [];
+      if (String(p[9] || '').toLowerCase().trim() !== sess.email.toLowerCase().trim())
+        return res.status(403).json({ error: 'Forbidden: this request does not belong to your account' });
+      if (!String(p[19] || '').toLowerCase().includes('reject'))
+        return res.status(409).json({ error: 'Only Rejected requests can be resubmitted' });
+      if (String(p[27] || '').trim())
+        return res.status(409).json({ error: 'This request was already resubmitted' });
+      if (String(p[25] || '').split(',').includes(NO_RESUBMIT))
+        return res.status(409).json({ error: 'This request cannot be resubmitted. Please send a new request instead.' });
+    }
+
     // Deduplication: block if a Pending/In-Progress row exists for same chain + type + barcode
     const chainCheck   = (body.restaurant  || '').trim().toLowerCase();
     const typeCheck    = (body.requestType || '').trim().toLowerCase();
@@ -257,6 +277,21 @@ module.exports = async function handler(req, res) {
     const rowMatch = updatedRange.match(/(\d+)$/);
     if (rowMatch) {
       await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
+      if (parentRow) {
+        // Link both ways: new row → original (AA), original → new row (AB) + audit entry
+        const newRow = parseInt(rowMatch[1], 10);
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: SHEET_ID,
+          requestBody: {
+            valueInputOption: 'RAW',
+            data: [
+              { range: `${TAB}!AA${newRow}`,    values: [[parentRow]] },
+              { range: `${TAB}!AB${parentRow}`, values: [[newRow]] },
+              { range: `${TAB}!Y${parentRow}`,  values: [[`${sess.email} → Resubmitted as row ${newRow} at ${now.toISOString()}`]] },
+            ],
+          },
+        });
+      }
     }
 
     // Increment daily counter only after successful write (avoids burning slots on errors)

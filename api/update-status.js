@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { sendEmail } = require('../lib/email');
+const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 const { Redis } = require('@upstash/redis');
 
 let redis = null;
@@ -25,9 +26,23 @@ module.exports = async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
 
-  const { rowIndex, status, rejectionReason, vendorId } = body || {};
+  const { rowIndex, status, vendorId } = body || {};
   if (!rowIndex || !status)
     return res.status(400).json({ error: 'rowIndex and status are required' });
+
+  // Rejection: reason codes (dropdown) + optional free-text note. A plain `rejectionReason`
+  // string is still accepted for older clients.
+  let rejectionReason = String((body && body.rejectionReason) || '').trim();
+  let rejectCodes = '';
+  if (status === 'Rejected') {
+    const codes = cleanCodes(body.rejectCodes);
+    const note  = String(body.rejectNote || '').trim();
+    if (!codes.length && !note && !rejectionReason)
+      return res.status(400).json({ error: 'Select a rejection reason or write one' });
+    if (codes.length || note) rejectionReason = composeReason(codes, note);
+    const allow = canResubmit(codes, typeof body.allowResubmit === 'boolean' ? body.allowResubmit : undefined);
+    rejectCodes = codes.concat(allow ? [] : [NO_RESUBMIT]).join(',');
+  }
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
@@ -46,6 +61,7 @@ module.exports = async function handler(req, res) {
         data: [
           { range: `${TAB}!T${rowIndex}`, values: [[status]] },
           { range: `${TAB}!V${rowIndex}`, values: [[rejectionReason || '']] },
+          { range: `${TAB}!Z${rowIndex}`, values: [[rejectCodes]] },
           { range: `${TAB}!Y${rowIndex}`, values: [[`${sess.email} → ${status} at ${now}`]] },
         ],
       },
