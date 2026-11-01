@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
     const q = String(req.query.q || '').trim().toLowerCase();
     if (q.length < 2) return res.json({ results: [] });
     try {
-      const PIM_KEY = 'talabat:pim_catalog';
+      const PIM_KEY = 'talabat:pim_catalog_v2';
       let rows = null;
 
       // 1. In-memory cache
@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
         const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
         const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
         const sheets = google.sheets({ version: 'v4', auth });
-        const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'PIM!A:C' });
+        const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'PIM!A:D' });
         rows = (resp.data.values || []).slice(1); // skip header row
         if (rows.length) {
           pimCache = { rows, expiresAt: Date.now() + 3600 * 1000 };
@@ -58,14 +58,19 @@ module.exports = async function handler(req, res) {
       }
 
       const results = (rows || [])
-        .filter(r => {
-          const master  = String(r[0] || '').toLowerCase();
-          const barcode = String(r[1] || '').toLowerCase();
-          const name    = String(r[2] || '').toLowerCase();
-          return barcode.includes(q) || master.includes(q) || name.includes(q);
-        })
-        .slice(0, 10)
-        .map(r => ({ masterCode: String(r[0] || ''), barcode: String(r[1] || ''), name: String(r[2] || '') }));
+      .filter(r => {
+        const sku = String(r[0] || '').toLowerCase();
+        const master = String(r[1] || '').toLowerCase();
+        const barcode = String(r[2] || '').toLowerCase();
+        const name = String(r[3] || '').toLowerCase();
+        return barcode.includes(q) || master.includes(q) || name.includes(q) || sku.includes(q);
+      })
+      .slice(0, 25)
+      .map(r => ({
+        masterCode: String(r[0] || ''), // Column A -> SKU
+        barcode: String(r[2] || ''),    // Column C -> Barcode
+        name: String(r[3] || '')        // Column D -> Item Name (English)
+      }));
 
       return res.json({ results });
     } catch (err) {
