@@ -904,6 +904,12 @@
                 <div id="bc-selected-confirm" style="display:none;margin-top:6px;padding:8px 12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;font-size:12px;color:#166534;font-weight:600;">
                   ✓ PIM match: <span id="bc-selected-name"></span> — is this the correct item?
                 </div>
+<!-- Matched Item Name selector below New Barcode -->
+          <div id="bc-item-select-wrap" style="display: none; margin-top: 10px;">
+            <label class="lbl" style="font-size: 12px; color: #374151;">Matched Item Name <span class="req">*</span></label>
+            <select id="f-bc-item-select" style="width: 100%; height: 38px; border: 1.5px solid #e5e7eb; border-radius: 6px; padding: 0 10px; font-size: 13px; background: #ffffff; color: #111827;"></select>
+            <div id="bc-item-select-hint" style="font-size: 11px; color: #6b7280; margin-top: 3px;"></div>
+          </div>
                 <div class="ferr" id="e-bc-new">New barcode is required</div>
               </div>
             </div>
@@ -2916,95 +2922,181 @@
     } catch(e) { alert('Bulk status update failed: ' + e.message); }
   }
 
-  // ═══════════════ PIM AUTOCOMPLETE (New Barcode field) ═══════════════
-  (function () {
-    let acTimer = null;
-    let acActive = -1;
-    const input = () => document.getElementById('f-bc-new');
-    const box   = () => document.getElementById('bc-suggestions');
+  // ==================== PIM AUTOCOMPLETE & MATCHED ITEM SELECTOR ====================
+(function () {
+  let acTimer = null;
+  let acActive = -1;
 
-    function closeDrop() {
-      const b = box(); if (b) { b.style.display = 'none'; b.innerHTML = ''; }
-      acActive = -1;
+  const input = () => document.getElementById('f-bc-new');
+  const box = () => document.getElementById('bc-suggestions');
+  const selectWrap = () => document.getElementById('bc-item-select-wrap');
+  const selectEl = () => document.getElementById('f-bc-item-select');
+  const hintEl = () => document.getElementById('bc-item-select-hint');
+  const itemField = () => document.getElementById('f-bc-item');
+  const skuField = () => document.getElementById('f-bc-sku');
+  const chip = () => document.getElementById('bc-selected-confirm');
+  const nameSpan = () => document.getElementById('bc-selected-name');
+
+  function closeDrop() {
+    const b = box();
+    if (b) { b.style.display = 'none'; b.innerHTML = ''; }
+    acActive = -1;
+  }
+
+  function applySelectedItem(item) {
+    if (!item) return;
+    const ifield = itemField();
+    const sfield = skuField();
+    const c = chip();
+    const ns = nameSpan();
+
+    if (ifield) ifield.value = item.name || '';
+    if (sfield && item.masterCode) sfield.value = item.masterCode;
+    if (c && ns) {
+      ns.textContent = item.name || '';
+      c.style.display = 'block';
+    }
+  }
+
+  async function loadMatchedItems(barcodeVal, preferredItem = null) {
+    const wrap = selectWrap();
+    const sel = selectEl();
+    const hint = hintEl();
+    if (!wrap || !sel || !barcodeVal || barcodeVal.length < 3) {
+      if (wrap) wrap.style.display = 'none';
+      return;
     }
 
-    function pickItem(item) {
-      const inp = input(); if (!inp) return;
-      inp.value = item.barcode || item.masterCode;
-      const itemField = document.getElementById('f-bc-item');
-      if (itemField && item.name) itemField.value = item.name;
-      // Show confirmation chip so vendor can verify the matched item
-      const chip = document.getElementById('bc-selected-confirm');
-      const nameSpan = document.getElementById('bc-selected-name');
-      if (chip && nameSpan) { nameSpan.textContent = item.name; chip.style.display = 'block'; }
-      closeDrop();
-    }
+    try {
+      const res = await fetch('/api/submit?q=' + encodeURIComponent(barcodeVal));
+      if (!res.ok) return;
+      const data = await res.json();
+      const allResults = data.results || [];
 
-    function clearConfirm() {
-      const chip = document.getElementById('bc-selected-confirm');
-      if (chip) chip.style.display = 'none';
-    }
+      // Find all products that match this barcode or master code
+      const matched = allResults.filter(r => 
+        (r.barcode && r.barcode.toLowerCase() === barcodeVal.toLowerCase()) ||
+        (r.masterCode && r.masterCode.toLowerCase() === barcodeVal.toLowerCase())
+      );
 
-    function renderDrop(results) {
-      const b = box(); if (!b) return;
-      if (!results.length) { closeDrop(); return; }
-      b.innerHTML = results.map((r, i) =>
-        `<div class="ac-item" data-idx="${i}">
-          <div class="ac-item-main">${escHtml(r.name)} &mdash; ${escHtml(r.masterCode)}</div>
-          <div class="ac-item-sub">${escHtml(r.barcode)}</div>
-        </div>`
-      ).join('');
-      b.querySelectorAll('.ac-item').forEach((el, i) => {
-        el.addEventListener('mousedown', e => { e.preventDefault(); pickItem(results[i]); });
-      });
-      b.style.display = 'block';
-      acActive = -1;
-    }
+      const itemsToUse = matched.length > 0 ? matched : allResults;
 
-    async function search(q) {
-      try {
-        const resp = await fetch(`/api/submit?q=${encodeURIComponent(q)}`);
-        if (!resp.ok) { closeDrop(); return; }
-        const data = await resp.json();
-        renderDrop(data.results || []);
-      } catch (_) { closeDrop(); }
-    }
-
-    document.addEventListener('input', function (e) {
-      if (e.target.id !== 'f-bc-new') return;
-      clearTimeout(acTimer);
-      clearConfirm(); // hide chip whenever vendor types manually
-      const q = e.target.value.trim();
-      if (q.length < 2) { closeDrop(); return; }
-      acTimer = setTimeout(() => search(q), 250);
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.target.id !== 'f-bc-new') return;
-      const b = box();
-      if (!b || b.style.display === 'none') return;
-      const items = b.querySelectorAll('.ac-item');
-      if (!items.length) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        acActive = Math.min(acActive + 1, items.length - 1);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        acActive = Math.max(acActive - 1, 0);
-      } else if (e.key === 'Enter' && acActive >= 0) {
-        e.preventDefault();
-        items[acActive].dispatchEvent(new MouseEvent('mousedown'));
+      if (itemsToUse.length === 0) {
+        wrap.style.display = 'none';
         return;
-      } else if (e.key === 'Escape') {
-        closeDrop(); return;
-      } else { return; }
-      items.forEach((el, i) => el.classList.toggle('ac-active', i === acActive));
+      }
+
+      wrap.style.display = 'block';
+      sel.innerHTML = itemsToUse.map((it, idx) => 
+        `<option value="${idx}">${it.name || 'Unnamed'} — (${it.masterCode || 'No Code'})</option>`
+      ).join('');
+
+      if (itemsToUse.length > 1) {
+        if (hint) {
+          hint.textContent = `${itemsToUse.length} items share this barcode. Select the correct item name.`;
+          hint.style.color = '#d97706';
+        }
+      } else {
+        if (hint) {
+          hint.textContent = '✓ 1 item matched.';
+          hint.style.color = '#16a34a';
+        }
+      }
+
+      // Pre-select preferred item or default to first match
+      let selectedIdx = 0;
+      if (preferredItem) {
+        const foundIdx = itemsToUse.findIndex(i => i.masterCode === preferredItem.masterCode);
+        if (foundIdx !== -1) selectedIdx = foundIdx;
+      }
+
+      sel.value = selectedIdx;
+      applySelectedItem(itemsToUse[selectedIdx]);
+
+      sel.onchange = () => {
+        const chosen = itemsToUse[Number(sel.value)];
+        applySelectedItem(chosen);
+      };
+    } catch (err) {
+      console.error('Failed to load matching items:', err);
+    }
+  }
+
+  function pickItem(item) {
+    const inp = input();
+    if (!inp) return;
+    inp.value = item.barcode || item.masterCode;
+    closeDrop();
+    loadMatchedItems(inp.value, item);
+  }
+
+  function renderList(items) {
+    const b = box();
+    if (!b) return;
+    if (!items.length) {
+      b.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:#9ca3af;">No matching items found</div>';
+      b.style.display = 'block';
+      return;
+    }
+
+    b.innerHTML = items.map((it, idx) => `
+      <div class="bc-opt" data-idx="${idx}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:13px;">
+        <div style="font-weight:600;color:#111827;">${it.name || 'Unnamed'}</div>
+        <div style="font-size:11px;color:#6b7280;">Code: ${it.masterCode} &bull; Barcode: ${it.barcode || '—'}</div>
+      </div>
+    `).join('');
+
+    b.querySelectorAll('.bc-opt').forEach((el, idx) => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        pickItem(items[idx]);
+      });
+      el.addEventListener('mouseenter', () => {
+        b.querySelectorAll('.bc-opt').forEach(o => o.style.background = '#fff');
+        el.style.background = '#fef2f2';
+      });
     });
 
-    document.addEventListener('focusout', function (e) {
-      if (e.target.id === 'f-bc-new') setTimeout(closeDrop, 150);
+    b.style.display = 'block';
+  }
+
+  // Input listener for autocomplete
+  document.addEventListener('DOMContentLoaded', () => {
+    const inp = input();
+    if (!inp) return;
+
+    inp.addEventListener('input', () => {
+      const q = inp.value.trim();
+      const c = chip();
+      if (c) c.style.display = 'none';
+
+      clearTimeout(acTimer);
+      if (q.length < 2) {
+        closeDrop();
+        const wrap = selectWrap();
+        if (wrap) wrap.style.display = 'none';
+        return;
+      }
+
+      acTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/submit?q=' + encodeURIComponent(q));
+          if (!res.ok) return;
+          const data = await res.json();
+          renderList(data.results || []);
+        } catch (_) {}
+      }, 250);
     });
-  })();
+
+    inp.addEventListener('change', () => {
+      loadMatchedItems(inp.value.trim());
+    });
+
+    inp.addEventListener('blur', () => {
+      setTimeout(closeDrop, 200);
+    });
+  });
+})();
 
   // ═══════════════ HIGH PRIORITY ═══════════════
   async function togglePriority(rowIdx, btn) {
