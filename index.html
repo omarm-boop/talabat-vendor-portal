@@ -1727,6 +1727,18 @@
       return;
     }
 
+    // The login token lives in localStorage, shared by every tab. If another account signed in
+    // from a second tab, our token no longer matches this tab's vendor and the API answers 403.
+    try {
+      const stored = JSON.parse(localStorage.getItem('tlb_session') || '{}');
+      const storedId = stored.vendor && stored.vendor.vendorId;
+      if (storedId && String(storedId).toLowerCase() !== String(currentVendor.vendorId).toLowerCase()) {
+        alert('Another account signed in from a different tab, so this tab is switching to it. Use one account per browser window.');
+        location.reload();
+        return;
+      }
+    } catch (_) {}
+
     try {
       const url = APPS_SCRIPT_URL + '?vendorId=' + encodeURIComponent(currentVendor.vendorId) + '&t=' + Date.now();
       const resp = await apiFetch(url, { headers: getAuthHeaders() });
