@@ -66,6 +66,9 @@ async function _handle(req, res) {
       });
     }
 
+    if (!isTeam && !/\S+@\S+\.\S+/.test(String(vendorEmail || '').trim()))
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+
     const now    = new Date().toISOString();
     const hashed = await bcrypt.hash(password, 10);
 
@@ -87,8 +90,7 @@ async function _handle(req, res) {
     }
 
     // Vendor: store Chain ID in both col A and col C, email in col G
-    const notifEmail = (vendorEmail && String(vendorEmail).includes('@'))
-      ? String(vendorEmail).toLowerCase().trim() : '';
+    const notifEmail = String(vendorEmail || '').toLowerCase().trim();
     await sheets.spreadsheets.values.append({
       spreadsheetId: TRACKING_SHEET_ID,
       range: `${CREDENTIALS_TAB}!A:G`,
@@ -101,7 +103,7 @@ async function _handle(req, res) {
       success: true,
       sessionToken: signToken(id, 'vendor', ts),
       sessionTs: ts,
-      vendor: { vendorId: id, chainId: id, chainName: chainName || '', branchName: '' },
+      vendor: { vendorId: id, chainId: id, chainName: chainName || '', branchName: '', email: notifEmail, brandType: '' },
     });
 
   } catch (err) {

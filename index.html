@@ -427,7 +427,7 @@
         <input class="li-input" type="text" id="su-chainname" placeholder="e.g. Pizza Palace" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field" id="su-email-field">
-        <label class="li-label">Email Address <span style="color:#aaa;font-weight:500">(optional — for status notifications)</span></label>
+        <label class="li-label">Email Address <span style="color:#e53935">*</span> <span style="color:#aaa;font-weight:500">(for status notifications)</span></label>
         <input class="li-input" type="email" id="su-email" placeholder="e.g. you@company.com" onkeydown="if(event.key==='Enter') doSignup()">
       </div>
       <div class="li-field">
@@ -519,7 +519,7 @@
         <h2><span data-i18n="welcomeBack">Welcome back,</span> <span id="dash-name"></span> 👋</h2>
         <p data-i18n="dashSub">Track your menu update requests and submit new ones below.</p>
         <div class="dash-actions">
-          <button class="btn-new-req" data-i18n="newReqBtn" onclick="goToForm()">＋ Submit New Request</button>
+          <button class="btn-new-req" data-i18n="newReqBtn" onclick="startNewRequest()">＋ Submit New Request</button>
           <button class="btn-refresh" data-i18n="refreshBtn" onclick="loadDashboard()">↻ Refresh</button>
           <span id="dash-refresh-ts" style="font-size:11px;color:#aaa;margin-left:6px"></span>
         </div>
@@ -599,6 +599,7 @@
         <div class="step on" id="s1">
           <div class="chip" data-i18n="s1chip">Step 1 of 4 &nbsp;·&nbsp; Your Info</div>
           <div class="sh" data-i18n="s1title">Who is submitting?</div>
+          <div id="brand-chip" style="display:none;margin:-4px 0 16px;font-size:13px;color:#411517"></div>
           <div class="fg">
             <label class="lbl"><span data-i18n="fEmailLabel">Email Address</span> <span class="req">*</span></label>
             <input type="email" id="f-email" placeholder="your@email.com">
@@ -737,13 +738,31 @@
     <label class="lbl">Item Name (Arabic) <span class="opt">(optional)</span></label>
     <input type="text" id="f-add-name-ar" placeholder="اسم المنتج بالعربي" dir="rtl">
   </div>
+  <div id="add-grocery-fields" style="display:none">
+    <div class="row x2">
+      <div class="fg">
+        <label class="lbl">Is the item weighable? <span class="req">*</span></label>
+        <select id="f-add-itemtype" onchange="onItemTypeChange()" style="width:100%;height:48px;border:1.5px solid #e0d8ce;border-radius:12px;padding:0 14px;font-family:'Poppins',sans-serif;font-size:14px;background:#fff;color:#411517">
+          <option value="">Select…</option>
+          <option value="weighable">Weighable</option>
+          <option value="packed">Packed</option>
+        </select>
+        <div class="ferr" id="e-add-itemtype">Please choose Weighable or Packed</div>
+      </div>
+      <div class="fg" id="add-minw-wrap" style="display:none">
+        <label class="lbl">Minimum Weight (kg) <span class="req">*</span></label>
+        <input type="text" id="f-add-minw" placeholder="e.g. 0.25">
+        <div class="ferr" id="e-add-minw">Minimum weight is required (a number above 0)</div>
+      </div>
+    </div>
+  </div>
   <div class="row x2">
     <div class="fg">
       <label class="lbl">Category [category::en_EG] <span class="opt">(optional)</span></label>
       <input type="text" id="f-add-cat" placeholder="e.g. Medications, Beverages">
     </div>
     <div class="fg">
-      <label class="lbl">Price <span class="req">*</span></label>
+      <label class="lbl"><span id="lbl-add-price">Price</span> <span class="req">*</span></label>
       <input type="text" id="f-add-price" placeholder="e.g. EGP 34.00">
       <div class="ferr" id="e-add-price">Price is required</div>
     </div>
@@ -1180,11 +1199,45 @@
 </div>
 
 <script src="/lib/rejection-reasons.js"></script>
+
+<!-- Brand type: asked once per vendor, remembered -->
+<div id="brand-modal" style="display:none;position:fixed;inset:0;background:rgba(65,21,23,.55);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:20px;padding:26px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div class="sh" id="brand-title" data-i18n="brandTitle" style="margin-bottom:6px">What type of brand do you have?</div>
+    <div style="font-size:13px;color:#8a7a7a;margin-bottom:16px" data-i18n="brandSub">We will remember your choice for your next requests.</div>
+    <div class="tgrid">
+      <div class="tc" onclick="pickBrand('pharmacy')">
+        <div class="tc-icon">💊</div>
+        <div><div class="tc-name" data-i18n="pharmacyName">Pharmacy</div><div class="tc-desc" data-i18n="pharmacyDesc">Pharmaceutical products &amp; medications</div></div>
+      </div>
+      <div class="tc" onclick="pickBrand('grocery')">
+        <div class="tc-icon">🛒</div>
+        <div><div class="tc-name" data-i18n="groceryName">Grocery</div><div class="tc-desc" data-i18n="groceryDesc">Food, beverages &amp; household items</div></div>
+      </div>
+    </div>
+    <button class="btn-back-dash" id="brand-cancel" style="margin-top:14px" data-i18n="cancelBtn" onclick="closeBrandModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Email gate: vendors without an email on file must add one -->
+<div id="email-gate" style="display:none;position:fixed;inset:0;background:rgba(65,21,23,.65);z-index:10000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:20px;padding:26px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div class="sh" style="margin-bottom:6px" data-i18n="gateTitle">Add your email address</div>
+    <div style="font-size:13px;color:#8a7a7a;margin-bottom:14px" data-i18n="gateSub">We use it to send you updates on your requests. This is required to continue.</div>
+    <input type="email" id="gate-email" placeholder="you@company.com" style="width:100%;height:48px;border:1.5px solid #e0d8ce;border-radius:12px;padding:0 14px;font-family:'Poppins',sans-serif;font-size:14px;color:#411517" onkeydown="if(event.key==='Enter') submitEmailGate()">
+    <div id="gate-err" style="color:#e53935;font-size:12px;margin-top:6px;min-height:16px"></div>
+    <button class="btn-next" id="gate-btn" style="margin-top:8px" onclick="submitEmailGate()">Save &amp; continue</button>
+  </div>
+</div>
+
 <script>
   // ═══════════════ LANGUAGE / I18N ═══════════════
   const T = {
     en: {
       tagline:'Vendor Menu Update Portal',
+      brandTitle:'What type of brand do you have?', brandSub:'We will remember your choice for your next requests.',
+      brandLabel:'Brand', brandChange:'Change', cancelBtn:'Cancel',
+      gateTitle:'Add your email address', gateSub:'We use it to send you updates on your requests. This is required to continue.',
       signIn:'Sign in', signInSub:'Enter your Chain ID and password to continue.',
       vendorIdLabel:'Chain ID', vendorIdPh:'e.g. 12345', passwordLabel:'Password',
       signInBtn:'Sign In →', signingIn:'Signing in…',
@@ -1239,6 +1292,9 @@
     },
     ar: {
       tagline:'بوابة تحديث قائمة الموردين',
+      brandTitle:'ما نوع نشاطك التجاري؟', brandSub:'سنتذكر اختيارك في طلباتك القادمة.',
+      brandLabel:'النشاط', brandChange:'تغيير', cancelBtn:'إلغاء',
+      gateTitle:'أضف بريدك الإلكتروني', gateSub:'نستخدمه لإرسال تحديثات طلباتك. هذه الخطوة مطلوبة للمتابعة.',
       signIn:'تسجيل الدخول', signInSub:'أدخل رقم الفرع وكلمة المرور للمتابعة.',
       vendorIdLabel:'رقم الفرع', vendorIdPh:'مثال: 12345', passwordLabel:'كلمة المرور',
       signInBtn:'دخول ←', signingIn:'جاري الدخول…',
@@ -1429,6 +1485,7 @@
     const isTeamSignup = vendorId.toLowerCase().endsWith('@talabat.com');
     if (!vendorId)        { errEl.textContent = 'Please enter your Chain ID.'; return; }
     if (isTeamSignup && !chainName.trim()) { errEl.textContent = 'Please enter your name.'; return; }
+    if (!isTeamSignup && !/\S+@\S+\.\S+/.test(vendorEmail.trim())) { errEl.textContent = 'Please enter a valid email address.'; return; }
     if (pass.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
     if (pass !== confirm)  { errEl.textContent = 'Passwords do not match.'; return; }
     btn.textContent = T[lang].creatingAcc; btn.disabled = true;
@@ -1452,6 +1509,7 @@
     currentVendor = vendor;
     localStorage.setItem('tlb_session', JSON.stringify({ vendor, ts: Date.now(), sessionToken, sessionTs }));
     document.getElementById('pg-login').style.display = 'none';
+    if (vendor.chainId !== '0') setTimeout(ensureVendorEmail, 300);
     if (vendor.chainId === '0') {
       currentAdminUser = { name: vendor.name || 'Admin', role: vendor.role || 'monitor' };
       const tag = document.getElementById('adm-user-tag');
@@ -1575,18 +1633,104 @@
     if (b) { b.style.display = 'none'; b.innerHTML = ''; }
   }
 
+
+  // ═══════════════ VENDOR PROFILE (email + brand type, remembered per vendor) ═══════════════
+  async function saveProfile(patch) {
+    const resp = await apiFetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ action: 'profile', ...patch }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Could not save. Please try again.');
+    if (data.email)     currentVendor.email = data.email;
+    if (data.brandType) currentVendor.brandType = data.brandType;
+    try {
+      const sess = JSON.parse(localStorage.getItem('tlb_session') || '{}');
+      sess.vendor = { ...(sess.vendor || {}), ...currentVendor };
+      localStorage.setItem('tlb_session', JSON.stringify(sess));
+    } catch (_) {}
+    return data;
+  }
+
+  let brandAfterPick = null;
+  function showBrandModal(after) {
+    brandAfterPick = after || null;
+    $('brand-cancel').style.display = '';
+    $('brand-modal').style.display = 'flex';
+  }
+  function closeBrandModal() { $('brand-modal').style.display = 'none'; brandAfterPick = null; }
+  async function pickBrand(type) {
+    currentVendor.brandType = type;
+    $('brand-modal').style.display = 'none';
+    const after = brandAfterPick; brandAfterPick = null;
+    try { await saveProfile({ brandType: type }); }
+    catch (e) { console.warn('brand save failed (will retry next time):', e.message); }
+    updateBrandChip();
+    updateAddFields();
+    if (after) after();
+  }
+  function startNewRequest() {
+    if (currentVendor && !currentVendor.brandType) showBrandModal(() => goToForm());
+    else goToForm();
+  }
+  function updateBrandChip() {
+    const el = $('brand-chip'); if (!el) return;
+    const b = currentVendor && currentVendor.brandType;
+    if (!b) { el.style.display = 'none'; return; }
+    const t = T[lang];
+    el.innerHTML = t.brandLabel + ': <strong>' + (b === 'grocery' ? '🛒 ' + t.groceryName : '💊 ' + t.pharmacyName) + '</strong> · <a href="#" style="color:#ff5900;font-weight:600" onclick="showBrandModal(updateBrandChip);return false">' + t.brandChange + '</a>';
+    el.style.display = '';
+  }
+
+  // Vendors with no email on file must add one before using the portal
+  function ensureVendorEmail() {
+    if (!currentVendor || currentVendor.chainId === '0') return;
+    if (currentVendor.email === undefined || currentVendor.email) return; // undefined = older session, asked at next login
+    $('gate-email').value = '';
+    $('gate-err').textContent = '';
+    $('email-gate').style.display = 'flex';
+  }
+  async function submitEmailGate() {
+    const e = $('gate-email').value.trim();
+    if (!/\S+@\S+\.\S+/.test(e)) { $('gate-err').textContent = 'Please enter a valid email address.'; return; }
+    const btn = $('gate-btn'); btn.disabled = true;
+    try { await saveProfile({ email: e }); $('email-gate').style.display = 'none'; }
+    catch (err) { $('gate-err').textContent = err.message; }
+    finally { btn.disabled = false; }
+  }
+
+  // Grocery: add-item needs Weighable / Packed. Weighable replaces Price with Price per Kilo + Minimum Weight.
+  function updateAddFields() {
+    const grocery = !!(currentVendor && currentVendor.brandType === 'grocery');
+    const box = $('add-grocery-fields'); if (!box) return;
+    box.style.display = grocery ? '' : 'none';
+    if (!grocery && $('f-add-itemtype')) { $('f-add-itemtype').value = ''; if ($('f-add-minw')) $('f-add-minw').value = ''; }
+    onItemTypeChange();
+  }
+  function onItemTypeChange() {
+    const weighable = !!$('f-add-itemtype') && $('add-grocery-fields').style.display !== 'none' && $('f-add-itemtype').value === 'weighable';
+    $('add-minw-wrap').style.display = weighable ? '' : 'none';
+    $('lbl-add-price').textContent = weighable ? 'Price per Kilo' : 'Price';
+    $('f-add-price').placeholder = weighable ? 'e.g. EGP 120.00 per kg' : 'e.g. EGP 34.00';
+    if (!weighable && $('f-add-minw')) $('f-add-minw').value = '';
+  }
+  const isWeighable = () => reqType === 'add' && $('add-grocery-fields').style.display !== 'none' && v('f-add-itemtype') === 'weighable';
+  const posNum = s => parseFloat(String(s || '').replace(/[^\d.]/g, '')) > 0;
+
   function goToForm() {
     clearResubmit();
     clearPhotos();
     showView('form');
     if (currentVendor) {
-      document.getElementById('f-email').value      = currentVendor.vendorId + '@vendor.portal';
+      document.getElementById('f-email').value      = currentVendor.email || '';
       document.getElementById('f-restaurant').value = currentVendor.chainName;
       document.getElementById('f-branch').value     = currentVendor.branchName;
       document.getElementById('f-vendor').value     = currentVendor.vendorId;
     }
     $('shell').classList.add('on');
     if (cur !== 1) resetForm();
+    updateBrandChip();
     $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
@@ -1616,6 +1760,7 @@
     if (type === 'add') {
       set('f-add-barcode', pf.barcode); set('f-add-sku', pf.sku); set('f-add-name-en', pf.itemName);
       set('f-add-price', pf.price); set('f-add-desc', n);
+      set('f-add-itemtype', pf.itemType); set('f-add-minw', pf.minWeight);
     } else if (type === 'master') {
       set('f-master-link', row['PhotoLink']); set('f-master-notes', n);
     } else if (type === 'desc') {
@@ -1674,6 +1819,7 @@
     document.getElementById('countTag').style.display = 'none';
     document.querySelectorAll('.tc').forEach(c => c.classList.remove('sel'));
     groups.forEach(g => document.getElementById('grp-' + g).style.display = 'none');
+    if ($('f-add-itemtype')) $('f-add-itemtype').value = '';
     document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => {
       const keep = ['f-email','f-restaurant','f-branch','f-name','f-vendor'];
       if (!keep.includes(el.id)) el.value = '';
@@ -2227,6 +2373,9 @@
 
   function next(to) {
     if (!validate(cur)) return;
+    if (cur === 1 && currentVendor && v('f-email').toLowerCase() !== String(currentVendor.email || '').toLowerCase()) {
+      saveProfile({ email: v('f-email') }).catch(e => console.warn('email save failed:', e.message));
+    }
     if (to === 3) {
       if (reqType === 'add') { switchCustom('s-add-type'); return; }
       applyType();
@@ -2312,6 +2461,14 @@
         if (!req('f-add-sku','e-add-sku'))           ok = false;
         if (!req('f-add-name-en','e-add-name-en'))   ok = false;
         if (!req('f-add-price','e-add-price'))       ok = false;
+        if ($('add-grocery-fields').style.display !== 'none') {
+          if (!req('f-add-itemtype','e-add-itemtype')) ok = false;
+          if (isWeighable()) {
+            if (!posNum(v('f-add-price'))) { err('f-add-price','e-add-price'); ok = false; }
+            if (!posNum(v('f-add-minw')))  { err('f-add-minw','e-add-minw');   ok = false; }
+            else clr('f-add-minw','e-add-minw');
+          }
+        }
         if (!req('f-add-photo','e-add-photo'))       ok = false;
       }
       if (reqType === 'master') {
@@ -2383,6 +2540,7 @@
     $('s3-title').textContent = label;
     if (reqType !== 'add') $('countTag').style.display = 'none';
     if (reqType === 'remove') initDelistRows();
+    if (reqType === 'add') updateAddFields();
   }
 
   function initDelistRows() {
@@ -2424,11 +2582,14 @@
 
   function buildPayload() {
     const base = {
-      email: v('f-email'), restaurant: v('f-restaurant'),
+      // Sheet column J must stay "<vendorId>@vendor.portal" (ownership checks); the real email travels as contactEmail
+      email: (currentVendor ? currentVendor.vendorId : v('f-vendor')) + '@vendor.portal', contactEmail: v('f-email'),
+      brandType: (currentVendor && currentVendor.brandType) || '',
+      restaurant: v('f-restaurant'),
       branch: v('f-branch'), name: v('f-name'),
       vendor: v('f-vendor'), requestType: typeLabels[reqType]
     };
-    if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo') };
+    if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo'), itemType: v('f-add-itemtype'), minWeight: v('f-add-minw') };
     if (reqType === 'master')  return { ...base, requestType: 'Add Master File – ' + (masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'), photoLink: v('f-master-link'), notes: v('f-master-notes') };
     if (reqType === 'desc')    return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
@@ -2445,7 +2606,7 @@
       [t.rvBranch, v('f-branch') || '—'], [t.rvName, v('f-name') || '—'],
       [t.rvVendorId, v('f-vendor') || '—'], [t.rvReqType, getTypeLabel(reqType) || '—'],
     ];
-    if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo') ? '📷 Photo uploaded' : '—']); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
+    if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [isWeighable() ? 'Price per Kilo' : t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo') ? '📷 Photo uploaded' : '—']); if (v('f-add-itemtype')) rows.push(['Item Type', v('f-add-itemtype') === 'weighable' ? 'Weighable' : 'Packed']); if (isWeighable()) rows.push(['Minimum Weight (kg)', v('f-add-minw')]); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
     if (reqType === 'master')  { rows.push([t.rvStoreType, masterType === 'pharmacy' ? t.pharmacyName : t.groceryName], [t.rvFileLink, v('f-master-link')]); if (v('f-master-notes')) rows.push([t.rvNotes, v('f-master-notes')]); }
     if (reqType === 'desc')    { rows.push([t.rvItemName, v('f-desc-item')], [t.rvSKU, v('f-desc-sku')], [t.rvBarcode, v('f-desc-barcode')], [t.rvCurrentDesc, v('f-desc-current')], [t.rvNewDesc, v('f-desc-new')]); }
     if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link') ? '📷 Photo uploaded' : '—']); }
@@ -2678,6 +2839,10 @@
       ['Assigned At',     at],
       ['Status',          r['Status']],
       ['Comment',         r['Comment'] || r['Rejection Reason']],
+      ['Brand Type',      r['BrandType']],
+      ['Item Type',       r['ItemType']],
+      ['Min Weight (kg)', r['MinWeight']],
+      ['Contact Email',   r['ContactEmail']],
       ['Resubmission of row', r['ResubmitOf']],
       ['Resubmitted as row',  r['ResubmittedAs']],
       ['Last Action',     r['LastAction']],

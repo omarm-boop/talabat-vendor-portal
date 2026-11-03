@@ -151,6 +151,28 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // -- Required fields + brand / weighable rules (validated here as well as in the form) --
+  if (!String(body.restaurant || '').trim() || !String(body.branch || '').trim())
+    return res.status(400).json({ error: 'Restaurant / Chain name and Branch / Location are required' });
+  const brandType = String(body.brandType || '').trim().toLowerCase();
+  if (brandType && !['pharmacy', 'grocery'].includes(brandType))
+    return res.status(400).json({ error: 'Invalid brand type' });
+  const contactEmail = String(body.contactEmail || '').trim();
+  if (contactEmail && !/\S+@\S+\.\S+/.test(contactEmail))
+    return res.status(400).json({ error: 'Please enter a valid email address' });
+  let itemType = '', minWeight = '';
+  if (brandType === 'grocery' && /^urgent add item$/i.test(String(body.requestType || '').trim())) {
+    itemType = String(body.itemType || '').trim().toLowerCase();
+    if (!['weighable', 'packed'].includes(itemType))
+      return res.status(400).json({ error: 'Please choose whether the item is Weighable or Packed' });
+    if (itemType === 'weighable') {
+      const num = x => parseFloat(String(x || '').replace(/[^\d.]/g, ''));
+      if (!(num(body.price) > 0))     return res.status(400).json({ error: 'Price per Kilo is required for weighable items' });
+      if (!(num(body.minWeight) > 0)) return res.status(400).json({ error: 'Minimum Weight is required for weighable items' });
+      minWeight = String(body.minWeight).trim();
+    }
+  }
+
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
@@ -158,6 +180,8 @@ module.exports = async function handler(req, res) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
+
+    await ensureColumns(sheets, SHEET_ID, TAB, 32); // AC-AF: brand, item type, min weight, contact email
 
     // Write headers if sheet is empty
     const peek = await sheets.spreadsheets.values.get({
@@ -177,7 +201,6 @@ module.exports = async function handler(req, res) {
     // (new timestamp, new SLA clock, normal auto-assignment) linked to the original.
     const parentRow = body.parentRow ? parseInt(body.parentRow, 10) : 0;
     if (body.parentRow) {
-      await ensureColumns(sheets, SHEET_ID, TAB, 28);
       if (!parentRow || parentRow < 2) return res.status(400).json({ error: 'Invalid original request' });
       const pr = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID, range: `${TAB}!A${parentRow}:AB${parentRow}`,
@@ -285,6 +308,13 @@ module.exports = async function handler(req, res) {
     const rowMatch = updatedRange.match(/(\d+)$/);
     if (rowMatch) {
       await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
+      try {
+        const nr = parseInt(rowMatch[1], 10);
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AF${nr}`, valueInputOption: 'RAW',
+          requestBody: { values: [[brandType, itemType, minWeight, contactEmail]] },
+        });
+      } catch (e) { console.warn('brand/item columns write failed (non-fatal):', e.message); }
       if (parentRow) {
         // Link both ways: new row → original (AA), original → new row (AB) + audit entry
         const newRow = parseInt(rowMatch[1], 10);

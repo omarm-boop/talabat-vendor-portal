@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const bcrypt = require('bcryptjs');
-const { signToken } = require('../lib/verify');
+const { signToken, verifyRequest } = require('../lib/verify');
+const { ensureColumns } = require('../lib/sheet-columns');
 const { setCors } = require('../lib/cors');
 const { checkLoginLimit } = require('../lib/ratelimit');
 
@@ -30,6 +31,55 @@ async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
   return true;
 }
 
+// Saves the vendor's contact email (Credentials col G) and brand type (col H) once, so they are remembered.
+// Lives here (not in its own file) to stay within the Vercel function-count limit.
+async function handleProfile(req, res, body) {
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
+  if (sess.role !== 'vendor') return res.status(403).json({ error: 'Vendors only' });
+
+  const email = String(body.email || '').trim().toLowerCase();
+  const brandType = String(body.brandType || '').trim().toLowerCase();
+  if (!email && !brandType) return res.status(400).json({ error: 'Nothing to save' });
+  if (email && !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  if (brandType && !['pharmacy', 'grocery'].includes(brandType)) return res.status(400).json({ error: 'Invalid brand type' });
+
+  try {
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    const auth = new google.auth.JWT({
+      email: credentials.client_email, key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId: TRACKING_SHEET_ID, range: `${CREDENTIALS_TAB}!A:C` });
+    const rows = resp.data.values || [];
+    const me = String(sess.email).toLowerCase().trim();
+    let rowNum = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const a = String(rows[i][0] || '').toLowerCase().trim();
+      const c = String(rows[i][2] || '').toLowerCase().trim();
+      if (a === me || (c && c === me)) { rowNum = i + 1; break; }
+    }
+    if (!rowNum) return res.status(404).json({ error: 'Account not found' });
+
+    await ensureColumns(sheets, TRACKING_SHEET_ID, CREDENTIALS_TAB, 8);
+    const data = [];
+    if (email)     data.push({ range: `${CREDENTIALS_TAB}!G${rowNum}`, values: [[email]] });
+    if (brandType) {
+      data.push({ range: `${CREDENTIALS_TAB}!H${rowNum}`, values: [[brandType]] });
+      data.push({ range: `${CREDENTIALS_TAB}!H1`, values: [['Brand Type']] });
+    }
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: TRACKING_SHEET_ID,
+      requestBody: { valueInputOption: 'RAW', data },
+    });
+    return res.json({ success: true, email, brandType });
+  } catch (err) {
+    console.error('auth.js profile error:', err.message);
+    return res.status(500).json({ error: 'Server error. Please try again.' });
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -37,6 +87,7 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
+  if (body && body.action === 'profile') return handleProfile(req, res, body);
   const { vendorId, password } = body || {};
 
   if (!vendorId || !password)
@@ -147,7 +198,7 @@ module.exports = async function handler(req, res) {
     const headers = values[0];
     const rows    = values.slice(1);
 
-    let matched = null;
+    let matched = null, matchedRow = [];
     for (let i = 0; i < rows.length; i++) {
       const obj = {};
       headers.forEach((h, idx) => { obj[h] = rows[i][idx] || ''; });
@@ -158,7 +209,7 @@ module.exports = async function handler(req, res) {
 
       const rowNum  = i + 2;
       const matches = await verifyAndMigrate(obj['Password'], password, sheets, rowNum);
-      if (matches) { matched = obj; break; }
+      if (matches) { matched = obj; matchedRow = rows[i]; break; }
     }
 
     if (!matched) {
@@ -179,6 +230,8 @@ module.exports = async function handler(req, res) {
         chainId:    matched['Chain ID'],
         chainName:  matched['Chain Name'],
         branchName: matched['Branch Name'],
+        email:      String(matchedRow[6] || '').trim(),
+        brandType:  String(matchedRow[7] || '').trim().toLowerCase(),
       },
     });
 

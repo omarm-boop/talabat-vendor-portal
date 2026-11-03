@@ -161,6 +161,12 @@ module.exports = async function handler(req, res) {
       obj['ResubmitOf']     = row[26] !== undefined ? row[26] : '';
       obj['ResubmittedAs']  = row[27] !== undefined ? row[27] : '';
 
+      // Brand / item details (cols AC-AF): brand type, weighable|packed, minimum weight (kg), contact email
+      obj['BrandType']    = row[28] !== undefined ? row[28] : '';
+      obj['ItemType']     = row[29] !== undefined ? row[29] : '';
+      obj['MinWeight']    = row[30] !== undefined ? row[30] : '';
+      obj['ContactEmail'] = row[31] !== undefined ? row[31] : '';
+
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
 
@@ -179,6 +185,7 @@ module.exports = async function handler(req, res) {
           requestType: raw[4]  || '', barcode: raw[5]  || '', sku:   raw[6]  || '',
           itemName:    raw[7]  || '', notes:   raw[8]  || '', fileLink: raw[11] || '',
           price:       raw[12] || '', delistReason: raw[15] || '',
+          itemType:    raw[29] || '', minWeight: raw[30] || '',
         };
       });
     }
