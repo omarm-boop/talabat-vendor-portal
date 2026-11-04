@@ -51,29 +51,34 @@ async function handleProfile(req, res, body) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
-    const resp = await sheets.spreadsheets.values.get({ spreadsheetId: TRACKING_SHEET_ID, range: `${CREDENTIALS_TAB}!A:C` });
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId: TRACKING_SHEET_ID, range: `${CREDENTIALS_TAB}!A:H` });
     const rows = resp.data.values || [];
     const me = String(sess.email).toLowerCase().trim();
-    let rowNum = 0;
+    let rowNum = 0, existingBrand = '';
     for (let i = 1; i < rows.length; i++) {
       const a = String(rows[i][0] || '').toLowerCase().trim();
       const c = String(rows[i][2] || '').toLowerCase().trim();
-      if (a === me || (c && c === me)) { rowNum = i + 1; break; }
+      if (a === me || (c && c === me)) { rowNum = i + 1; existingBrand = String(rows[i][7] || '').trim().toLowerCase(); break; }
     }
     if (!rowNum) return res.status(404).json({ error: 'Account not found' });
+    // Pharmacy and Grocery are different verticals: once a brand type is saved it can never be changed here
+    if (brandType && existingBrand && brandType !== existingBrand)
+      return res.status(409).json({ error: 'Your brand type is already set and cannot be changed. Please contact your account manager.', brandType: existingBrand });
 
     await ensureColumns(sheets, TRACKING_SHEET_ID, CREDENTIALS_TAB, 8);
     const data = [];
     if (email)     data.push({ range: `${CREDENTIALS_TAB}!G${rowNum}`, values: [[email]] });
-    if (brandType) {
+    if (brandType && !existingBrand) {
       data.push({ range: `${CREDENTIALS_TAB}!H${rowNum}`, values: [[brandType]] });
       data.push({ range: `${CREDENTIALS_TAB}!H1`, values: [['Brand Type']] });
     }
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: TRACKING_SHEET_ID,
-      requestBody: { valueInputOption: 'RAW', data },
-    });
-    return res.json({ success: true, email, brandType });
+    if (data.length) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: TRACKING_SHEET_ID,
+        requestBody: { valueInputOption: 'RAW', data },
+      });
+    }
+    return res.json({ success: true, email, brandType: existingBrand || brandType });
   } catch (err) {
     console.error('auth.js profile error:', err.message);
     return res.status(500).json({ error: 'Server error. Please try again.' });

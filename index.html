@@ -714,6 +714,7 @@
 
 <!-- == ADD NEW ITEM == -->
 <div id="grp-add" style="display:none">
+  <div id="brand-chip-add" style="display:none;margin:0 0 14px;font-size:13px;color:#411517"></div>
   <div class="sec-label">Item Identifiers</div>
   <div class="row x2">
     <div class="fg">
@@ -1235,7 +1236,7 @@
   const T = {
     en: {
       tagline:'Vendor Menu Update Portal',
-      brandTitle:'What type of brand do you have?', brandSub:'We will remember your choice for your next requests.',
+      brandTitle:'What type of brand do you have?', brandSub:'Choose carefully: your brand type is saved on your account and cannot be changed later.',
       brandLabel:'Brand', brandChange:'Change', cancelBtn:'Cancel',
       gateTitle:'Add your email address', gateSub:'We use it to send you updates on your requests. This is required to continue.',
       signIn:'Sign in', signInSub:'Enter your Chain ID and password to continue.',
@@ -1292,7 +1293,7 @@
     },
     ar: {
       tagline:'بوابة تحديث قائمة الموردين',
-      brandTitle:'ما نوع نشاطك التجاري؟', brandSub:'سنتذكر اختيارك في طلباتك القادمة.',
+      brandTitle:'ما نوع نشاطك التجاري؟', brandSub:'اختر بعناية: يتم حفظ نشاطك التجاري على حسابك ولا يمكن تغييره لاحقاً.',
       brandLabel:'النشاط', brandChange:'تغيير', cancelBtn:'إلغاء',
       gateTitle:'أضف بريدك الإلكتروني', gateSub:'نستخدمه لإرسال تحديثات طلباتك. هذه الخطوة مطلوبة للمتابعة.',
       signIn:'تسجيل الدخول', signInSub:'أدخل رقم الفرع وكلمة المرور للمتابعة.',
@@ -1367,9 +1368,328 @@
     document.querySelectorAll('.lang-btn').forEach(btn => {
       btn.textContent = l === 'ar' ? 'EN' : 'ع';
     });
+    updateBrandChip();
+    // The step-3 heading is set when the type is picked, so refresh it when the language changes
+    try { if (reqType) { const lb = getTypeLabel(reqType); ['s3-chip', 's3-title'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = lb; }); } } catch (_) {}
+    applyDomTranslation();
   }
 
   function toggleLang() { setLang(lang === 'ar' ? 'en' : 'ar'); }
+
+  // ═══════════════ FULL TRANSLATION LAYER (DOM) ═══════════════
+  // Text that is written in English in the HTML or built in JavaScript is translated here, so that
+  // choosing Arabic switches the whole page (and English switches it back). Only exact, known
+  // interface phrases are translated; vendor-entered text (item names, notes) is never touched.
+  const AR_DICT = {
+ "Forgot Password?": "نسيت كلمة المرور؟",
+ "Chain Name": "اسم السلسلة",
+ "Your Name": "اسمك",
+ "Email Address": "البريد الإلكتروني",
+ "(for status notifications)": "(لإشعارات حالة الطلبات)",
+ "Reset Password": "إعادة تعيين كلمة المرور",
+ "Enter your Chain ID, the 6-character code from your admin, and your new password.": "أدخل رقم السلسلة والرمز المكوّن من 6 أحرف الذي أرسله لك المسؤول وكلمة المرور الجديدة.",
+ "Chain ID / Email": "رقم السلسلة / البريد الإلكتروني",
+ "Reset Code": "رمز إعادة التعيين",
+ "New Password": "كلمة المرور الجديدة",
+ "Reset Password →": "إعادة تعيين كلمة المرور ←",
+ "Remember your password?": "تتذكر كلمة المرور؟",
+ "Sign In": "تسجيل الدخول",
+ "Sign Out": "تسجيل الخروج",
+ "Set Your Password": "عيّن كلمة المرور",
+ "Your account is using the default password. Please create a new password before continuing.": "حسابك يستخدم كلمة المرور الافتراضية. يرجى إنشاء كلمة مرور جديدة قبل المتابعة.",
+ "Confirm Password": "تأكيد كلمة المرور",
+ "Set Password →": "حفظ كلمة المرور ←",
+ "Saving…": "جارٍ الحفظ…",
+ "Resetting…": "جارٍ إعادة التعيين…",
+ "Submitting…": "جارٍ الإرسال…",
+ "Uploading…": "جارٍ الرفع…",
+ "Save & continue": "حفظ ومتابعة",
+ "Your brand type is already set and cannot be changed. Please contact your account manager.": "تم تحديد نشاطك التجاري بالفعل ولا يمكن تغييره. يرجى التواصل مع مدير حسابك.",
+ "EGP 120.00 per kg": "EGP 120.00 للكيلو",
+ "6-character code": "رمز من 6 أحرف",
+ "At least 6 characters": "6 أحرف على الأقل",
+ "Repeat your new password": "أعد كتابة كلمة المرور الجديدة",
+ "12345 or you@talabat.com": "12345 أو you@talabat.com",
+ "12345 or vendor@talabat.com": "12345 أو vendor@talabat.com",
+ "Any extra details for the content team…": "أي تفاصيل إضافية لفريق المحتوى…",
+ "Item name": "اسم المنتج",
+ "Existing name on the platform": "الاسم الحالي على المنصة",
+ "Correct new name": "الاسم الجديد الصحيح",
+ "Existing barcode": "الباركود الحالي",
+ "Type barcode or item name to search…": "اكتب الباركود أو اسم المنتج للبحث…",
+ "Pizza Palace": "بيتزا بالاس",
+ "Medications, Beverages": "أدوية، مشروبات",
+ "All": "الكل",
+ "Pending": "قيد الانتظار",
+ "In Progress": "قيد التنفيذ",
+ "Done": "تم",
+ "Rejected": "مرفوض",
+ "Withdraw": "سحب الطلب",
+ "Withdrawn": "تم السحب",
+ "🔔 Updates on your requests": "🔔 تحديثات على طلباتك",
+ "Got it ✓": "تم ✓",
+ "— status updated to": "— تم تحديث الحالة إلى",
+ "⚠ SLA Breached": "⚠ تجاوز مدة الخدمة",
+ "(unassigned)": "(غير مُسنَد)",
+ "السبب · Reason": "السبب",
+ "✏️ تعديل وإعادة الإرسال · Edit & resubmit": "✏️ تعديل وإعادة الإرسال",
+ "↻ Resubmitted as a new request · تمت إعادة الإرسال": "↻ تمت إعادة الإرسال كطلب جديد",
+ "↻ Resubmission of an earlier request": "↻ إعادة إرسال لطلب سابق",
+ "يرجى تقديم طلب جديد · Please send a new request": "يرجى تقديم طلب جديد",
+ "Please enter a valid email": "يرجى إدخال بريد إلكتروني صحيح",
+ "Restaurant name is required": "اسم المطعم مطلوب",
+ "Branch location is required": "موقع الفرع مطلوب",
+ "Step 3 of 4 ·": "الخطوة 3 من 4 ·",
+ "Details": "التفاصيل",
+ "Update Details": "تفاصيل التحديث",
+ "Item Identifiers": "بيانات المنتج",
+ "Master Product Code / Barcode": "كود المنتج الرئيسي / الباركود",
+ "Master product code / barcode is required": "كود المنتج الرئيسي / الباركود مطلوب",
+ "SKU": "الكود الداخلي (SKU)",
+ "(optional)": "(اختياري)",
+ "SKU is required": "الكود الداخلي مطلوب",
+ "New Item Information": "بيانات المنتج الجديد",
+ "Product Title (English) [productTitle::en_EG]": "اسم المنتج (بالإنجليزية) [productTitle::en_EG]",
+ "Please provide a fully and accurate item name to update correctly and lead to accurate action.": "يرجى كتابة اسم المنتج كاملاً وبدقة لضمان تنفيذ الطلب بشكل صحيح.",
+ "Item name in English is required": "اسم المنتج بالإنجليزية مطلوب",
+ "Item Name (Arabic)": "اسم المنتج (بالعربية)",
+ "Is the item weighable?": "هل المنتج يُباع بالوزن؟",
+ "Select…": "اختر…",
+ "Weighable": "يُباع بالوزن",
+ "Packed": "معبّأ",
+ "Please choose Weighable or Packed": "يرجى اختيار: يُباع بالوزن أو معبّأ",
+ "Minimum Weight (kg)": "أقل وزن (كجم)",
+ "Minimum weight is required (a number above 0)": "أقل وزن مطلوب (رقم أكبر من 0)",
+ "Category [category::en_EG]": "التصنيف [category::en_EG]",
+ "Price": "السعر",
+ "Price per Kilo": "سعر الكيلو",
+ "Price is required": "السعر مطلوب",
+ "Description": "الوصف",
+ "(optional, max 150 chars)": "(اختياري، بحد أقصى 150 حرفاً)",
+ "Item Photo": "صورة المنتج",
+ "A photo must be attached. Requests without an image may be rejected.": "يجب إرفاق صورة. قد يتم رفض الطلبات التي لا تحتوي على صورة.",
+ "Click to upload": "اضغط للرفع",
+ "or drag & drop": "أو اسحب الملف وأفلته هنا",
+ "JPG, PNG, or WEBP · max 10 MB": "JPG أو PNG أو WEBP · الحد الأقصى 10 ميجابايت",
+ "Photo is required for new items": "الصورة مطلوبة للمنتجات الجديدة",
+ "Item Type": "نوع المنتج",
+ "📷 Photo uploaded": "📷 تم رفع الصورة",
+ "✓ Photo uploaded — click to replace": "✓ تم رفع الصورة — اضغط للاستبدال",
+ "✓ Previous photo attached — click to replace": "✓ تم إرفاق الصورة السابقة — اضغط للاستبدال",
+ "📋 Download the template, fill it in, upload to Google Drive, then paste the link below.": "📋 حمّل النموذج واملأه وارفعه على Google Drive ثم الصق الرابط أدناه.",
+ "Google Drive Link to Filled File": "رابط Google Drive للملف بعد تعبئته",
+ "📁 Make sure sharing is set to \"Anyone with the link can view\"": "📁 تأكد من ضبط المشاركة على \"أي شخص لديه الرابط يمكنه العرض\"",
+ "File link is required": "رابط الملف مطلوب",
+ "Additional Notes": "ملاحظات إضافية",
+ "Item Name": "اسم المنتج",
+ "Item name is required": "اسم المنتج مطلوب",
+ "Barcode": "الباركود",
+ "Barcode is required": "الباركود مطلوب",
+ "Description Change": "تغيير الوصف",
+ "Current Description": "الوصف الحالي",
+ "Current description is required": "الوصف الحالي مطلوب",
+ "New Description": "الوصف الجديد",
+ "New description is required": "الوصف الجديد مطلوب",
+ "A clear image must be attached. Requests without a photo will be rejected.": "يجب إرفاق صورة واضحة. سيتم رفض الطلبات التي لا تحتوي على صورة.",
+ "Photo Update": "تحديث الصورة",
+ "New Photo": "الصورة الجديدة",
+ "Photo is required": "الصورة مطلوبة",
+ "A clear image or document must be attached as proof. Requests without proof will be rejected.": "يجب إرفاق صورة أو مستند واضح كإثبات. سيتم رفض الطلبات بدون إثبات.",
+ "Current Item Details": "بيانات المنتج الحالية",
+ "Current SKU": "الكود الداخلي الحالي",
+ "Current SKU is required": "الكود الداخلي الحالي مطلوب",
+ "Current Barcode": "الباركود الحالي",
+ "Current barcode is required": "الباركود الحالي مطلوب",
+ "Old Item Name": "اسم المنتج القديم",
+ "Current item name is required": "اسم المنتج الحالي مطلوب",
+ "New Item Details": "بيانات المنتج الجديدة",
+ "New SKU": "الكود الداخلي الجديد",
+ "New SKU is required": "الكود الداخلي الجديد مطلوب",
+ "New Barcode": "الباركود الجديد",
+ "New barcode is required": "الباركود الجديد مطلوب",
+ "New Item Name": "اسم المنتج الجديد",
+ "New item name is required": "اسم المنتج الجديد مطلوب",
+ "New Product Image": "صورة المنتج الجديدة",
+ "Product image is required": "صورة المنتج مطلوبة",
+ "A clear product image showing the barcode must be attached. Illegible or missing attachments will cause rejection.": "يجب إرفاق صورة واضحة للمنتج يظهر فيها الباركود. المرفقات غير الواضحة أو المفقودة تؤدي إلى الرفض.",
+ "Barcode Change": "تغيير الباركود",
+ "✓ PIM match:": "✓ تطابق مع قاعدة المنتجات:",
+ "— is this the correct item?": "— هل هذا هو المنتج الصحيح؟",
+ "Matched Item Name": "اسم المنتج المطابق",
+ "Product Image / Proof": "صورة المنتج / الإثبات",
+ "Product image proof is required": "صورة إثبات المنتج مطلوبة",
+ "Step 1 — Download Template": "الخطوة 1 — حمّل النموذج",
+ "Delist Template (Google Sheet)": "نموذج الحذف (Google Sheet)",
+ "Open the template → fill SKUs in Column A (Column B auto-fills \"delist\") → upload to Google Drive → copy the link.": "افتح النموذج ← اكتب الأكواد الداخلية في العمود A (يُملأ العمود B تلقائياً بكلمة \"delist\") ← ارفعه على Google Drive ← انسخ الرابط.",
+ "Step 2 — Paste Your File Link": "الخطوة 2 — الصق رابط الملف",
+ "Google Sheet / Drive Link": "رابط Google Sheet / Drive",
+ "Step 3 — Reason for Removal": "الخطوة 3 — سبب الحذف",
+ "Reason": "السبب",
+ "Reason for removal is required": "سبب الحذف مطلوب",
+ "✏️ Resubmitting a rejected request. Correct the details below and attach any missing file, then submit. It will be handled as a": "✏️ تعيد إرسال طلب مرفوض. صحّح البيانات أدناه وأرفق أي ملف ناقص ثم أرسل. سيتم التعامل معه على أنه",
+ "new request": "طلب جديد",
+ ". The earlier photo is kept; click it to replace.": ". تم الاحتفاظ بالصورة السابقة؛ اضغط عليها لاستبدالها.",
+ "Urgent Add Item": "إضافة منتج عاجلة",
+ "Add Master File": "إضافة ملف رئيسي",
+ "Update Description": "تحديث الوصف",
+ "Change Photo": "تغيير الصورة",
+ "Update Item Name": "تحديث اسم المنتج",
+ "Update Barcode": "تحديث الباركود",
+ "Remove an Item": "حذف منتج",
+ "Add Master File – Pharmacy": "إضافة ملف رئيسي – صيدلية",
+ "Add Master File – Grocery": "إضافة ملف رئيسي – بقالة",
+ "Please enter your Chain ID and password.": "يرجى إدخال رقم السلسلة وكلمة المرور.",
+ "Login failed.": "فشل تسجيل الدخول.",
+ "Connection error. Please try again.": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+ "Password must be at least 6 characters.": "يجب ألا تقل كلمة المرور عن 6 أحرف.",
+ "Password must be at least 6 characters": "يجب ألا تقل كلمة المرور عن 6 أحرف",
+ "Passwords do not match.": "كلمتا المرور غير متطابقتين.",
+ "Please choose a different password than the default.": "يرجى اختيار كلمة مرور مختلفة عن الافتراضية.",
+ "Failed to change password.": "تعذّر تغيير كلمة المرور.",
+ "Please enter your Chain ID.": "يرجى إدخال رقم السلسلة.",
+ "Please enter your name.": "يرجى إدخال اسمك.",
+ "Please enter a valid email address.": "يرجى إدخال بريد إلكتروني صحيح.",
+ "Please enter a valid email address": "يرجى إدخال بريد إلكتروني صحيح",
+ "Registration failed.": "فشل إنشاء الحساب.",
+ "All fields are required.": "جميع الحقول مطلوبة.",
+ "Failed. Try again.": "فشلت العملية. حاول مرة أخرى.",
+ "Password reset! Please sign in with your new password.": "تمت إعادة تعيين كلمة المرور! يرجى تسجيل الدخول بكلمة المرور الجديدة.",
+ "Network error. Try again.": "خطأ في الشبكة. حاول مرة أخرى.",
+ "Incorrect Chain ID or password.": "رقم السلسلة أو كلمة المرور غير صحيحة.",
+ "Incorrect email or password.": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+ "This Chain ID is already registered. Please log in instead.": "رقم السلسلة هذا مسجّل بالفعل. يرجى تسجيل الدخول.",
+ "This email is already registered. Please log in instead.": "هذا البريد الإلكتروني مسجّل بالفعل. يرجى تسجيل الدخول.",
+ "Chain ID and password are required": "رقم السلسلة وكلمة المرور مطلوبان",
+ "Email / Vendor ID and password are required": "البريد الإلكتروني / رقم السلسلة وكلمة المرور مطلوبان",
+ "No accounts found. Please sign up first.": "لا توجد حسابات. يرجى إنشاء حساب أولاً.",
+ "Vendor not found. Check your Chain ID.": "لم يتم العثور على الحساب. تحقق من رقم السلسلة.",
+ "Invalid or expired reset code. Ask your admin for a new one.": "رمز إعادة التعيين غير صحيح أو منتهي. اطلب رمزاً جديداً من المسؤول.",
+ "Server error. Please try again.": "خطأ في الخادم. يرجى المحاولة مرة أخرى.",
+ "Could not save. Please try again.": "تعذّر الحفظ. يرجى المحاولة مرة أخرى.",
+ "Unauthorized": "غير مصرّح",
+ "Restaurant / Chain name and Branch / Location are required": "اسم المطعم / السلسلة وموقع الفرع مطلوبان",
+ "Please choose whether the item is Weighable or Packed": "يرجى اختيار: يُباع بالوزن أو معبّأ",
+ "Price per Kilo is required for weighable items": "سعر الكيلو مطلوب للمنتجات التي تُباع بالوزن",
+ "Minimum Weight is required for weighable items": "أقل وزن مطلوب للمنتجات التي تُباع بالوزن",
+ "A Pending or In Progress request for this item already exists. Please wait for it to be resolved before submitting again.": "يوجد طلب قيد الانتظار أو التنفيذ لهذا المنتج بالفعل. يرجى انتظار الانتهاء منه قبل الإرسال مرة أخرى.",
+ "Only Pending requests can be withdrawn": "يمكن سحب الطلبات قيد الانتظار فقط",
+ "Only Rejected requests can be resubmitted": "يمكن إعادة إرسال الطلبات المرفوضة فقط",
+ "This request cannot be resubmitted. Please send a new request instead.": "لا يمكن إعادة إرسال هذا الطلب. يرجى تقديم طلب جديد.",
+ "This request was already resubmitted": "تمت إعادة إرسال هذا الطلب بالفعل",
+ "Forbidden: this request does not belong to your account": "غير مسموح: هذا الطلب لا يخص حسابك",
+ "File exceeds the 10 MB limit": "حجم الملف يتجاوز 10 ميجابايت",
+ "Only JPG, PNG, and WEBP are allowed": "يُسمح فقط بصيغ JPG وPNG وWEBP",
+ "Only JPG, PNG, or WEBP images are allowed.": "يُسمح فقط بصور JPG أو PNG أو WEBP.",
+ "Image must be under 10 MB.": "يجب أن يكون حجم الصورة أقل من 10 ميجابايت.",
+ "Upload failed": "فشل الرفع",
+ "Unknown error": "خطأ غير معروف",
+ "Withdraw this request? This cannot be undone.": "هل تريد سحب هذا الطلب؟ لا يمكن التراجع عن ذلك.",
+ "This request type cannot be edited automatically. Please submit a new request.": "لا يمكن تعديل هذا النوع من الطلبات تلقائياً. يرجى تقديم طلب جديد.",
+ "You have reached the daily limit of 5 \"Add Item\" requests. Please try again tomorrow.": "لقد وصلت إلى الحد اليومي (5 طلبات \"إضافة منتج\"). يرجى المحاولة غداً.",
+ "You have reached the daily limit of 5 \"Add Item\" requests. Please try again tomorrow or contact your account manager for urgent assistance.": "لقد وصلت إلى الحد اليومي (5 طلبات \"إضافة منتج\"). يرجى المحاولة غداً أو التواصل مع مدير حسابك للمساعدة العاجلة.",
+ "Another account signed in from a different tab, so this tab is switching to it. Use one account per browser window.": "تم تسجيل الدخول بحساب آخر من تبويب مختلف، لذلك سيتحول هذا التبويب إليه. استخدم حساباً واحداً لكل نافذة متصفح."
+};
+  const EN_DICT = {
+ "السبب · Reason": "Reason",
+ "✏️ تعديل وإعادة الإرسال · Edit & resubmit": "✏️ Edit & resubmit",
+ "↻ Resubmitted as a new request · تمت إعادة الإرسال": "↻ Resubmitted as a new request",
+ "يرجى تقديم طلب جديد · Please send a new request": "Please send a new request"
+};
+  const AR_MONTHS = { Jan:'يناير', Feb:'فبراير', Mar:'مارس', Apr:'أبريل', May:'مايو', Jun:'يونيو', Jul:'يوليو', Aug:'أغسطس', Sep:'سبتمبر', Oct:'أكتوبر', Nov:'نوفمبر', Dec:'ديسمبر' };
+  const _trSub = x => { const r = trText(x); return r === null ? x : r; };
+  const AR_PATTERNS = [
+    [/^e\.g\. ([\s\S]*)$/, m => 'مثال: ' + m[1]],
+    [/^Update (\d+) of (\d+)$/, m => 'تحديث ' + m[1] + ' من ' + m[2]],
+    [/^Item: ([\s\S]*)$/, m => 'المنتج: ' + m[1]],
+    [/^Last refreshed ([\s\S]*)$/, m => 'آخر تحديث ' + m[1]],
+    [/^(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, m => m[1] + ' ' + AR_MONTHS[m[2]] + ' ' + m[3]],
+    [/^([⏰⏳✓]) (\d+(?:\.\d+)?)h left$/, m => m[1] + ' متبقي ' + m[2] + ' ساعة'],
+    [/^Could not load requests: ([\s\S]*)$/, m => 'تعذّر تحميل الطلبات: ' + _trSub(m[1])],
+    [/^You were signed out: ([\s\S]*)$/, m => 'تم تسجيل خروجك: ' + m[1]],
+    [/^Upload error: ([\s\S]*)$/, m => 'خطأ في الرفع: ' + _trSub(m[1])],
+    [/^Withdraw failed: ([\s\S]*)$/, m => 'تعذّر سحب الطلب: ' + _trSub(m[1])],
+    [/^Submission failed — ([\s\S]*?) ?Please try again\.$/, m => 'فشل الإرسال — ' + _trSub(m[1].trim()) + ' يرجى المحاولة مرة أخرى.'],
+    [/^Daily submission limit reached \((\d+) per day\)\. Please try again tomorrow\.$/, m => 'تم الوصول إلى الحد اليومي للإرسال (' + m[1] + ' يومياً). يرجى المحاولة غداً.'],
+    [/^Add Master File – (Pharmacy|Grocery)$/, m => 'إضافة ملف رئيسي – ' + (m[1] === 'Pharmacy' ? 'صيدلية' : 'بقالة')],
+    [/^⬇ Download (Pharmacy|Grocery) Template CSV$/, m => '⬇ تحميل نموذج ' + (m[1] === 'Pharmacy' ? 'الصيدلية' : 'البقالة') + ' (CSV)'],
+    [/^📄 Template columns:$/, () => '📄 أعمدة النموذج:'],
+  ];
+  function trText(s) {
+    if (typeof s !== 'string') return null;
+    const key = s.replace(/\s+/g, ' ').trim();
+    if (!key || !/[A-Za-z\u0600-\u06FF]/.test(key)) return null;
+    const lead = (s.match(/^\s*/) || [''])[0], trail = (s.match(/\s*$/) || [''])[0];
+    if (lang === 'ar') {
+      if (Object.prototype.hasOwnProperty.call(AR_DICT, key)) return lead + AR_DICT[key] + trail;
+      for (const [re, fn] of AR_PATTERNS) { const m = key.match(re); if (m) return lead + fn(m) + trail; }
+    } else if (Object.prototype.hasOwnProperty.call(EN_DICT, key)) {
+      return lead + EN_DICT[key] + trail;
+    }
+    return null;
+  }
+
+  const _origText = new WeakMap();   // text node  -> text before translation
+  const _origAttr = new WeakMap();   // element    -> { attribute: value before translation }
+  const _I18N_ATTRS = ['placeholder', 'title', 'aria-label'];
+  const _skipEl = el => !el || el.closest('script,style,textarea,#pg-admin,[data-no-i18n]');
+
+  function _trNode(n) {
+    if (_skipEl(n.parentElement)) return;
+    const cur = n.nodeValue, out = trText(cur);
+    if (out !== null && out !== cur) { _origText.set(n, cur); n.nodeValue = out; }
+  }
+  function _trAttrs(el) {
+    if (_skipEl(el)) return;
+    for (const a of _I18N_ATTRS) {
+      const cur = el.getAttribute && el.getAttribute(a);
+      if (!cur) continue;
+      const out = trText(cur);
+      if (out !== null && out !== cur) {
+        let o = _origAttr.get(el); if (!o) { o = {}; _origAttr.set(el, o); }
+        o[a] = cur; el.setAttribute(a, out);
+      }
+    }
+  }
+  function _walk(root) {
+    if (root.nodeType === 3) { _trNode(root); return; }
+    if (root.nodeType !== 1) return;
+    _trAttrs(root);
+    root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(_trAttrs);
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(_trNode);
+  }
+  function _revertAll() {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => { if (_origText.has(n)) { n.nodeValue = _origText.get(n); _origText.delete(n); } });
+    document.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el => {
+      const o = _origAttr.get(el); if (!o) return;
+      for (const a in o) el.setAttribute(a, o[a]);
+      _origAttr.delete(el);
+    });
+  }
+  let _i18nObs = null;
+  function applyDomTranslation() {
+    if (!document.body) return;
+    _revertAll();
+    _walk(document.body);
+    if (!_i18nObs) {
+      _i18nObs = new MutationObserver(recs => {
+        for (const r of recs) {
+          if (r.type === 'characterData') _trNode(r.target);
+          else if (r.type === 'attributes') _trAttrs(r.target);
+          else r.addedNodes.forEach(_walk);
+        }
+      });
+      _i18nObs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: _I18N_ATTRS });
+    }
+  }
+  // alert()/confirm() messages follow the language too
+  const _nativeAlert = window.alert.bind(window), _nativeConfirm = window.confirm.bind(window);
+  window.alert   = m => _nativeAlert(_trSub(String(m)));
+  window.confirm = m => _nativeConfirm(_trSub(String(m)));
+
 
   function getTypeLabel(type) {
     const t = T[lang];
@@ -1397,6 +1717,7 @@
 
   // ═══════════════ SESSION ═══════════════
   let currentVendor = null;
+  const APPS_SCRIPT_URL = '/api/requests'; // declared early: resumeSession() -> loadDashboard() reads it during page load
 
   async function doLogin() {
     const vendorId = document.getElementById('li-vendorid').value.trim();
@@ -1642,7 +1963,7 @@
       body: JSON.stringify({ action: 'profile', ...patch }),
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.success) throw new Error(data.error || 'Could not save. Please try again.');
+    if (!resp.ok || !data.success) { const err = new Error(data.error || 'Could not save. Please try again.'); err.brandType = data.brandType; throw err; }
     if (data.email)     currentVendor.email = data.email;
     if (data.brandType) currentVendor.brandType = data.brandType;
     try {
@@ -1656,7 +1977,6 @@
   let brandAfterPick = null;
   function showBrandModal(after) {
     brandAfterPick = after || null;
-    $('brand-cancel').style.display = '';
     $('brand-modal').style.display = 'flex';
   }
   function closeBrandModal() { $('brand-modal').style.display = 'none'; brandAfterPick = null; }
@@ -1665,7 +1985,10 @@
     $('brand-modal').style.display = 'none';
     const after = brandAfterPick; brandAfterPick = null;
     try { await saveProfile({ brandType: type }); }
-    catch (e) { console.warn('brand save failed (will retry next time):', e.message); }
+    catch (e) {
+      if (e.brandType) { currentVendor.brandType = e.brandType; alert(e.message); } // the account already has a different brand type
+      else console.warn('brand save failed (will retry next time):', e.message);
+    }
     updateBrandChip();
     updateAddFields();
     if (after) after();
@@ -1675,12 +1998,13 @@
     else goToForm();
   }
   function updateBrandChip() {
-    const el = $('brand-chip'); if (!el) return;
+    const els = [document.getElementById('brand-chip'), document.getElementById('brand-chip-add')];
     const b = currentVendor && currentVendor.brandType;
-    if (!b) { el.style.display = 'none'; return; }
+    if (!b) { els.forEach(el => { if (el) el.style.display = 'none'; }); return; }
     const t = T[lang];
-    el.innerHTML = t.brandLabel + ': <strong>' + (b === 'grocery' ? '🛒 ' + t.groceryName : '💊 ' + t.pharmacyName) + '</strong> · <a href="#" style="color:#ff5900;font-weight:600" onclick="showBrandModal(updateBrandChip);return false">' + t.brandChange + '</a>';
-    el.style.display = '';
+    // The brand type is permanent: Pharmacy and Grocery are different verticals, so there is no way to switch
+    const base = t.brandLabel + ': <strong>' + (b === 'grocery' ? '🛒 ' + t.groceryName : '💊 ' + t.pharmacyName) + '</strong>';
+    els.forEach(el => { if (!el) return; el.innerHTML = base; el.style.display = ''; });
   }
 
   // Vendors with no email on file must add one before using the portal
@@ -1852,7 +2176,6 @@
 
   // ═══════════════ DASHBOARD ═══════════════
   // IMPORTANT: Set the tracking sheet to "Anyone with link can view" in Google Sheets → Share
-  const APPS_SCRIPT_URL = '/api/requests';
 
   async function loadDashboard() {
     const listEl  = document.getElementById('dash-list');
@@ -2513,6 +2836,8 @@
 
   function switchTo(n) {
     $('s' + cur).classList.remove('on');
+    $('s-add-type').classList.remove('on');
+    $('s-master-type').classList.remove('on');
     cur = n;
     $('s' + cur).classList.add('on');
     $('progBar').style.width = (cur / 4 * 100) + '%';

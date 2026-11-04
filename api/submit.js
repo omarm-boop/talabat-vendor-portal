@@ -151,28 +151,6 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // -- Required fields + brand / weighable rules (validated here as well as in the form) --
-  if (!String(body.restaurant || '').trim() || !String(body.branch || '').trim())
-    return res.status(400).json({ error: 'Restaurant / Chain name and Branch / Location are required' });
-  const brandType = String(body.brandType || '').trim().toLowerCase();
-  if (brandType && !['pharmacy', 'grocery'].includes(brandType))
-    return res.status(400).json({ error: 'Invalid brand type' });
-  const contactEmail = String(body.contactEmail || '').trim();
-  if (contactEmail && !/\S+@\S+\.\S+/.test(contactEmail))
-    return res.status(400).json({ error: 'Please enter a valid email address' });
-  let itemType = '', minWeight = '';
-  if (brandType === 'grocery' && /^urgent add item$/i.test(String(body.requestType || '').trim())) {
-    itemType = String(body.itemType || '').trim().toLowerCase();
-    if (!['weighable', 'packed'].includes(itemType))
-      return res.status(400).json({ error: 'Please choose whether the item is Weighable or Packed' });
-    if (itemType === 'weighable') {
-      const num = x => parseFloat(String(x || '').replace(/[^\d.]/g, ''));
-      if (!(num(body.price) > 0))     return res.status(400).json({ error: 'Price per Kilo is required for weighable items' });
-      if (!(num(body.minWeight) > 0)) return res.status(400).json({ error: 'Minimum Weight is required for weighable items' });
-      minWeight = String(body.minWeight).trim();
-    }
-  }
-
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
@@ -180,6 +158,40 @@ module.exports = async function handler(req, res) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
+
+    // -- Required fields + brand / weighable rules (validated here as well as in the form) --
+    if (!String(body.restaurant || '').trim() || !String(body.branch || '').trim())
+      return res.status(400).json({ error: 'Restaurant / Chain name and Branch / Location are required' });
+    let brandType = String(body.brandType || '').trim().toLowerCase();
+    if (brandType && !['pharmacy', 'grocery'].includes(brandType))
+      return res.status(400).json({ error: 'Invalid brand type' });
+    // The brand saved on the vendor's account always wins over what the browser sends
+    try {
+      const cr = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials!A:H' });
+      const me = String(sess.email || '').toLowerCase().trim();
+      for (const r of (cr.data.values || []).slice(1)) {
+        if (String(r[0] || '').toLowerCase().trim() === me || String(r[2] || '').toLowerCase().trim() === me) {
+          const stored = String(r[7] || '').trim().toLowerCase();
+          if (stored === 'pharmacy' || stored === 'grocery') brandType = stored;
+          break;
+        }
+      }
+    } catch (e) { console.warn('brand lookup failed (using submitted value):', e.message); }
+    const contactEmail = String(body.contactEmail || '').trim();
+    if (contactEmail && !/\S+@\S+\.\S+/.test(contactEmail))
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    let itemType = '', minWeight = '';
+    if (brandType === 'grocery' && /^urgent add item$/i.test(String(body.requestType || '').trim())) {
+      itemType = String(body.itemType || '').trim().toLowerCase();
+      if (!['weighable', 'packed'].includes(itemType))
+        return res.status(400).json({ error: 'Please choose whether the item is Weighable or Packed' });
+      if (itemType === 'weighable') {
+        const num = x => parseFloat(String(x || '').replace(/[^\d.]/g, ''));
+        if (!(num(body.price) > 0))     return res.status(400).json({ error: 'Price per Kilo is required for weighable items' });
+        if (!(num(body.minWeight) > 0)) return res.status(400).json({ error: 'Minimum Weight is required for weighable items' });
+        minWeight = String(body.minWeight).trim();
+      }
+    }
 
     await ensureColumns(sheets, SHEET_ID, TAB, 32); // AC-AF: brand, item type, min weight, contact email
 
