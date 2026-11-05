@@ -3860,7 +3860,71 @@
       renderAdminTable();
     } catch(e) { alert('Priority update failed: ' + e.message); btn.disabled = false; }
   }
+// ==================== STEALTH STAFF MODE (TRIPLE-CLICK LOGO) ====================
+(function initStealthLogin() {
+  let clickCount = 0;
+  let clickTimer = null;
+  let isStaffMode = false;
 
+  const logo = document.querySelector('.login-logo');
+  if (!logo) return;
+
+  logo.style.userSelect = 'none';
+  logo.style.cursor = 'default';
+
+  logo.addEventListener('click', () => {
+    clickCount++;
+    clearTimeout(clickTimer);
+
+    clickTimer = setTimeout(() => {
+      clickCount = 0;
+    }, 700);
+
+    if (clickCount >= 3) {
+      clickCount = 0;
+      isStaffMode = !isStaffMode;
+      applyStaffMode(isStaffMode);
+    }
+  });
+
+  function applyStaffMode(active) {
+    const titleEl = document.querySelector('#card-signin .login-title');
+    const subEl = document.querySelector('#card-signin .login-sub');
+    const labelEl = document.querySelector('#card-signin .li-label');
+    const inputEl = document.getElementById('li-vendorid');
+    const switchEl = document.getElementById('switch-signin');
+
+    if (active) {
+      if (titleEl) titleEl.textContent = 'Staff Sign In';
+      if (subEl) subEl.textContent = 'Internal Content & Operations Team Portal';
+      if (labelEl) labelEl.textContent = 'Talabat Email';
+      if (inputEl) {
+        inputEl.placeholder = 'name@talabat.com';
+        inputEl.focus();
+      }
+      if (switchEl) switchEl.style.display = 'none';
+    } else {
+      if (titleEl) titleEl.textContent = T[lang].signIn || 'Sign in';
+      if (subEl) subEl.textContent = T[lang].signInSub || 'Enter your Chain ID and password to continue.';
+      if (labelEl) labelEl.textContent = T[lang].vendorIdLabel || 'Chain ID';
+      if (inputEl) inputEl.placeholder = T[lang].vendorIdPh || 'e.g. 12345';
+      if (switchEl) switchEl.style.display = 'block';
+    }
+  }
+
+  const idInput = document.getElementById('li-vendorid');
+  if (idInput) {
+    idInput.addEventListener('input', () => {
+      const val = idInput.value.trim().toLowerCase();
+      const switchEl = document.getElementById('switch-signin');
+      if (val.includes('@talabat.com')) {
+        if (switchEl) switchEl.style.display = 'none';
+      } else if (!isStaffMode) {
+        if (switchEl) switchEl.style.display = 'block';
+      }
+    });
+  }
+})();
 </script>
 
 <!-- Image Preview Modal -->
