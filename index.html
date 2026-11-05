@@ -613,6 +613,7 @@
           <div class="fg">
             <label class="lbl"><span data-i18n="fBranchLabel">Branch / Location</span> <span class="req">*</span></label>
             <input type="text" id="f-branch" placeholder="e.g. Maadi, Cairo" data-i18n-ph="fBranchPh">
+            <select id="f-branch-select" onchange="onBranchSelect()" style="display:none;width:100%;height:48px;border:1.5px solid #e0d8ce;border-radius:12px;padding:0 14px;font-family:'Poppins',sans-serif;font-size:14px;background:#fff;color:#411517"></select>
             <div class="ferr" id="e-branch">Branch location is required</div>
           </div>
           <div class="row x2">
@@ -718,9 +719,9 @@
   <div class="sec-label">Item Identifiers</div>
   <div class="row x2">
     <div class="fg">
-      <label class="lbl">Master Product Code / Barcode <span class="req">*</span></label>
+      <label class="lbl">Barcode <span class="req">*</span></label>
       <input type="text" id="f-add-barcode" placeholder="e.g. 6221067002767">
-      <div class="ferr" id="e-add-barcode">Master product code / barcode is required</div>
+      <div class="ferr" id="e-add-barcode">Barcode is required</div>
     </div>
     <div class="fg">
       <label class="lbl">SKU <span class="opt">(optional)</span></label>
@@ -1404,6 +1405,10 @@
  "Submitting…": "جارٍ الإرسال…",
  "Uploading…": "جارٍ الرفع…",
  "Save & continue": "حفظ ومتابعة",
+ "Select branch…": "اختر الفرع…",
+ "All branches (chain level)": "كل الفروع (على مستوى السلسلة)",
+ "All branches": "كل الفروع",
+ "Please choose a different password than your current one.": "يرجى اختيار كلمة مرور مختلفة عن كلمة المرور الحالية.",
  "Your brand type is already set and cannot be changed. Please contact your account manager.": "تم تحديد نشاطك التجاري بالفعل ولا يمكن تغييره. يرجى التواصل مع مدير حسابك.",
  "EGP 120.00 per kg": "EGP 120.00 للكيلو",
  "6-character code": "رمز من 6 أحرف",
@@ -1737,7 +1742,7 @@
       if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Login failed.'; return; }
       if (data.mustChangePassword) {
         currentVendor = data.vendor;
-        localStorage.setItem('tlb_session', JSON.stringify({ vendor: data.vendor, ts: Date.now(), sessionToken: data.sessionToken, sessionTs: data.sessionTs }));
+        localStorage.setItem('tlb_session', JSON.stringify({ vendor: data.vendor, ts: Date.now(), sessionToken: data.sessionToken, sessionTs: data.sessionTs, mustChangePassword: true }));
         document.getElementById('pg-login').style.display = 'none';
         document.getElementById('pg-changepwd').style.display = 'flex';
         document.getElementById('cp-newpass').value = '';
@@ -1771,6 +1776,7 @@
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) { errEl.textContent = data.error || 'Failed to change password.'; return; }
+      try { const s = JSON.parse(localStorage.getItem('tlb_session') || '{}'); delete s.mustChangePassword; localStorage.setItem('tlb_session', JSON.stringify(s)); } catch (_) {}
       document.getElementById('pg-changepwd').style.display = 'none';
       document.getElementById('ph-vendor-name').textContent = currentVendor.chainName || currentVendor.vendorId;
       document.getElementById('dash-name').textContent = currentVendor.branchName || currentVendor.chainName || '';
@@ -1778,6 +1784,7 @@
       showView('dash');
       loadDashboard();
       startVendorRefresh();
+      setTimeout(ensureVendorEmail, 300);
     } catch(e) {
       errEl.textContent = 'Connection error. Please try again.';
     } finally {
@@ -2007,6 +2014,35 @@
     els.forEach(el => { if (!el) return; el.innerHTML = base; el.style.display = ''; });
   }
 
+  // Branch / Location: when the chain's branches are known, the vendor picks the chain level or one branch.
+  // The hidden text input (f-branch) keeps carrying the value, so validation and submit are unchanged.
+  const branchCache = { vendorId: '', list: null };
+  async function loadBranchOptions() {
+    const sel = $('f-branch-select'), inp = $('f-branch');
+    if (!sel || !inp || !currentVendor || currentVendor.chainId === '0') return;
+    const vid = currentVendor.vendorId;
+    if (branchCache.vendorId !== vid || branchCache.list === null) {
+      try {
+        const resp = await apiFetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify({ action: 'branches' }) });
+        const d = await resp.json();
+        branchCache.vendorId = vid; branchCache.list = (d && d.branches) || [];
+      } catch (_) { return; }
+    }
+    const list = branchCache.list;
+    if (!list.length) { sel.style.display = 'none'; inp.style.display = ''; return; }
+    const cur = inp.value.trim().toLowerCase();
+    sel.innerHTML = '<option value="">Select branch…</option><option value="All branches">All branches (chain level)</option>'
+      + list.map(b => '<option value="' + escHtml(b.name) + '">' + escHtml(b.name) + '</option>').join('');
+    const hit = [...sel.options].find(o => o.value && (o.value.toLowerCase() === cur || o.value.toLowerCase().endsWith(' - ' + cur)));
+    sel.value = hit ? hit.value : '';
+    inp.value = sel.value;
+    inp.style.display = 'none'; sel.style.display = '';
+  }
+  function onBranchSelect() {
+    $('f-branch').value = $('f-branch-select').value;
+    if ($('f-branch-select').value) clr('f-branch', 'e-branch');
+  }
+
   // Vendors with no email on file must add one before using the portal
   function ensureVendorEmail() {
     if (!currentVendor || currentVendor.chainId === '0') return;
@@ -2055,6 +2091,7 @@
     $('shell').classList.add('on');
     if (cur !== 1) resetForm();
     updateBrandChip();
+    loadBranchOptions();
     $('countTag').style.display = 'none';
     scrollTo(0, 0);
   }
@@ -2155,9 +2192,15 @@
     const stored = localStorage.getItem('tlb_session');
     if (!stored) return;
     try {
-      const { vendor, ts, sessionToken, sessionTs } = JSON.parse(stored);
+      const { vendor, ts, sessionToken, sessionTs, mustChangePassword } = JSON.parse(stored);
       if (!vendor || !vendor.vendorId) { localStorage.removeItem('tlb_session'); return; }
       if (Date.now() - ts > 8 * 3600 * 1000) { localStorage.setItem('tlb_logout_reason', 'saved session older than 8 hours'); localStorage.removeItem('tlb_session'); return; }
+      if (mustChangePassword) { // refreshing must not skip the forced password change
+        currentVendor = vendor;
+        document.getElementById('pg-login').style.display = 'none';
+        document.getElementById('pg-changepwd').style.display = 'flex';
+        return;
+      }
       startSession(vendor, sessionToken, sessionTs);
     } catch(e) { localStorage.removeItem('tlb_session'); }
   })();

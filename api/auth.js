@@ -10,6 +10,51 @@ const CREDENTIALS_TAB   = 'Credentials';
 
 const delay2s = () => new Promise(r => setTimeout(r, 2000));
 
+// Branch master list: A = Chain ID, B = Chain Name, C = Vendor Id, D = Vendor Name (English)
+const BRANCH_SHEET_ID  = '1bhCkMlLw4vJM23NBe8jNkNcatL3RAbj9qLh0b04S6ps';
+const BRANCH_SHEET_GID = 1244934692;
+const BRANCH_CACHE_MS  = 10 * 60 * 1000;
+let branchCache = { at: 0, byChain: null };
+
+async function loadBranchMap() {
+  if (branchCache.byChain && Date.now() - branchCache.at < BRANCH_CACHE_MS) return branchCache.byChain;
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  const auth = new google.auth.JWT({
+    email: credentials.client_email, key: credentials.private_key,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: BRANCH_SHEET_ID, fields: 'sheets.properties(sheetId,title)' });
+  const tab = (meta.data.sheets || []).find(s => s.properties.sheetId === BRANCH_SHEET_GID);
+  if (!tab) throw new Error('Branch tab not found');
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: BRANCH_SHEET_ID, range: `'${tab.properties.title.replace(/'/g, "''")}'!A:D`,
+  });
+  const byChain = {};
+  (resp.data.values || []).slice(1).forEach(r => {
+    const chainId = String(r[0] || '').trim();
+    const name = String(r[3] || '').trim();
+    if (!chainId || !name) return;
+    (byChain[chainId] = byChain[chainId] || []).push({ id: String(r[2] || '').trim(), name });
+  });
+  Object.values(byChain).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+  branchCache = { at: Date.now(), byChain };
+  return byChain;
+}
+
+// Branches of the signed-in vendor's chain. Never fails the page: an empty list means "type it in".
+async function handleBranches(req, res) {
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const map = await loadBranchMap();
+    return res.json({ success: true, branches: map[String(sess.email).trim()] || [] });
+  } catch (err) {
+    console.warn('branch list unavailable (is the sheet shared with the service account?):', err.message);
+    return res.json({ success: true, branches: [] });
+  }
+}
+
 // Verify password and lazily migrate plain-text to bcrypt hash in-place.
 // rowNum is the 1-indexed sheet row (header = row 1, so first data row = 2).
 async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
@@ -28,7 +73,7 @@ async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
   } catch (err) {
     console.error('Password migration failed at row', rowNum, ':', err.message);
   }
-  return true;
+  return 'plain'; // matched a plain-text (admin-set) password
 }
 
 // Saves the vendor's contact email (Credentials col G) and brand type (col H) once, so they are remembered.
@@ -93,6 +138,7 @@ module.exports = async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
   if (body && body.action === 'profile') return handleProfile(req, res, body);
+  if (body && body.action === 'branches') return handleBranches(req, res);
   const { vendorId, password } = body || {};
 
   if (!vendorId || !password)
@@ -203,7 +249,7 @@ module.exports = async function handler(req, res) {
     const headers = values[0];
     const rows    = values.slice(1);
 
-    let matched = null, matchedRow = [];
+    let matched = null, matchedRow = [], matchedRowNum = 0, matchedHow = false;
     for (let i = 0; i < rows.length; i++) {
       const obj = {};
       headers.forEach((h, idx) => { obj[h] = rows[i][idx] || ''; });
@@ -214,7 +260,7 @@ module.exports = async function handler(req, res) {
 
       const rowNum  = i + 2;
       const matches = await verifyAndMigrate(obj['Password'], password, sheets, rowNum);
-      if (matches) { matched = obj; matchedRow = rows[i]; break; }
+      if (matches) { matched = obj; matchedRow = rows[i]; matchedRowNum = rowNum; matchedHow = matches; break; }
     }
 
     if (!matched) {
@@ -224,9 +270,26 @@ module.exports = async function handler(req, res) {
 
     const vid = matched['Chain ID'] || matched['Vendor ID'];
     const ts  = Date.now();
+
+    // An account created by an admin (plain-text password, or the default 123456) must set its own
+    // password. The "Must Change Password" flag (Credentials col I) keeps that true until it is changed.
+    const flagged = String(matchedRow[8] || '').trim().toLowerCase() === 'yes';
+    const mustChange = password === '123456' || matchedHow === 'plain' || flagged;
+    if (mustChange && !flagged) {
+      try {
+        await ensureColumns(sheets, TRACKING_SHEET_ID, CREDENTIALS_TAB, 9);
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: TRACKING_SHEET_ID,
+          requestBody: { valueInputOption: 'RAW', data: [
+            { range: `${CREDENTIALS_TAB}!I${matchedRowNum}`, values: [['yes']] },
+            { range: `${CREDENTIALS_TAB}!I1`, values: [['Must Change Password']] },
+          ] },
+        });
+      } catch (e) { console.warn('must-change flag write failed (non-fatal):', e.message); }
+    }
     return res.json({
       success: true,
-      mustChangePassword: password === '123456',
+      mustChangePassword: mustChange,
       sessionToken: signToken(vid, 'vendor', ts),
       sessionTs: ts,
       vendor: {

@@ -5,6 +5,7 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis }   = require('@upstash/redis');
 const { sendEmail } = require('../lib/email');
+const { ensureColumns } = require('../lib/sheet-columns');
 
 const SHEET_ID  = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDS_TAB = 'Credentials';
@@ -54,12 +55,20 @@ module.exports = async function handler(req, res) {
       }
       if (rowNum === -1) return res.status(404).json({ error: 'Account not found' });
 
+      // The new password must differ from the current (admin-set or old) one
+      const current = String((rows[rowNum - 2] || [])[1] || '');
+      const same = (current.startsWith('$2a$') || current.startsWith('$2b$'))
+        ? await bcrypt.compare(newPassword, current) : current === newPassword;
+      if (same) return res.status(400).json({ error: 'Please choose a different password than your current one.' });
+
       const hashed = await bcrypt.hash(newPassword, 10);
-      await sheets.spreadsheets.values.update({
+      await ensureColumns(sheets, SHEET_ID, CREDS_TAB, 9);
+      await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SHEET_ID,
-        range: `${CREDS_TAB}!B${rowNum}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[hashed]] },
+        requestBody: { valueInputOption: 'RAW', data: [
+          { range: `${CREDS_TAB}!B${rowNum}`, values: [[hashed]] },
+          { range: `${CREDS_TAB}!I${rowNum}`, values: [['']] },   // clear "Must Change Password"
+        ] },
       });
       return res.json({ success: true });
     } catch (err) {

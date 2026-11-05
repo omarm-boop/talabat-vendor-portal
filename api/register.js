@@ -103,7 +103,7 @@ async function _handle(req, res) {
       success: true,
       sessionToken: signToken(id, 'vendor', ts),
       sessionTs: ts,
-      vendor: { vendorId: id, chainId: id, chainName: chainName || '', branchName: '', email: notifEmail, brandType: '' },
+      vendor: { vendorId: id, role: 'vendor', chainId: id, chainName: chainName || '', branchName: '', email: notifEmail, brandType: '' }, // role must match the signed token or the first API call returns 401
     });
 
   } catch (err) {
