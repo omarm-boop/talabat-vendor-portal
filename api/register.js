@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { signToken } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { checkRegisterLimit } = require('../lib/ratelimit');
+const { loadBranchMap } = require('../lib/branches');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
@@ -30,6 +31,11 @@ async function _handle(req, res) {
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
+  // Sign-up is for vendors only. Talabat team accounts (admin panel access) are added by an administrator
+  // (TEAM_CREDENTIALS or a Credentials row); otherwise anyone could register name@talabat.com.
+  if (String(chainId).toLowerCase().trim().endsWith('@talabat.com'))
+    return res.status(403).json({ error: 'Team accounts are created by an administrator. Please contact your Content Team lead.' });
+
   try {
     if (!await checkRegisterLimit(req, res)) return;
   } catch (rlErr) {
@@ -46,6 +52,17 @@ async function _handle(req, res) {
 
     const isTeam = String(chainId).toLowerCase().trim().endsWith('@talabat.com');
     const id     = isTeam ? String(chainId).toLowerCase().trim() : String(chainId).trim();
+
+    // Only real Talabat chains can sign up (the Chain ID must be in the branch master list).
+    // Fails closed: if the list cannot be read, nobody can register.
+    try {
+      const chains = await loadBranchMap();
+      if (!chains[id])
+        return res.status(403).json({ error: 'This Chain ID is not registered with Talabat. Please check the number or contact your account manager.' });
+    } catch (e) {
+      console.error('register: branch master list unavailable:', e.message);
+      return res.status(503).json({ error: 'We could not verify your Chain ID right now. Please try again later.' });
+    }
 
     // Check not already registered (col A and col C)
     const existing = await sheets.spreadsheets.values.get({
