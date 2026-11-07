@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talabat – Vendor Portal</title>
+  <title>Engizni – Vendor Portal</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/engizni-icon-192.png">
+  <link rel="apple-touch-icon" href="/assets/engizni-icon-512.png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root { --orange:#FF5900; --burgundy:#411517; --cream:#F4EDE3; --lime:#CFFF00; }
@@ -13,6 +15,12 @@
     /* ── LOGIN PAGE ── */
     #pg-login { min-height:100vh; background:var(--burgundy); display:flex; align-items:center; justify-content:center; padding:20px; }
     .login-wrap { width:100%; max-width:440px; }
+    .eg-logo { display:block; width:auto; }
+    .login-logo .eg-logo { height:58px; }
+    .ph-logo .eg-logo { height:36px; }
+    .nav-logo .eg-logo { height:30px; }
+    html[lang="ar"] .eg-en { display:none; }
+    html:not([lang="ar"]) .eg-ar { display:none; }
     .login-logo { font-size:38px; font-weight:900; color:var(--orange); letter-spacing:-1.5px; margin-bottom:4px; }
     .login-tagline { font-size:13px; color:rgba(255,255,255,.5); margin-bottom:32px; font-weight:500; }
     .login-card { background:#fff; border-radius:28px; padding:44px 40px; }
@@ -391,7 +399,7 @@
 <div id="pg-login">
   <div class="login-wrap">
     <div class="login-lang"><button class="lang-btn" onclick="toggleLang()">ع</button></div>
-    <div class="login-logo">talabat</div>
+    <div class="login-logo"><img class="eg-logo eg-en" src="/assets/engizni-en-on-dark.png" alt="Engizni"><img class="eg-logo eg-ar" src="/assets/engizni-ar-on-dark.png" alt="انجزني"></div>
     <div class="login-tagline" data-i18n="tagline">Vendor Menu Update Portal</div>
 
     <!-- SIGN IN -->
@@ -475,7 +483,7 @@
 
 <!-- ═══════════════════════════════════════ CHANGE PASSWORD ═══════════════════════════════════════ -->
 <div id="pg-changepwd" style="display:none; min-height:100vh; background:var(--burgundy); align-items:center; justify-content:center; padding:20px; flex-direction:column; gap:16px;">
-  <div style="color:rgba(255,255,255,.55); font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">talabat · Vendor Portal</div>
+  <div style="color:rgba(255,255,255,.55); font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">engizni · Vendor Portal</div>
   <div class="login-card" style="display:block">
     <div class="login-title">Set Your Password</div>
     <div class="login-sub">Your account is using the default password. Please create a new password before continuing.</div>
@@ -501,7 +509,7 @@
   <!-- Portal Header -->
   <header class="portal-header">
     <div class="ph-left">
-      <div class="ph-logo">talabat</div>
+      <div class="ph-logo"><img class="eg-logo eg-en" src="/assets/engizni-en-on-orange.png" alt="Engizni"><img class="eg-logo eg-ar" src="/assets/engizni-ar-on-orange.png" alt="انجزني"></div>
       <div class="ph-sep">|</div>
       <div class="ph-label" data-i18n="vendorPortal">Vendor Portal</div>
     </div>
@@ -582,7 +590,7 @@
 
     <!-- Form nav strip -->
     <nav class="nav">
-      <div class="nav-logo">talabat</div>
+      <div class="nav-logo"><img class="eg-logo eg-en" src="/assets/engizni-en-on-orange.png" alt="Engizni"><img class="eg-logo eg-ar" src="/assets/engizni-ar-on-orange.png" alt="انجزني"></div>
       <div class="nav-pill" data-i18n="navPill">Menu Updates</div>
     </nav>
 
