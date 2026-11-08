@@ -258,6 +258,27 @@
       .row.x2, .row.x3 { grid-template-columns:1fr; }
       .login-card { padding:32px 24px; }
     }
+    /* ── PHONE FIXES: no sideways scroll, no iOS zoom on focus, thumb-sized buttons ── */
+    @media(max-width:640px){
+      html, body { overflow-x:hidden; }
+      input, select, textarea { font-size:16px !important; }
+      .portal-header { height:60px; gap:8px; }
+      .ph-left { gap:8px; min-width:0; }
+      .ph-sep, .ph-label { display:none; }
+      .ph-logo .eg-logo { height:30px; }
+      .ph-right { gap:8px; min-width:0; }
+      .ph-vendor { max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .lang-btn, .ph-logout, .df-btn, .notif-dismiss { min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+      .btn-back-dash, .btn-back { min-height:44px; padding:0 6px; }
+      .login-switch button { display:inline-block; padding:12px 4px; }
+      .li-eye { min-width:44px; min-height:44px; }
+      .ph-logout { white-space:nowrap; padding:0 14px; }
+      .dash-wrap h2 { font-size:24px; line-height:1.3; }
+      .dash-actions > button { flex:1 1 100%; }
+      .req-item { white-space:normal; overflow:visible; text-overflow:clip; }
+      .req-card { flex-direction:column; align-items:stretch; }
+      .req-card > div:last-child { align-items:flex-start !important; }
+    }
     /* ── ADMIN PANEL ── */
     #pg-admin { display:none; flex-direction:column; min-height:100vh; background:#f4ede3; }
     .adm-top { background:var(--orange); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; }
@@ -1709,6 +1730,15 @@
       _i18nObs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: _I18N_ATTRS });
     }
   }
+  // Phones: show the number keypad for barcodes and prices
+  (function mobileKeyboards() {
+    ['f-add-barcode','f-desc-barcode','f-ph-barcode','f-nm-barcode','f-nm-new-barcode','f-bc-current','f-rm-barcode'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.setAttribute('inputmode', 'numeric');
+    });
+    ['f-add-price','f-add-minw'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.setAttribute('inputmode', 'decimal');
+    });
+  })();
   // alert()/confirm() messages follow the language too
   const _nativeAlert = window.alert.bind(window), _nativeConfirm = window.confirm.bind(window);
   window.alert   = m => _nativeAlert(_trSub(String(m)));
