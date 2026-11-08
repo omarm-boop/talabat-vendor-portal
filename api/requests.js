@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
+const { getPacked, setPacked } = require('../lib/cache-zip');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
@@ -59,8 +60,8 @@ module.exports = async function handler(req, res) {
     // Then try Redis (cross-instance cache)
     if (!values && process.env.UPSTASH_REDIS_REST_URL) {
       try {
-        const cached = await getRedis().get(CACHE_KEY);
-        if (cached) values = typeof cached === 'string' ? JSON.parse(cached) : cached;
+        const cached = await getPacked(getRedis(), CACHE_KEY);
+        if (cached) values = cached;
       } catch (e) {
         console.warn('cache read error (falling through to Sheets):', e.message);
       }
@@ -77,7 +78,7 @@ module.exports = async function handler(req, res) {
         memCache = { values, expiresAt: Date.now() + CACHE_TTL * 1000 };
       }
       if (process.env.UPSTASH_REDIS_REST_URL && values.length) {
-        getRedis().set(CACHE_KEY, JSON.stringify(values), { ex: CACHE_TTL }).catch(() => {});
+        setPacked(getRedis(), CACHE_KEY, values, { ex: CACHE_TTL }).catch(() => {});
       }
     }
     if (values.length < 2) return res.json({ data: [] });

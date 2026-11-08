@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
+const { getPacked, setPacked } = require('../lib/cache-zip');
 
 let redis = null;
 function getRedis() {
@@ -46,8 +47,8 @@ module.exports = async function handler(req, res) {
       // 2. Redis cache
       if (!rows && process.env.UPSTASH_REDIS_REST_URL) {
         try {
-          const cached = await getRedis().get(PIM_KEY);
-          if (cached) rows = typeof cached === 'string' ? JSON.parse(cached) : cached;
+          const cached = await getPacked(getRedis(), PIM_KEY);
+          if (cached) rows = cached;
         } catch (_) {}
       }
 
@@ -61,7 +62,7 @@ module.exports = async function handler(req, res) {
         if (rows.length) {
           pimCache = { rows, expiresAt: Date.now() + 3600 * 1000 };
           if (process.env.UPSTASH_REDIS_REST_URL)
-            getRedis().set(PIM_KEY, JSON.stringify(rows), { ex: 3600 }).catch(() => {});
+            setPacked(getRedis(), PIM_KEY, rows, { ex: 3600 }).catch(() => {});
         }
       }
 
