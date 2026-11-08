@@ -180,6 +180,14 @@ module.exports = async function handler(req, res) {
     const contactEmail = String(body.contactEmail || '').trim();
     if (contactEmail && !/\S+@\S+\.\S+/.test(contactEmail))
       return res.status(400).json({ error: 'Please enter a valid email address' });
+    const reqTypeText = String(body.requestType || '').trim();
+    const itemNameAr = String(body.itemNameAr || '').trim();
+    if (/^urgent add item$/i.test(reqTypeText) && !/[\u0600-\u06FF]/.test(itemNameAr))
+      return res.status(400).json({ error: 'Item name in Arabic is required (please write it in Arabic letters)' });
+    if (/^remove an item$/i.test(reqTypeText) && !String(body.fileLink || '').trim() && !String(body.barcode || '').trim())
+      return res.status(400).json({ error: 'Barcode and reason for delisting are required' });
+    if (/^remove an item$/i.test(reqTypeText) && !String(body.reason || '').trim())
+      return res.status(400).json({ error: 'Barcode and reason for delisting are required' });
     let itemType = '', minWeight = '';
     if (brandType === 'grocery' && /^urgent add item$/i.test(String(body.requestType || '').trim())) {
       itemType = String(body.itemType || '').trim().toLowerCase();
@@ -193,7 +201,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    await ensureColumns(sheets, SHEET_ID, TAB, 32); // AC-AF: brand, item type, min weight, contact email
+    await ensureColumns(sheets, SHEET_ID, TAB, 33); // AC-AG: brand, item type, min weight, contact email, Arabic item name
 
     // Write headers if sheet is empty
     const peek = await sheets.spreadsheets.values.get({
@@ -323,8 +331,8 @@ module.exports = async function handler(req, res) {
       try {
         const nr = parseInt(rowMatch[1], 10);
         await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AF${nr}`, valueInputOption: 'RAW',
-          requestBody: { values: [[brandType, itemType, minWeight, contactEmail]] },
+          spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AG${nr}`, valueInputOption: 'RAW',
+          requestBody: { values: [[brandType, itemType, minWeight, contactEmail, itemNameAr]] },
         });
       } catch (e) { console.warn('brand/item columns write failed (non-fatal):', e.message); }
       if (parentRow) {

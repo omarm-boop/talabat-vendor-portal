@@ -745,8 +745,9 @@
     <div class="ferr" id="e-add-name-en">Item name in English is required</div>
   </div>
   <div class="fg">
-    <label class="lbl">Item Name (Arabic) <span class="opt">(optional)</span></label>
+    <label class="lbl">Item Name (Arabic) <span class="req">*</span></label>
     <input type="text" id="f-add-name-ar" placeholder="اسم المنتج بالعربي" dir="rtl">
+    <div class="ferr" id="e-add-name-ar">Item name in Arabic is required (write it in Arabic letters)</div>
   </div>
   <div id="add-grocery-fields" style="display:none">
     <div class="row x2">
@@ -986,27 +987,27 @@
 
           <!-- ══ REMOVE ITEM ══ -->
           <div id="grp-remove" style="display:none">
-            <div class="sec-label">Step 1 — Download Template</div>
-<a id="delist-template-link" href="https://docs.google.com/spreadsheets/d/1iqxs1nibdQ7ba7tbPixgBH2jzIdH5FNZVJN6g7wtiHs/edit?gid=0#gid=0" target="_blank" class="btn-template-dl">
-            <span class="dl-icon">⬇</span>
-              <span>Delist Template (Google Sheet)</span>
-            </a>
-            <div class="field-hint" style="margin-top:10px">Open the template → fill SKUs in Column A (Column B auto-fills "delist") → upload to Google Drive → copy the link.</div>
-
-            <div class="sec-label">Step 2 — Paste Your File Link</div>
-            <div class="fg">
-              <label class="lbl">Google Sheet / Drive Link <span class="req">*</span></label>
-              <input type="url" id="f-rm-link" placeholder="https://docs.google.com/spreadsheets/…">
-              <div class="ferr" id="e-rm-link">File link is required</div>
+            <div class="sec-label">Item to Remove</div>
+            <div class="row x2">
+              <div class="fg">
+                <label class="lbl">Barcode <span class="req">*</span></label>
+                <input type="text" id="f-rm-barcode" placeholder="e.g. 6221067002767">
+                <div class="ferr" id="e-rm-barcode">Barcode is required</div>
+              </div>
+              <div class="fg">
+                <label class="lbl">SKU <span class="opt">(optional)</span></label>
+                <input type="text" id="f-rm-sku" placeholder="e.g. 6985">
+              </div>
             </div>
 
-            <div class="sec-label">Step 3 — Reason for Removal</div>
+            <div class="sec-label">Reason for Delisting</div>
             <div class="fg">
               <label class="lbl">Reason <span class="req">*</span></label>
               <textarea id="f-rm-reason" placeholder="e.g. Item discontinued by supplier, out of stock permanently…"></textarea>
-              <div class="ferr" id="e-rm-reason">Reason for removal is required</div>
+              <div class="ferr" id="e-rm-reason">Reason for delisting is required</div>
             </div>
           </div>
+
 
           <button class="btn-next" data-i18n="reviewBtn" onclick="next(4)" style="margin-top:14px">Review Request →</button>
         </div>
@@ -1413,6 +1414,13 @@
  "Submitting…": "جارٍ الإرسال…",
  "Uploading…": "جارٍ الرفع…",
  "Save & continue": "حفظ ومتابعة",
+ "Item name in Arabic is required (write it in Arabic letters)": "اسم المنتج بالعربية مطلوب (اكتبه بحروف عربية)",
+ "Item name in Arabic is required (please write it in Arabic letters)": "اسم المنتج بالعربية مطلوب (اكتبه بحروف عربية)",
+ "Item to Remove": "المنتج المراد حذفه",
+ "Reason for Delisting": "سبب الحذف من القائمة",
+ "Reason for delisting is required": "سبب الحذف من القائمة مطلوب",
+ "Barcode and reason for delisting are required": "الباركود وسبب الحذف من القائمة مطلوبان",
+ "Item discontinued by supplier, out of stock permanently…": "المنتج متوقف من المورّد أو نفد من المخزون نهائياً…",
  "Team accounts are created by an administrator. Please contact your Content Team lead.": "حسابات فريق المحتوى يُنشئها المسؤول. يرجى التواصل مع قائد فريق المحتوى.",
  "This Chain ID is not registered with Talabat. Please check the number or contact your account manager.": "رقم السلسلة هذا غير مسجّل لدى طلبات. يرجى التأكد من الرقم أو التواصل مع مدير حسابك.",
  "We could not verify your Chain ID right now. Please try again later.": "تعذّر التحقق من رقم السلسلة حالياً. يرجى المحاولة لاحقاً.",
@@ -2132,7 +2140,7 @@
     if (type === 'add') {
       set('f-add-barcode', pf.barcode); set('f-add-sku', pf.sku); set('f-add-name-en', pf.itemName);
       set('f-add-price', pf.price); set('f-add-desc', n);
-      set('f-add-itemtype', pf.itemType); set('f-add-minw', pf.minWeight);
+      set('f-add-itemtype', pf.itemType); set('f-add-minw', pf.minWeight); set('f-add-name-ar', pf.itemNameAr);
     } else if (type === 'master') {
       set('f-master-link', row['PhotoLink']); set('f-master-notes', n);
     } else if (type === 'desc') {
@@ -2150,7 +2158,7 @@
       const m = n.match(/Current barcode: ([\s\S]*?) \u2192 New: ([\s\S]*)$/);
       if (m) { set('f-bc-current', m[1]); set('f-bc-new', m[2]); }
     } else if (type === 'remove') {
-      set('f-rm-reason', pf.delistReason);
+      set('f-rm-barcode', pf.barcode); set('f-rm-sku', pf.sku); set('f-rm-reason', pf.delistReason);
     }
     // Keep the earlier attachment unless the rejection was about the image itself
     const photoKey = { add: 'add-photo', photo: 'ph-link', name: 'nm-proof', barcode: 'bc-proof' }[type];
@@ -2837,6 +2845,8 @@
         if (!req('f-add-barcode','e-add-barcode'))   ok = false;
         if (!req('f-add-sku','e-add-sku'))           ok = false;
         if (!req('f-add-name-en','e-add-name-en'))   ok = false;
+        if (!req('f-add-name-ar','e-add-name-ar'))   ok = false;
+        else if (!/[\u0600-\u06FF]/.test(v('f-add-name-ar'))) { err('f-add-name-ar','e-add-name-ar'); ok = false; }
         if (!req('f-add-price','e-add-price'))       ok = false;
         if ($('add-grocery-fields').style.display !== 'none') {
           if (!req('f-add-itemtype','e-add-itemtype')) ok = false;
@@ -2881,8 +2891,8 @@
         if (!req('f-bc-proof','e-bc-proof'))         ok = false;
       }
       if (reqType === 'remove') {
-        if (!req('f-rm-link','e-rm-link'))     ok = false;
-        if (!req('f-rm-reason','e-rm-reason')) ok = false;
+        if (!req('f-rm-barcode','e-rm-barcode')) ok = false;
+        if (!req('f-rm-reason','e-rm-reason'))   ok = false;
       }
     }
     return ok;
@@ -2974,7 +2984,7 @@
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
     if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
     if (reqType === 'barcode') return { ...base, sku: v('f-bc-sku'), itemName: v('f-bc-item'), currentBarcode: v('f-bc-current'), newBarcode: v('f-bc-new'), photoLink: v('f-bc-proof') };
-    if (reqType === 'remove')  return { ...base, fileLink: v('f-rm-link'), reason: v('f-rm-reason') };
+    if (reqType === 'remove')  return { ...base, barcode: v('f-rm-barcode'), sku: v('f-rm-sku'), reason: v('f-rm-reason') };
     return base;
   }
 
@@ -2991,7 +3001,7 @@
     if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link') ? '📷 Photo uploaded' : '—']); }
     if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof') ? '📷 Photo uploaded' : '—']); }
     if (reqType === 'barcode') { rows.push([t.rvItemName, v('f-bc-item')], [t.rvSKU, v('f-bc-sku')], [t.rvCurrentBarcode, v('f-bc-current')], [t.rvNewBarcode, v('f-bc-new')], [t.rvProof, v('f-bc-proof') ? '📷 Photo uploaded' : '—']); }
-    if (reqType === 'remove')  { rows.push([t.rvFileLink, v('f-rm-link')], [t.rvReason, v('f-rm-reason')]); }
+    if (reqType === 'remove')  { rows.push([t.rvBarcode, v('f-rm-barcode')]); if (v('f-rm-sku')) rows.push([t.rvSKU, v('f-rm-sku')]); rows.push([t.rvReason, v('f-rm-reason')]); }
     $('rv-body').innerHTML = rows.map(([k, val]) =>
       `<div class="rv"><div class="rv-k">${k}</div><div class="rv-v">${val || '—'}</div></div>`
     ).join('');
@@ -3218,6 +3228,7 @@
       ['Assigned At',     at],
       ['Status',          r['Status']],
       ['Comment',         r['Comment'] || r['Rejection Reason']],
+      ['Item Name (Arabic)', r['ItemNameAr']],
       ['Brand Type',      r['BrandType']],
       ['Item Type',       r['ItemType']],
       ['Min Weight (kg)', r['MinWeight']],

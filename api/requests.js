@@ -166,6 +166,7 @@ module.exports = async function handler(req, res) {
       obj['ItemType']     = row[29] !== undefined ? row[29] : '';
       obj['MinWeight']    = row[30] !== undefined ? row[30] : '';
       obj['ContactEmail'] = row[31] !== undefined ? row[31] : '';
+      obj['ItemNameAr']   = row[32] !== undefined ? row[32] : '';
 
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
@@ -185,7 +186,7 @@ module.exports = async function handler(req, res) {
           requestType: raw[4]  || '', barcode: raw[5]  || '', sku:   raw[6]  || '',
           itemName:    raw[7]  || '', notes:   raw[8]  || '', fileLink: raw[11] || '',
           price:       raw[12] || '', delistReason: raw[15] || '',
-          itemType:    raw[29] || '', minWeight: raw[30] || '',
+          itemType:    raw[29] || '', minWeight: raw[30] || '', itemNameAr: raw[32] || '',
         };
       });
     }
