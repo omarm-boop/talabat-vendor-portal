@@ -2049,7 +2049,18 @@
     updateAddFields();
     if (after) after();
   }
-  function startNewRequest() {
+  // The brand comes from Talabat's chain data, so vendors normally never see the Pharmacy / Grocery question
+  async function startNewRequest() {
+    if (currentVendor) {
+      try {
+        const resp = await apiFetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify({ action: 'brand' }) });
+        const d = await resp.json();
+        if (d && d.brandType && d.brandType !== currentVendor.brandType) {
+          currentVendor.brandType = d.brandType;
+          try { const s = JSON.parse(localStorage.getItem('tlb_session') || '{}'); s.vendor = { ...(s.vendor || {}), ...currentVendor }; localStorage.setItem('tlb_session', JSON.stringify(s)); } catch (_) {}
+        }
+      } catch (_) { /* offline or sheet unavailable: use what we have */ }
+    }
     if (currentVendor && !currentVendor.brandType) showBrandModal(() => goToForm());
     else goToForm();
   }

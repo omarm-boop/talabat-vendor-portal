@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { signToken, verifyRequest } = require('../lib/verify');
 const { ensureColumns } = require('../lib/sheet-columns');
 const { loadBranchMap } = require('../lib/branches');
+const { brandForChain } = require('../lib/chain-vertical');
 const { setCors } = require('../lib/cors');
 const { checkLoginLimit } = require('../lib/ratelimit');
 
@@ -45,6 +46,14 @@ async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
   return 'plain'; // matched a plain-text (admin-set) password
 }
 
+// The vendor's brand type, taken from the Chain Vertical sheet (falls back to what is saved on the account)
+async function handleBrand(req, res) {
+  const sess = await verifyRequest(req);
+  if (!sess) return res.status(401).json({ error: 'Unauthorized' });
+  const auto = await brandForChain(sess.email);
+  return res.json({ success: true, brandType: auto, auto: !!auto });
+}
+
 // Saves the vendor's contact email (Credentials col G) and brand type (col H) once, so they are remembered.
 // Lives here (not in its own file) to stay within the Vercel function-count limit.
 async function handleProfile(req, res, body) {
@@ -53,7 +62,7 @@ async function handleProfile(req, res, body) {
   if (sess.role !== 'vendor') return res.status(403).json({ error: 'Vendors only' });
 
   const email = String(body.email || '').trim().toLowerCase();
-  const brandType = String(body.brandType || '').trim().toLowerCase();
+  let brandType = String(body.brandType || '').trim().toLowerCase();
   if (!email && !brandType) return res.status(400).json({ error: 'Nothing to save' });
   if (email && !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
   if (brandType && !['pharmacy', 'grocery'].includes(brandType)) return res.status(400).json({ error: 'Invalid brand type' });
@@ -75,14 +84,17 @@ async function handleProfile(req, res, body) {
       if (a === me || (c && c === me)) { rowNum = i + 1; existingBrand = String(rows[i][7] || '').trim().toLowerCase(); break; }
     }
     if (!rowNum) return res.status(404).json({ error: 'Account not found' });
+    // The Chain Vertical sheet decides the brand when it knows the chain; the vendor's choice is ignored
+    const sheetBrand = brandType ? await brandForChain(me) : '';
+    if (sheetBrand && brandType !== sheetBrand) brandType = sheetBrand;
     // Pharmacy and Grocery are different verticals: once a brand type is saved it can never be changed here
-    if (brandType && existingBrand && brandType !== existingBrand)
+    if (brandType && existingBrand && brandType !== existingBrand && !sheetBrand)
       return res.status(409).json({ error: 'Your brand type is already set and cannot be changed. Please contact your account manager.', brandType: existingBrand });
 
     await ensureColumns(sheets, TRACKING_SHEET_ID, CREDENTIALS_TAB, 8);
     const data = [];
     if (email)     data.push({ range: `${CREDENTIALS_TAB}!G${rowNum}`, values: [[email]] });
-    if (brandType && !existingBrand) {
+    if (brandType && existingBrand !== brandType && (!existingBrand || sheetBrand)) {
       data.push({ range: `${CREDENTIALS_TAB}!H${rowNum}`, values: [[brandType]] });
       data.push({ range: `${CREDENTIALS_TAB}!H1`, values: [['Brand Type']] });
     }
@@ -92,7 +104,7 @@ async function handleProfile(req, res, body) {
         requestBody: { valueInputOption: 'RAW', data },
       });
     }
-    return res.json({ success: true, email, brandType: existingBrand || brandType });
+    return res.json({ success: true, email, brandType: sheetBrand || existingBrand || brandType });
   } catch (err) {
     console.error('auth.js profile error:', err.message);
     return res.status(500).json({ error: 'Server error. Please try again.' });
@@ -108,6 +120,7 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
   if (body && body.action === 'profile') return handleProfile(req, res, body);
   if (body && body.action === 'branches') return handleBranches(req, res);
+  if (body && body.action === 'brand') return handleBrand(req, res);
   const { vendorId, password } = body || {};
 
   if (!vendorId || !password)
@@ -239,6 +252,7 @@ module.exports = async function handler(req, res) {
 
     const vid = matched['Chain ID'] || matched['Vendor ID'];
     const ts  = Date.now();
+    const autoBrand = await brandForChain(vid);
 
     // An account created by an admin (plain-text password, or the default 123456) must set its own
     // password. The "Must Change Password" flag (Credentials col I) keeps that true until it is changed.
@@ -268,7 +282,7 @@ module.exports = async function handler(req, res) {
         chainName:  matched['Chain Name'],
         branchName: matched['Branch Name'],
         email:      String(matchedRow[6] || '').trim(),
-        brandType:  String(matchedRow[7] || '').trim().toLowerCase(),
+        brandType:  autoBrand || String(matchedRow[7] || '').trim().toLowerCase(),
       },
     });
 

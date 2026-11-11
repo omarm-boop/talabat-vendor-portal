@@ -3,6 +3,7 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
+const { brandForChain } = require('../lib/chain-vertical');
 
 let redis = null;
 function getRedis() {
@@ -166,8 +167,10 @@ module.exports = async function handler(req, res) {
     let brandType = String(body.brandType || '').trim().toLowerCase();
     if (brandType && !['pharmacy', 'grocery'].includes(brandType))
       return res.status(400).json({ error: 'Invalid brand type' });
-    // The brand saved on the vendor's account always wins over what the browser sends
-    try {
+    // The brand from the Chain Vertical sheet wins; otherwise the one saved on the account; never the browser's
+    const sheetBrand = await brandForChain(sess.email);
+    if (sheetBrand) brandType = sheetBrand;
+    else try {
       const cr = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials!A:H' });
       const me = String(sess.email || '').toLowerCase().trim();
       for (const r of (cr.data.values || []).slice(1)) {
