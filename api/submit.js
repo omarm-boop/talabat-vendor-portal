@@ -165,7 +165,7 @@ module.exports = async function handler(req, res) {
     if (!String(body.restaurant || '').trim() || !String(body.branch || '').trim())
       return res.status(400).json({ error: 'Restaurant / Chain name and Branch / Location are required' });
     let brandType = String(body.brandType || '').trim().toLowerCase();
-    if (brandType && !['pharmacy', 'grocery'].includes(brandType))
+    if (brandType && !/^[a-z0-9\u0600-\u06FF-]{1,40}$/.test(brandType))
       return res.status(400).json({ error: 'Invalid brand type' });
     // The brand from the Chain Vertical sheet wins; otherwise the one saved on the account; never the browser's
     const sheetBrand = await brandForChain(sess.email);
@@ -176,7 +176,7 @@ module.exports = async function handler(req, res) {
       for (const r of (cr.data.values || []).slice(1)) {
         if (String(r[0] || '').toLowerCase().trim() === me || String(r[2] || '').toLowerCase().trim() === me) {
           const stored = String(r[7] || '').trim().toLowerCase();
-          if (stored === 'pharmacy' || stored === 'grocery') brandType = stored;
+          if (/^[a-z0-9\u0600-\u06FF-]{1,40}$/.test(stored)) brandType = stored;
           break;
         }
       }

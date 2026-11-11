@@ -1642,6 +1642,7 @@
 };
   const AR_MONTHS = { Jan:'يناير', Feb:'فبراير', Mar:'مارس', Apr:'أبريل', May:'مايو', Jun:'يونيو', Jul:'يوليو', Aug:'أغسطس', Sep:'سبتمبر', Oct:'أكتوبر', Nov:'نوفمبر', Dec:'ديسمبر' };
   const _trSub = x => { const r = trText(x); return r === null ? x : r; };
+  const _arBrand = (n, short) => ({ Pharmacy: short ? 'الصيدلية' : 'صيدلية', Grocery: short ? 'البقالة' : 'بقالة', Beauty: short ? 'التجميل' : 'مستحضرات التجميل' })[n] || n;
   const AR_PATTERNS = [
     [/^e\.g\. ([\s\S]*)$/, m => 'مثال: ' + m[1]],
     [/^Update (\d+) of (\d+)$/, m => 'تحديث ' + m[1] + ' من ' + m[2]],
@@ -1655,8 +1656,8 @@
     [/^Withdraw failed: ([\s\S]*)$/, m => 'تعذّر سحب الطلب: ' + _trSub(m[1])],
     [/^Submission failed — ([\s\S]*?) ?Please try again\.$/, m => 'فشل الإرسال — ' + _trSub(m[1].trim()) + ' يرجى المحاولة مرة أخرى.'],
     [/^Daily submission limit reached \((\d+) per day\)\. Please try again tomorrow\.$/, m => 'تم الوصول إلى الحد اليومي للإرسال (' + m[1] + ' يومياً). يرجى المحاولة غداً.'],
-    [/^Add Master File – (Pharmacy|Grocery)$/, m => 'إضافة ملف رئيسي – ' + (m[1] === 'Pharmacy' ? 'صيدلية' : 'بقالة')],
-    [/^⬇ Download (Pharmacy|Grocery) Template CSV$/, m => '⬇ تحميل نموذج ' + (m[1] === 'Pharmacy' ? 'الصيدلية' : 'البقالة') + ' (CSV)'],
+    [/^Add Master File – (.+)$/, m => 'إضافة ملف رئيسي – ' + _arBrand(m[1], false)],
+    [/^⬇ Download (.+) Template CSV$/, m => '⬇ تحميل نموذج ' + _arBrand(m[1], true) + ' (CSV)'],
     [/^📄 Template columns:$/, () => '📄 أعمدة النموذج:'],
   ];
   function trText(s) {
@@ -2064,13 +2065,23 @@
     if (currentVendor && !currentVendor.brandType) showBrandModal(() => goToForm());
     else goToForm();
   }
+  // Icon and name shown for a brand type. Pharmacy and Grocery have translations; any other vertical shows its own name.
+  function brandInfo(b) {
+    const t = T[lang];
+    if (b === 'pharmacy') return { icon: '💊', label: t.pharmacyName };
+    if (b === 'grocery')  return { icon: '🛒', label: t.groceryName };
+    if (b === 'beauty')   return { icon: '💄', label: lang === 'ar' ? 'مستحضرات التجميل' : 'Beauty' };
+    const name = String(b || '').replace(/-/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
+    return { icon: '🏪', label: name };
+  }
   function updateBrandChip() {
     const els = [document.getElementById('brand-chip'), document.getElementById('brand-chip-add')];
     const b = currentVendor && currentVendor.brandType;
     if (!b) { els.forEach(el => { if (el) el.style.display = 'none'; }); return; }
     const t = T[lang];
     // The brand type is permanent: Pharmacy and Grocery are different verticals, so there is no way to switch
-    const base = t.brandLabel + ': <strong>' + (b === 'grocery' ? '🛒 ' + t.groceryName : '💊 ' + t.pharmacyName) + '</strong>';
+    const info = brandInfo(b);
+    const base = t.brandLabel + ': <strong>' + info.icon + ' ' + escHtml(info.label) + '</strong>';
     els.forEach(el => { if (!el) return; el.innerHTML = base; el.style.display = ''; });
   }
 
@@ -2175,7 +2186,11 @@
     }
     goToForm();
     reqType = type;
-    if (type === 'master') masterType = label.includes('pharmacy') ? 'pharmacy' : 'grocery';
+    if (type === 'master') {
+      const sfx = (label.split('\u2013')[1] || '').trim();
+      masterType = /pharm/.test(sfx) ? 'pharmacy' : /groc/.test(sfx) ? 'grocery'
+        : sfx ? sfx.replace(/[^a-z0-9]+/g, '-') : ((currentVendor && currentVendor.brandType) || 'grocery');
+    }
     const set = (id, val) => { if ($(id)) $(id).value = val || ''; };
     const n = pf.notes || '';
     if (type === 'add') {
@@ -2820,7 +2835,9 @@
       applyType();
       switchTo(3);
     } else {
-      switchCustom('s-master-type');
+      // The brand is already known (from the chain data), so there is nothing to ask
+      const b = currentVendor && currentVendor.brandType;
+      if (b) pickMasterType(b); else switchCustom('s-master-type');
     }
   }
 
@@ -2833,22 +2850,30 @@
     switchTo(3);
   }
 
+  // English name of a brand type: pharmacy -> Pharmacy, pet-care -> Pet Care
+  function masterLabelEn(type) {
+    return type === 'pharmacy' ? 'Pharmacy' : type === 'grocery' ? 'Grocery' : type === 'beauty' ? 'Beauty'
+      : String(type || '').replace(/-/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
+  }
   function showMasterTemplate(type) {
     const col = type === 'pharmacy'
       ? 'Valid Barcode | Full Item Name | SKU | Price | Stock'
-      : 'Valid Barcode | Full Item Name | SKU | Price | Min Weight (if weighable)';
+      : type === 'grocery'
+        ? 'Valid Barcode | Full Item Name | SKU | Price | Min Weight (if weighable)'
+        : 'Valid Barcode | Full Item Name | SKU | Price';
     $('master-template-block').innerHTML = `
       <div class="warn" style="background:#f0f8ff;border-color:#90caf9;color:#1565c0">
         📄 Template columns: <strong>${col}</strong><br>
-        <button class="btn-back-dash" style="margin-top:10px;color:#1565c0" onclick="downloadTemplate('${type}')">⬇ Download ${type === 'pharmacy' ? 'Pharmacy' : 'Grocery'} Template CSV</button>
+        <button class="btn-back-dash" style="margin-top:10px;color:#1565c0" onclick="downloadTemplate('${type}')">⬇ Download ${masterLabelEn(type)} Template CSV</button>
       </div>`;
   }
 
   function downloadTemplate(type) {
     const pharmacyCSV = 'Valid Barcode,Full Item Name,SKU,Price,Stock\n,,,,\n,,,,\n,,,,';
     const groceryCSV  = 'Valid Barcode,Full Item Name,SKU,Price,Min Weight (if weighable)\n,,,,\n,,,,\n,,,,';
-    const csv  = type === 'pharmacy' ? pharmacyCSV : groceryCSV;
-    const name = type === 'pharmacy' ? 'pharmacy-template.csv' : 'grocery-template.csv';
+    const generalCSV  = 'Valid Barcode,Full Item Name,SKU,Price\n,,,\n,,,\n,,,';
+    const csv  = type === 'pharmacy' ? pharmacyCSV : type === 'grocery' ? groceryCSV : generalCSV;
+    const name = (type || 'master') + '-template.csv';
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -3020,7 +3045,7 @@
       vendor: v('f-vendor'), requestType: typeLabels[reqType]
     };
     if (reqType === 'add')     return { ...base, barcode: v('f-add-barcode'), sku: v('f-add-sku'), itemName: v('f-add-name-en'), itemNameAr: v('f-add-name-ar'), category: v('f-add-cat'), price: v('f-add-price'), description: v('f-add-desc'), photoLink: v('f-add-photo'), itemType: v('f-add-itemtype'), minWeight: v('f-add-minw') };
-    if (reqType === 'master')  return { ...base, requestType: 'Add Master File – ' + (masterType === 'pharmacy' ? 'Pharmacy' : 'Grocery'), photoLink: v('f-master-link'), notes: v('f-master-notes') };
+    if (reqType === 'master')  return { ...base, requestType: 'Add Master File – ' + masterLabelEn(masterType), photoLink: v('f-master-link'), notes: v('f-master-notes') };
     if (reqType === 'desc')    return { ...base, barcode: v('f-desc-barcode'), sku: v('f-desc-sku'), itemName: v('f-desc-item'), currentDesc: v('f-desc-current'), newDesc: v('f-desc-new') };
     if (reqType === 'photo')   return { ...base, barcode: v('f-ph-barcode'), sku: v('f-ph-sku'), itemName: v('f-ph-item'), photoLink: v('f-ph-link') };
     if (reqType === 'name')    return { ...base, sku: v('f-nm-sku'), barcode: v('f-nm-barcode'), currentName: v('f-nm-current'), category: v('f-nm-new-sku'), newBarcode: v('f-nm-new-barcode'), newName: v('f-nm-new'), photoLink: v('f-nm-proof') };
@@ -3037,7 +3062,7 @@
       [t.rvVendorId, v('f-vendor') || '—'], [t.rvReqType, getTypeLabel(reqType) || '—'],
     ];
     if (reqType === 'add')     { rows.push([t.rvBarcode, v('f-add-barcode')], [t.rvSKU, v('f-add-sku')], [t.rvItemNameEN, v('f-add-name-en')], [isWeighable() ? 'Price per Kilo' : t.rvPrice, v('f-add-price')], [t.rvPhoto, v('f-add-photo') ? '📷 Photo uploaded' : '—']); if (v('f-add-itemtype')) rows.push(['Item Type', v('f-add-itemtype') === 'weighable' ? 'Weighable' : 'Packed']); if (isWeighable()) rows.push(['Minimum Weight (kg)', v('f-add-minw')]); if (v('f-add-name-ar')) rows.push([t.rvItemNameAR, v('f-add-name-ar')]); if (v('f-add-cat')) rows.push([t.rvCategory, v('f-add-cat')]); if (v('f-add-desc')) rows.push([t.rvDesc, v('f-add-desc')]); }
-    if (reqType === 'master')  { rows.push([t.rvStoreType, masterType === 'pharmacy' ? t.pharmacyName : t.groceryName], [t.rvFileLink, v('f-master-link')]); if (v('f-master-notes')) rows.push([t.rvNotes, v('f-master-notes')]); }
+    if (reqType === 'master')  { rows.push([t.rvStoreType, brandInfo(masterType).label], [t.rvFileLink, v('f-master-link')]); if (v('f-master-notes')) rows.push([t.rvNotes, v('f-master-notes')]); }
     if (reqType === 'desc')    { rows.push([t.rvItemName, v('f-desc-item')], [t.rvSKU, v('f-desc-sku')], [t.rvBarcode, v('f-desc-barcode')], [t.rvCurrentDesc, v('f-desc-current')], [t.rvNewDesc, v('f-desc-new')]); }
     if (reqType === 'photo')   { rows.push([t.rvItemName, v('f-ph-item')], [t.rvSKU, v('f-ph-sku')], [t.rvBarcode, v('f-ph-barcode')], [t.rvPhoto, v('f-ph-link') ? '📷 Photo uploaded' : '—']); }
     if (reqType === 'name')    { rows.push([t.rvCurrentSKU, v('f-nm-sku')], [t.rvCurrentBarcode, v('f-nm-barcode')], [t.rvOldName, v('f-nm-current')], [t.rvNewSKU, v('f-nm-new-sku')], [t.rvNewBarcode, v('f-nm-new-barcode')], [t.rvNewName, v('f-nm-new')], [t.rvNewImage, v('f-nm-proof') ? '📷 Photo uploaded' : '—']); }

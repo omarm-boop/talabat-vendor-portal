@@ -65,7 +65,7 @@ async function handleProfile(req, res, body) {
   let brandType = String(body.brandType || '').trim().toLowerCase();
   if (!email && !brandType) return res.status(400).json({ error: 'Nothing to save' });
   if (email && !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
-  if (brandType && !['pharmacy', 'grocery'].includes(brandType)) return res.status(400).json({ error: 'Invalid brand type' });
+  if (brandType && !/^[a-z0-9\u0600-\u06FF-]{1,40}$/.test(brandType)) return res.status(400).json({ error: 'Invalid brand type' });
 
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
