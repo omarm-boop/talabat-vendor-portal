@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { loadTeamMembers } = require('../lib/team');
 
 const SHEET_ID  = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDS_TAB = 'Credentials';
@@ -34,7 +35,7 @@ module.exports = async function handler(req, res) {
     });
   } catch (_) {}
 
-  // From Credentials sheet — rows where chainId col C = '0', exclude monitors
+  // From the Team tab (and older Credentials rows with Chain ID 0) - monitors are excluded
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
@@ -42,22 +43,12 @@ module.exports = async function handler(req, res) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
-    const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${CREDS_TAB}!A:F`,
-    });
-    const rows = resp.data.values || [];
-    for (const row of rows.slice(1)) {
-      const colC = (row[2] || '').trim();
-      if (colC !== '0') continue;
-      const colE = (row[4] || '').trim().toLowerCase(); // role stored in Branch Name col
-      if (colE === 'monitor') continue;
-      const email   = (row[0] || '').trim().toLowerCase();
-      const colD    = (row[3] || '').trim();
-      const display = (colD && colD !== 'Talabat') ? colD : email;
+    for (const m of await loadTeamMembers(sheets)) {
+      if (m.role === 'monitor') continue;
+      const display = m.name || m.email;
       if (!display || names.has(display)) continue;
       names.add(display);
-      agents.push({ name: display, email });
+      agents.push({ name: display, email: m.email });
     }
   } catch (_) {}
 

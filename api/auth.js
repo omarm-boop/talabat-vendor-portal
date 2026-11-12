@@ -4,6 +4,7 @@ const { signToken, verifyRequest } = require('../lib/verify');
 const { ensureColumns } = require('../lib/sheet-columns');
 const { loadBranchMap } = require('../lib/branches');
 const { brandForChain } = require('../lib/chain-vertical');
+const { loadTeamMembers } = require('../lib/team');
 const { setCors } = require('../lib/cors');
 const { checkLoginLimit } = require('../lib/ratelimit');
 
@@ -27,7 +28,7 @@ async function handleBranches(req, res) {
 
 // Verify password and lazily migrate plain-text to bcrypt hash in-place.
 // rowNum is the 1-indexed sheet row (header = row 1, so first data row = 2).
-async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
+async function verifyAndMigrate(stored, candidate, sheets, rowNum, tab = CREDENTIALS_TAB, col = 'B') {
   const isHashed = stored.startsWith('$2b$') || stored.startsWith('$2a$');
   if (isHashed) return bcrypt.compare(candidate, stored);
   if (stored !== candidate) return false;
@@ -36,7 +37,7 @@ async function verifyAndMigrate(stored, candidate, sheets, rowNum) {
     const hashed = await bcrypt.hash(candidate, 10);
     await sheets.spreadsheets.values.update({
       spreadsheetId: TRACKING_SHEET_ID,
-      range: `${CREDENTIALS_TAB}!B${rowNum}`,
+      range: `${tab}!${col}${rowNum}`,
       valueInputOption: 'RAW',
       requestBody: { values: [[hashed]] },
     });
@@ -177,41 +178,26 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // 2. Self-registered agents in the Credentials sheet (chainId = '0')
-      const credsResp = await sheets.spreadsheets.values.get({
-        spreadsheetId: TRACKING_SHEET_ID,
-        range: CREDENTIALS_TAB,
-      });
-      const credsValues = credsResp.data.values || [];
-      if (credsValues.length > 1) {
-        const headers = credsValues[0];
-        for (let i = 0; i < credsValues.length - 1; i++) {
-          const row = credsValues[i + 1];
-          const obj = {};
-          headers.forEach((h, idx) => { obj[h] = row[idx] || ''; });
-          if (String(obj['Vendor ID']).toLowerCase().trim() !== email) continue;
-          if (String(obj['Chain ID']).trim() !== '0') continue;
-
-          const rowNum  = i + 2; // 1-indexed; +1 to skip header row
-          const matches = await verifyAndMigrate(obj['Password'], password, sheets, rowNum);
-          if (!matches) continue;
-
-          const role = obj['Branch Name'] || 'agent';
-          const ts   = Date.now();
-          return res.json({
-            success: true,
-            sessionToken: signToken(obj['Vendor ID'], role, ts),
-            sessionTs: ts,
-            vendor: {
-              vendorId:   obj['Vendor ID'],
-              name:       (obj['Chain Name'] && obj['Chain Name'] !== 'Talabat') ? obj['Chain Name'] : obj['Vendor ID'],
-              role,
-              chainId:    '0',
-              chainName:  'Talabat',
-              branchName: 'Admin Panel',
-            },
-          });
-        }
+      // 2. The Team tab (Email | Password | Name | Role). Older team rows in Credentials (Chain ID 0) still work.
+      const members = (await loadTeamMembers(sheets)).filter(m => m.email === email);
+      for (const m of members) {
+        const matches = await verifyAndMigrate(m.password, password, sheets, m.rowNum, m.tab, m.passCol);
+        if (!matches) continue;
+        const role = m.role || 'agent';
+        const ts   = Date.now();
+        return res.json({
+          success: true,
+          sessionToken: signToken(m.email, role, ts),
+          sessionTs: ts,
+          vendor: {
+            vendorId:   m.email,
+            name:       m.name || m.email,
+            role,
+            chainId:    '0',
+            chainName:  'Talabat',
+            branchName: 'Admin Panel',
+          },
+        });
       }
 
       await delay2s();

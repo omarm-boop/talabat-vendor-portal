@@ -4,6 +4,7 @@ const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
 const { brandForChain } = require('../lib/chain-vertical');
+const { loadTeamMembers } = require('../lib/team');
 
 let redis = null;
 function getRedis() {
@@ -402,21 +403,12 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
       }
     } catch (_) {}
 
-    // Source 2: Credentials sheet (Chain ID='0') — agents who registered via portal signup
-    // Uses index-based parsing (same as team.js) to work regardless of whether
-    // the sheet has a header row: A=email, B=pw, C=chainId, D=displayName, E=role
+    // Source 2: the Team tab (and older Credentials rows with Chain ID 0)
     try {
-      const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `Credentials!A:E` });
-      const credsVals = credsResp.data.values || [];
-      for (const row of credsVals) {
-        const colC = String(row[2] || '').trim();
-        if (colC !== '0') continue;                                   // only team accounts
-        const colE = String(row[4] || '').trim().toLowerCase();
-        if (colE === 'monitor') continue;                             // skip monitors
-        const email = String(row[0] || '').toLowerCase().trim();
-        if (!email || !email.includes('@') || agentMap[email]) continue;
-        const colD = String(row[3] || '').trim();
-        agentMap[email] = (colD && colD !== 'Talabat') ? colD : email;
+      for (const m of await loadTeamMembers(sheets)) {
+        if (m.role === 'monitor') continue;                           // skip monitors
+        if (!m.email || !m.email.includes('@') || agentMap[m.email]) continue;
+        agentMap[m.email] = m.name || m.email;
       }
     } catch (_) {}
 

@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
+const { loadTeamMembers } = require('../lib/team');
 const { Redis } = require('@upstash/redis');
 
 let redis = null;
@@ -57,24 +58,12 @@ module.exports = async function handler(req, res) {
     const sheets = google.sheets({ version: 'v4', auth });
     const now = new Date().toISOString();
 
-    // Resolve assignee email → display name from Credentials sheet (Chain ID='0')
+    // Resolve assignee email → display name from the Team tab (or older Credentials rows with Chain ID 0)
     let displayAssignee = assignee || '';
     if (assignee) {
       try {
-        const credsResp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: 'Credentials' });
-        const credsVals = credsResp.data.values || [];
-        if (credsVals.length > 1) {
-          const headers = credsVals[0];
-          for (let i = 1; i < credsVals.length; i++) {
-            const obj = {};
-            headers.forEach((h, idx) => { obj[h] = credsVals[i][idx] || ''; });
-            if (String(obj['Chain ID']).trim() !== '0') continue;
-            if (String(obj['Vendor ID']).toLowerCase().trim() === assignee.toLowerCase().trim()) {
-              displayAssignee = obj['Chain Name'] || assignee;
-              break;
-            }
-          }
-        }
+        const member = (await loadTeamMembers(sheets)).find(m => m.email === assignee.toLowerCase().trim());
+        if (member && member.name) displayAssignee = member.name;
       } catch (_) {}
     }
 
