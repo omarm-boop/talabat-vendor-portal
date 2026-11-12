@@ -76,6 +76,10 @@ module.exports = async function handler(req, res) {
         const name = String(r[3] || '').toLowerCase();
         return barcode.includes(q) || master.includes(q) || name.includes(q) || sku.includes(q);
       })
+      .sort((a, b) => {   // an exact barcode / code match comes first
+        const exact = r => [r[0], r[1], r[2]].some(x => String(x || '').toLowerCase() === q) ? 1 : 0;
+        return exact(b) - exact(a);
+      })
       .slice(0, 25)
       .map(r => ({
         masterCode: String(r[0] || ''), // Column A -> SKU

@@ -24,8 +24,42 @@ module.exports = async function handler(req, res) {
   const sess = await verifyRequest(req);
   if (!sess) return res.status(401).json({ error: 'Unauthorized' });
 
+  // Only the Talabat team (agents / monitors) can change a request. Vendors never call this endpoint.
+  if (sess.role !== 'monitor' && sess.role !== 'agent')
+    return res.status(403).json({ error: 'Team access required' });
+
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
+
+  // A message from the team to the vendor (shown on the vendor's dashboard, whatever the status is)
+  if (body && body.note !== undefined && !body.status) {
+    const noteRow = parseInt(body.rowIndex, 10);
+    if (!noteRow || noteRow < 2) return res.status(400).json({ error: 'rowIndex is required' });
+    const note = String(body.note || '').trim().slice(0, 500);
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+      const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
+      const sheets = google.sheets({ version: 'v4', auth });
+      const at = new Date().toISOString();
+      await ensureColumns(sheets, SHEET_ID, TAB, 35);   // AH = team note, AI = when it was written
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: [
+            { range: `${TAB}!AH${noteRow}`, values: [[note]] },
+            { range: `${TAB}!AI${noteRow}`, values: [[note ? at : '']] },
+            { range: `${TAB}!Y${noteRow}`,  values: [[`${sess.email} → Note to vendor at ${at}`]] },
+          ],
+        },
+      });
+      if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
+      return res.json({ success: true, note, noteAt: note ? at : '' });
+    } catch (err) {
+      console.error('update-status note error:', err.message);
+      return res.status(500).json({ error: 'Server error. Please try again.' });
+    }
+  }
 
   const { rowIndex, status, vendorId } = body || {};
   if (!rowIndex || !status)

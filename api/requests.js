@@ -168,6 +168,9 @@ module.exports = async function handler(req, res) {
       obj['MinWeight']    = row[30] !== undefined ? row[30] : '';
       obj['ContactEmail'] = row[31] !== undefined ? row[31] : '';
       obj['ItemNameAr']   = row[32] !== undefined ? row[32] : '';
+      // Message from the Talabat team (cols AH, AI)
+      obj['TeamNote']     = row[33] !== undefined ? row[33] : '';
+      obj['TeamNoteAt']   = row[34] !== undefined ? row[34] : '';
 
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
