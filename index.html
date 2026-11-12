@@ -1394,6 +1394,8 @@
  "Submitting…": "جارٍ الإرسال…",
  "Uploading…": "جارٍ الرفع…",
  "Save & continue": "حفظ ومتابعة",
+ "Matching catalog items": "منتجات مطابقة في الكتالوج",
+ "Select the correct item…": "اختر المنتج الصحيح…",
  "✓ Photo from the catalog — click to replace": "✓ تم جلب الصورة من الكتالوج — اضغط للاستبدال",
  "Review": "مراجعة", "Review your request": "مراجعة طلبك", "Request type": "نوع الطلب", "Status": "الحالة", "Submitted": "تاريخ الإرسال",
  "Branch": "الفرع", "Item name (English)": "اسم المنتج (بالإنجليزية)", "Item name (Arabic)": "اسم المنتج (بالعربية)", "Item type": "نوع المنتج",
@@ -1614,7 +1616,7 @@
     [/^Update (\d+) of (\d+)$/, m => 'تحديث ' + m[1] + ' من ' + m[2]],
     [/^Item: ([\s\S]*)$/, m => 'المنتج: ' + m[1]],
     [/^✓ Found in the catalog: ([\s\S]*)$/, m => '✓ موجود في الكتالوج: ' + m[1]],
-    [/^This barcode is used by (\d+) catalog items\. Please fill in the details yourself\.$/, m => 'هذا الباركود مستخدم في ' + m[1] + ' منتجات بالكتالوج. يرجى إدخال البيانات بنفسك.'],
+    [/^(\d+) catalog items share this barcode\. Please select the correct one\.$/, m => m[1] + ' منتجات في الكتالوج تشترك في هذا الباركود. يرجى اختيار المنتج الصحيح.'],
     [/^Last refreshed ([\s\S]*)$/, m => 'آخر تحديث ' + m[1]],
     [/^(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, m => m[1] + ' ' + AR_MONTHS[m[2]] + ' ' + m[3]],
     [/^([⏰⏳✓]) (\d+(?:\.\d+)?)h left$/, m => m[1] + ' متبقي ' + m[2] + ' ساعة'],
@@ -3956,13 +3958,21 @@
   attach('f-nm-barcode', it => { setIfEmpty('f-nm-sku', it.masterCode); const f = el('f-nm-current'); if (f && it.name) f.value = it.name; });
   attach('f-ph-barcode', it => { setIfEmpty('f-ph-sku', it.masterCode); const f = el('f-ph-item'); if (f && it.name) f.value = it.name; });
 
-  // Add a New Item: a barcode that is already in the catalog fills the English and Arabic names and the photo by itself
+  // Add a New Item: a barcode that is in the catalog offers the matching products in a dropdown (like Update Barcode)
+  // and fills the English and Arabic names and the photo from the chosen product
   const addBc = el('f-add-barcode'), addTitle = el('f-add-name-en'), addAr = el('f-add-name-ar'), addPhoto = el('f-add-photo');
   if (addBc && addTitle) {
     const hint = document.createElement('div');
     hint.className = 'field-hint'; hint.style.cssText = 'display:none;font-weight:600';
     addBc.insertAdjacentElement('afterend', hint);
-    let autoTitle = '', autoAr = '', autoImg = '', timer = null;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:none;margin-top:8px';
+    wrap.innerHTML = '<label class="lbl" style="display:block;margin-bottom:6px">Matching catalog items</label>'
+      + '<select id="f-add-match" style="width:100%;height:48px;border:1.5px solid #e0d8ce;border-radius:12px;padding:0 14px;font-family:\'Poppins\',sans-serif;font-size:14px;background:#fff;color:#411517"></select>';
+    hint.insertAdjacentElement('afterend', wrap);
+    const sel = wrap.querySelector('select');
+    let matches = [], autoTitle = '', autoAr = '', autoImg = '', timer = null;
+
     const showImage = url => {
       addPhoto.value = url;
       const prev = el('fp-add-photo'); if (prev) { prev.src = url; prev.style.display = 'block'; }
@@ -3977,38 +3987,60 @@
       const z = el('fz-add-photo'); if (z) z.classList.remove('done');
     };
     // takes back only what the catalog filled in; anything the vendor typed or uploaded is left alone
-    const clearAuto = () => {
-      hint.style.display = 'none'; hint.textContent = '';
+    const takeBack = () => {
       if (autoTitle && addTitle.value === autoTitle) addTitle.value = '';
       if (autoAr && addAr && addAr.value === autoAr) addAr.value = '';
       if (autoImg && addPhoto && addPhoto.value === autoImg) clearImage();
       autoTitle = autoAr = autoImg = '';
     };
+    const clearAll = () => { hint.style.display = 'none'; hint.textContent = ''; wrap.style.display = 'none'; sel.innerHTML = ''; matches = []; takeBack(); };
+    const say = (text, color) => { hint.style.color = color; hint.style.display = 'block'; hint.textContent = text; };
+
+    // chosen = the vendor picked this product in the dropdown, so it replaces the names; automatic = only fill what is empty
+    function apply(hit, chosen) {
+      say('✓ Found in the catalog: ' + hit.name, '#16a34a');
+      if (hit.name && (chosen || !addTitle.value.trim() || addTitle.value === autoTitle)) {
+        addTitle.value = hit.name; autoTitle = hit.name; clr('f-add-name-en', 'e-add-name-en');
+      }
+      if (addAr && hit.nameAr && (chosen || !addAr.value.trim() || addAr.value === autoAr)) {
+        addAr.value = hit.nameAr; autoAr = hit.nameAr; clr('f-add-name-ar', 'e-add-name-ar');
+      }
+      if (addPhoto && hit.image && (!addPhoto.value || addPhoto.value === autoImg)) {
+        showImage(hit.image); autoImg = hit.image;
+      }
+    }
+    const label = it => esc(it.name || 'Unnamed') + (it.masterCode ? ' — (' + esc(it.masterCode) + ')' : '');
+
+    sel.addEventListener('change', () => {
+      if (sel.value === '') { takeBack(); say(matches.length + ' catalog items share this barcode. Please select the correct one.', '#d97706'); return; }
+      takeBack();   // drop what the previous choice filled in, so nothing of it is left behind
+      apply(matches[Number(sel.value)], true);
+    });
     addBc.addEventListener('input', () => {
       clearTimeout(timer);
       const q = addBc.value.trim();
-      if (q.length < 6) { clearAuto(); return; }
+      if (q.length < 6) { clearAll(); return; }
       timer = setTimeout(async () => {
         try {
-          const exact = (await search(q)).filter(it => String(it.barcode || '').toLowerCase() === q.toLowerCase());
-          if (!exact.length) { clearAuto(); return; }
-          if (exact.length > 1) {   // several different catalog items share this barcode: do not guess
-            clearAuto();
-            hint.style.color = '#d97706'; hint.style.display = 'block';
-            hint.textContent = 'This barcode is used by ' + exact.length + ' catalog items. Please fill in the details yourself.';
-            return;
-          }
-          const hit = exact[0];
-          hint.style.color = '#16a34a'; hint.style.display = 'block';
-          hint.textContent = '✓ Found in the catalog: ' + hit.name;
-          if (hit.name && (!addTitle.value.trim() || addTitle.value === autoTitle)) {
-            addTitle.value = hit.name; autoTitle = hit.name; clr('f-add-name-en', 'e-add-name-en');
-          }
-          if (addAr && hit.nameAr && (!addAr.value.trim() || addAr.value === autoAr)) {
-            addAr.value = hit.nameAr; autoAr = hit.nameAr; clr('f-add-name-ar', 'e-add-name-ar');
-          }
-          if (addPhoto && hit.image && (!addPhoto.value || addPhoto.value === autoImg)) {
-            showImage(hit.image); autoImg = hit.image;
+          const seen = new Set();
+          const exact = (await search(q)).filter(it => {
+            if (String(it.barcode || '').toLowerCase() !== q.toLowerCase()) return false;
+            const k = (it.name || '') + '|' + (it.masterCode || '');
+            return seen.has(k) ? false : (seen.add(k), true);
+          });
+          if (!exact.length) { clearAll(); return; }
+          matches = exact;
+          wrap.style.display = 'block';
+          if (exact.length === 1) {
+            sel.innerHTML = '<option value="0">' + label(exact[0]) + '</option>';
+            sel.value = '0';
+            takeBack();
+            apply(exact[0], false);
+          } else {   // several different catalog items share this barcode: the vendor chooses
+            takeBack();
+            sel.innerHTML = '<option value="">Select the correct item…</option>' + exact.map((it, i) => '<option value="' + i + '">' + label(it) + '</option>').join('');
+            sel.value = '';
+            say(exact.length + ' catalog items share this barcode. Please select the correct one.', '#d97706');
           }
         } catch (_) {}
       }, 350);
