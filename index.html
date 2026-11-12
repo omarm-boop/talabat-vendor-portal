@@ -1377,6 +1377,7 @@
  "Submitting…": "جارٍ الإرسال…",
  "Uploading…": "جارٍ الرفع…",
  "Save & continue": "حفظ ومتابعة",
+ "✓ Photo from the catalog — click to replace": "✓ تم جلب الصورة من الكتالوج — اضغط للاستبدال",
  "Review": "مراجعة", "Review your request": "مراجعة طلبك", "Request type": "نوع الطلب", "Status": "الحالة", "Submitted": "تاريخ الإرسال",
  "Branch": "الفرع", "Item name (English)": "اسم المنتج (بالإنجليزية)", "Item name (Arabic)": "اسم المنتج (بالعربية)", "Item type": "نوع المنتج",
  "Minimum weight (kg)": "أقل وزن (كجم)", "Price per kilo": "سعر الكيلو", "Notes": "ملاحظات", "Reason for delisting": "سبب الحذف من القائمة",
@@ -1596,6 +1597,7 @@
     [/^Update (\d+) of (\d+)$/, m => 'تحديث ' + m[1] + ' من ' + m[2]],
     [/^Item: ([\s\S]*)$/, m => 'المنتج: ' + m[1]],
     [/^✓ Found in the catalog: ([\s\S]*)$/, m => '✓ موجود في الكتالوج: ' + m[1]],
+    [/^This barcode is used by (\d+) catalog items\. Please fill in the details yourself\.$/, m => 'هذا الباركود مستخدم في ' + m[1] + ' منتجات بالكتالوج. يرجى إدخال البيانات بنفسك.'],
     [/^Last refreshed ([\s\S]*)$/, m => 'آخر تحديث ' + m[1]],
     [/^(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, m => m[1] + ' ' + AR_MONTHS[m[2]] + ' ' + m[3]],
     [/^([⏰⏳✓]) (\d+(?:\.\d+)?)h left$/, m => m[1] + ' متبقي ' + m[2] + ' ساعة'],
@@ -3941,17 +3943,33 @@
   attach('f-nm-barcode', it => { setIfEmpty('f-nm-sku', it.masterCode); const f = el('f-nm-current'); if (f && it.name) f.value = it.name; });
   attach('f-ph-barcode', it => { setIfEmpty('f-ph-sku', it.masterCode); const f = el('f-ph-item'); if (f && it.name) f.value = it.name; });
 
-  // Add a New Item: a barcode that is already in the catalog fills the product title by itself
-  const addBc = el('f-add-barcode'), addTitle = el('f-add-name-en');
+  // Add a New Item: a barcode that is already in the catalog fills the English and Arabic names and the photo by itself
+  const addBc = el('f-add-barcode'), addTitle = el('f-add-name-en'), addAr = el('f-add-name-ar'), addPhoto = el('f-add-photo');
   if (addBc && addTitle) {
     const hint = document.createElement('div');
-    hint.className = 'field-hint'; hint.style.cssText = 'display:none;color:#16a34a;font-weight:600';
+    hint.className = 'field-hint'; hint.style.cssText = 'display:none;font-weight:600';
     addBc.insertAdjacentElement('afterend', hint);
-    let autoFilled = '', timer = null;
+    let autoTitle = '', autoAr = '', autoImg = '', timer = null;
+    const showImage = url => {
+      addPhoto.value = url;
+      const prev = el('fp-add-photo'); if (prev) { prev.src = url; prev.style.display = 'block'; }
+      const lab = el('fl-add-photo'); if (lab) lab.innerHTML = '✓ Photo from the catalog — click to replace';
+      const z = el('fz-add-photo'); if (z) z.classList.add('done');
+      clr('f-add-photo', 'e-add-photo');
+    };
+    const clearImage = () => {
+      addPhoto.value = '';
+      const prev = el('fp-add-photo'); if (prev) { prev.style.display = 'none'; prev.removeAttribute('src'); }
+      const lab = el('fl-add-photo'); if (lab) lab.innerHTML = '<strong>Click to upload</strong> or drag &amp; drop<br><span style="color:#bbb;font-size:11px">JPG, PNG, or WEBP · max 10 MB</span>';
+      const z = el('fz-add-photo'); if (z) z.classList.remove('done');
+    };
+    // takes back only what the catalog filled in; anything the vendor typed or uploaded is left alone
     const clearAuto = () => {
       hint.style.display = 'none'; hint.textContent = '';
-      if (autoFilled && addTitle.value === autoFilled) addTitle.value = '';
-      autoFilled = '';
+      if (autoTitle && addTitle.value === autoTitle) addTitle.value = '';
+      if (autoAr && addAr && addAr.value === autoAr) addAr.value = '';
+      if (autoImg && addPhoto && addPhoto.value === autoImg) clearImage();
+      autoTitle = autoAr = autoImg = '';
     };
     addBc.addEventListener('input', () => {
       clearTimeout(timer);
@@ -3959,18 +3977,31 @@
       if (q.length < 6) { clearAuto(); return; }
       timer = setTimeout(async () => {
         try {
-          const hit = (await search(q)).find(it => String(it.barcode || '').toLowerCase() === q.toLowerCase());
-          if (!hit || !hit.name) { clearAuto(); return; }
+          const exact = (await search(q)).filter(it => String(it.barcode || '').toLowerCase() === q.toLowerCase());
+          if (!exact.length) { clearAuto(); return; }
+          if (exact.length > 1) {   // several different catalog items share this barcode: do not guess
+            clearAuto();
+            hint.style.color = '#d97706'; hint.style.display = 'block';
+            hint.textContent = 'This barcode is used by ' + exact.length + ' catalog items. Please fill in the details yourself.';
+            return;
+          }
+          const hit = exact[0];
+          hint.style.color = '#16a34a'; hint.style.display = 'block';
           hint.textContent = '✓ Found in the catalog: ' + hit.name;
-          hint.style.display = 'block';
-          if (!addTitle.value.trim() || addTitle.value === autoFilled) {
-            addTitle.value = hit.name; autoFilled = hit.name;
-            clr('f-add-name-en', 'e-add-name-en');
+          if (hit.name && (!addTitle.value.trim() || addTitle.value === autoTitle)) {
+            addTitle.value = hit.name; autoTitle = hit.name; clr('f-add-name-en', 'e-add-name-en');
+          }
+          if (addAr && hit.nameAr && (!addAr.value.trim() || addAr.value === autoAr)) {
+            addAr.value = hit.nameAr; autoAr = hit.nameAr; clr('f-add-name-ar', 'e-add-name-ar');
+          }
+          if (addPhoto && hit.image && (!addPhoto.value || addPhoto.value === autoImg)) {
+            showImage(hit.image); autoImg = hit.image;
           }
         } catch (_) {}
       }, 350);
     });
-    addTitle.addEventListener('input', () => { if (addTitle.value !== autoFilled) autoFilled = ''; });
+    addTitle.addEventListener('input', () => { if (addTitle.value !== autoTitle) autoTitle = ''; });
+    if (addAr) addAr.addEventListener('input', () => { if (addAr.value !== autoAr) autoAr = ''; });
   }
 })();
 
