@@ -40,11 +40,12 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     const q = String(req.query.q || '').trim().toLowerCase();
     if (q.length < 2) return res.json({ results: [] });
+    let catalogError = '';
     try {
       // First choice: ask the catalog sheet for just the matching rows (no IMPORTRANGE, nothing big to download).
       // If that is not possible, the PIM tab below is used as before.
-      try { return res.json({ results: await searchCatalog(q) }); }
-      catch (e) { console.warn('direct catalog lookup unavailable, using the PIM tab:', e.message); }
+      try { return res.json({ results: await searchCatalog(q), source: 'catalog' }); }
+      catch (e) { catalogError = String(e.message || e).slice(0, 200); console.warn('direct catalog lookup unavailable, using the PIM tab:', catalogError); }
 
       const PIM_KEY = 'talabat:pim_catalog_v2';
       let rows = null;
@@ -93,10 +94,10 @@ module.exports = async function handler(req, res) {
         name: String(r[3] || '')        // Column D -> Item Name (English)
       }));
 
-      return res.json({ results });
+      return res.json({ results, source: 'pim', catalogError });
     } catch (err) {
       console.error('pim-search error:', err.message);
-      return res.json({ results: [] }); // fail silently — autocomplete is non-critical
+      return res.json({ results: [], source: 'error', catalogError, error: String(err.message || err).slice(0, 200) }); // autocomplete is non-critical
     }
   }
 
