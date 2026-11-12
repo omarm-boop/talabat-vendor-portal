@@ -5,6 +5,7 @@ const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
 const { brandForChain } = require('../lib/chain-vertical');
 const { loadTeamMembers } = require('../lib/team');
+const { searchCatalog } = require('../lib/catalog');
 
 let redis = null;
 function getRedis() {
@@ -40,6 +41,11 @@ module.exports = async function handler(req, res) {
     const q = String(req.query.q || '').trim().toLowerCase();
     if (q.length < 2) return res.json({ results: [] });
     try {
+      // First choice: ask the catalog sheet for just the matching rows (no IMPORTRANGE, nothing big to download).
+      // If that is not possible, the PIM tab below is used as before.
+      try { return res.json({ results: await searchCatalog(q) }); }
+      catch (e) { console.warn('direct catalog lookup unavailable, using the PIM tab:', e.message); }
+
       const PIM_KEY = 'talabat:pim_catalog_v2';
       let rows = null;
 
