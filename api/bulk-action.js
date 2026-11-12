@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
   const { action, rowIndexes, assignee, status } = body || {};
   let rejectionReason = String((body && body.rejectionReason) || '').trim();
+  const note = String((body && body.note) || '').trim().slice(0, 500);   // message to the vendor (optional)
   if (!rowIndexes || !rowIndexes.length) return res.status(400).json({ error: 'rowIndexes required' });
 
   // Only monitor/agent may perform bulk actions; monitor-only for assignment
@@ -46,6 +47,7 @@ module.exports = async function handler(req, res) {
     const data = [];
     const now = new Date().toISOString();
     if (action === 'status' && status === 'Rejected') await ensureColumns(sheets, SHEET_ID, TAB, 28);
+    if (action === 'status' && note) await ensureColumns(sheets, SHEET_ID, TAB, 35);   // AH = team note, AI = when it was written
 
     // Rejection: reason codes (dropdown) + optional note, same rules as update-status.js
     let rejectCodes = '';
@@ -71,7 +73,11 @@ module.exports = async function handler(req, res) {
           data.push({ range: `${TAB}!V${rowIndex}`, values: [[rejectionReason]] });
           data.push({ range: `${TAB}!Z${rowIndex}`, values: [[rejectCodes]] });
         }
-        data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → ${status} at ${now}`]] });
+        if (note) {
+          data.push({ range: `${TAB}!AH${rowIndex}`, values: [[note]] });
+          data.push({ range: `${TAB}!AI${rowIndex}`, values: [[now]] });
+        }
+        data.push({ range: `${TAB}!Y${rowIndex}`, values: [[`${actor} → ${status}${note ? ' (with a note to the vendor)' : ''} at ${now}`]] });
       }
     }
 
