@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
       // First choice: ask the catalog sheet for just the matching rows (no IMPORTRANGE, nothing big to download).
       // If that is not possible, the PIM tab below is used as before.
       try { return res.json({ results: await searchCatalog(q), source: 'catalog' }); }
-      catch (e) { catalogError = String(e.message || e).slice(0, 360); console.warn('direct catalog lookup unavailable, using the PIM tab:', catalogError); }
+      catch (e) { catalogError = String(e.message || e).slice(0, 460); console.warn('direct catalog lookup unavailable, using the PIM tab:', catalogError); }
 
       const PIM_KEY = 'talabat:pim_catalog_v2';
       let rows = null;
