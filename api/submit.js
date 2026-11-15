@@ -394,7 +394,7 @@ module.exports = async function handler(req, res) {
 
 // Auto-assign the newly submitted row to the correct agent.
 // Rule 1/2: same chain name → same agent who already handles it.
-// Rule 4: new chain → agent with fewest total assignments.
+// Rule 4: new chain → team member (employee or monitor) with fewest total assignments.
 async function autoAssign(sheets, chainName, newRowNum, now) {
   try {
     // Build agentMap: { email → displayName }
@@ -405,19 +405,15 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
     // Source 1: TEAM_CREDENTIALS env var (pre-configured accounts)
     try {
       const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
-      for (const m of team) {
-        const role = (m.role || '').toLowerCase();
-        if (role !== 'monitor') {
-          const email = String(m.email).toLowerCase().trim();
-          agentMap[email] = m.name || email;
-        }
+      for (const m of team) {   // employees AND monitors both receive tickets
+        const email = String(m.email).toLowerCase().trim();
+        agentMap[email] = m.name || email;
       }
     } catch (_) {}
 
     // Source 2: the Team tab (and older Credentials rows with Chain ID 0)
     try {
       for (const m of await loadTeamMembers(sheets)) {
-        if (m.role === 'monitor') continue;                           // skip monitors
         if (!m.email || !m.email.includes('@') || agentMap[m.email]) continue;
         agentMap[m.email] = m.name || m.email;
       }

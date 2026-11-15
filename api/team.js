@@ -23,11 +23,10 @@ module.exports = async function handler(req, res) {
   // agents: [{name, email}] for email→name resolution in the frontend
   const agents = [];
 
-  // From TEAM_CREDENTIALS env var — exclude monitors
+  // From TEAM_CREDENTIALS env var — employees and monitors both get tickets
   try {
     const team = JSON.parse(process.env.TEAM_CREDENTIALS || '[]');
     team.forEach(m => {
-      if ((m.role || '').toLowerCase() === 'monitor') return;
       const name = m.name || m.email || '';
       if (!name) return;
       names.add(name);
@@ -35,7 +34,7 @@ module.exports = async function handler(req, res) {
     });
   } catch (_) {}
 
-  // From the Team tab (and older Credentials rows with Chain ID 0) - monitors are excluded
+  // From the Team tab (and older Credentials rows with Chain ID 0) - monitors are included, they get tickets too
   try {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
@@ -44,7 +43,6 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
     for (const m of await loadTeamMembers(sheets)) {
-      if (m.role === 'monitor') continue;
       const display = m.name || m.email;
       if (!display || names.has(display)) continue;
       names.add(display);

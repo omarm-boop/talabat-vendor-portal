@@ -161,7 +161,7 @@ module.exports = async function handler(req, res) {
         if (ok) { envMatch = m; break; }
       }
       if (envMatch) {
-        const role = (envMatch.role || 'agent').toLowerCase();
+        const role = String(envMatch.role || '').toLowerCase().trim() === 'monitor' ? 'monitor' : 'agent';  // "Employee" = agent
         const ts   = Date.now();
         return res.json({
           success: true,

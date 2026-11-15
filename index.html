@@ -1861,7 +1861,7 @@
     if (vendor.chainId === '0') {
       currentAdminUser = { name: vendor.name || 'Admin', role: vendor.role || 'monitor' };
       const tag = document.getElementById('adm-user-tag');
-      tag.textContent = currentAdminUser.name + ' · ' + (currentAdminUser.role === 'monitor' ? 'Monitor' : 'Agent');
+      tag.textContent = currentAdminUser.name + ' · ' + (currentAdminUser.role === 'monitor' ? 'Monitor' : 'Employee');
       tag.className = 'adm-role-tag ' + (currentAdminUser.role === 'monitor' ? 'adm-role-monitor' : 'adm-role-agent');
       tag.style.display = '';
       document.getElementById('pg-admin').style.display = 'flex';
@@ -2359,7 +2359,7 @@
     // Assignee filter — monitor only
     const assigneeSel = document.getElementById('a-filter-assignee');
     if (isMonitor) {
-      assigneeSel.innerHTML = '<option value="">All Agents</option>' +
+      assigneeSel.innerHTML = '<option value="">All team members</option>' +
         TEAM_AGENTS.map(n => `<option value="${n}">${escHtml(n)}</option>`).join('');
       assigneeSel.style.display = '';
     } else {
