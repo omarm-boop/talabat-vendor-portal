@@ -158,13 +158,15 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // Server-side daily submission limit (configurable via DAILY_SUBMIT_LIMIT, default 5)
+  // Server-side daily limit (DAILY_SUBMIT_LIMIT, default 5) for "Urgent Add Item" ONLY, per chain account.
+  // Every other request type is unlimited.
   const dailyLimit = parseInt(process.env.DAILY_SUBMIT_LIMIT || '5', 10);
+  const isAddItem  = /^urgent add item$/i.test(String((body || {}).requestType || '').trim());
   let dailyKey = null;
-  if (dailyLimit > 0 && process.env.UPSTASH_REDIS_REST_URL) {
+  if (isAddItem && dailyLimit > 0 && process.env.UPSTASH_REDIS_REST_URL) {
     try {
       const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
-      dailyKey      = `daily:${sess.email}:${dateKey}`;
+      dailyKey      = `daily-add:${sess.email}:${dateKey}`;
       const current = await getRedis().get(dailyKey);
       if (current !== null && parseInt(current, 10) >= dailyLimit) {
         return res.status(429).json({
