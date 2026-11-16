@@ -3759,7 +3759,7 @@
     const ns = nameSpan();
 
     if (ifield) ifield.value = item.name || '';
-    if (sfield && item.masterCode) sfield.value = item.masterCode;
+    // the vendor's own SKU field is never filled from the catalog (the catalog code is not the vendor's SKU)
     if (c && ns) {
       ns.textContent = item.name || '';
       c.style.display = 'block';
@@ -3796,7 +3796,7 @@
 
       wrap.style.display = 'block';
       sel.innerHTML = itemsToUse.map((it, idx) => 
-        `<option value="${idx}">${it.name || 'Unnamed'} — (${it.masterCode || 'No Code'})</option>`
+        `<option value="${idx}">${it.name || 'Unnamed'}</option>`
       ).join('');
 
       if (itemsToUse.length > 1) {
@@ -3833,7 +3833,7 @@
   function pickItem(item) {
     const inp = input();
     if (!inp) return;
-    inp.value = item.barcode || item.masterCode;
+    inp.value = item.barcode || inp.value;
     closeDrop();
     loadMatchedItems(inp.value, item);
   }
@@ -3850,7 +3850,7 @@
     b.innerHTML = items.map((it, idx) => `
       <div class="bc-opt" data-idx="${idx}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:13px;">
         <div style="font-weight:600;color:#111827;">${it.name || 'Unnamed'}</div>
-        <div style="font-size:11px;color:#6b7280;">Code: ${it.masterCode} &bull; Barcode: ${it.barcode || '—'}</div>
+        <div style="font-size:11px;color:#6b7280;">Barcode: ${it.barcode || '—'}</div>
       </div>
     `).join('');
 
@@ -3936,12 +3936,12 @@
     const close = () => { box.style.display = 'none'; box.innerHTML = ''; };
     function render(items) {
       if (!items.length) { close(); return; }
-      box.innerHTML = items.map((it, i) => `<div data-i="${i}" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3efe9;font-size:13px"><div style="font-weight:600;color:#411517" dir="auto">${esc(it.name) || 'Unnamed'}</div><div style="font-size:11px;color:#8a7a7a">Barcode: ${esc(it.barcode) || '—'} · Code: ${esc(it.masterCode) || '—'}</div></div>`).join('');
+      box.innerHTML = items.map((it, i) => `<div data-i="${i}" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3efe9;font-size:13px"><div style="font-weight:600;color:#411517" dir="auto">${esc(it.name) || 'Unnamed'}</div><div style="font-size:11px;color:#8a7a7a">Barcode: ${esc(it.barcode) || '—'}</div></div>`).join('');
       box.style.display = 'block';
       box.querySelectorAll('[data-i]').forEach((row, i) => row.addEventListener('mousedown', e => {
         e.preventDefault();
         const it = items[i];
-        inp.value = it.barcode || it.masterCode || '';
+        inp.value = it.barcode || inp.value;
         close();
         onPick(it);
       }));
@@ -3955,8 +3955,10 @@
     inp.addEventListener('blur', () => setTimeout(close, 200));
   }
 
-  attach('f-nm-barcode', it => { setIfEmpty('f-nm-sku', it.masterCode); const f = el('f-nm-current'); if (f && it.name) f.value = it.name; });
-  attach('f-ph-barcode', it => { setIfEmpty('f-ph-sku', it.masterCode); const f = el('f-ph-item'); if (f && it.name) f.value = it.name; });
+  // The vendor's SKU fields are never touched: the catalog code is not the vendor's internal SKU.
+  attach('f-nm-barcode', it => { const f = el('f-nm-current'); if (f && it.name) f.value = it.name; });
+  attach('f-nm-new-barcode', it => { const f = el('f-nm-new'); if (f && it.name) { f.value = it.name; f.dispatchEvent(new Event('input', { bubbles: true })); } });
+  attach('f-ph-barcode', it => { const f = el('f-ph-item'); if (f && it.name) f.value = it.name; });
 
   // Add a New Item: a barcode that is in the catalog offers the matching products in a dropdown (like Update Barcode)
   // and fills the English and Arabic names and the photo from the chosen product
@@ -4009,7 +4011,7 @@
         showImage(hit.image); autoImg = hit.image;
       }
     }
-    const label = it => esc(it.name || 'Unnamed') + (it.masterCode ? ' — (' + esc(it.masterCode) + ')' : '');
+    const label = it => esc(it.name || 'Unnamed');
 
     sel.addEventListener('change', () => {
       if (sel.value === '') { takeBack(); say(matches.length + ' catalog items share this barcode. Please select the correct one.', '#d97706'); return; }
@@ -4025,7 +4027,7 @@
           const seen = new Set();
           const exact = (await search(q)).filter(it => {
             if (String(it.barcode || '').toLowerCase() !== q.toLowerCase()) return false;
-            const k = (it.name || '') + '|' + (it.masterCode || '');
+            const k = (it.name || '') + '|' + (it.nameAr || '');   // same product listed twice under different catalog codes shows once
             return seen.has(k) ? false : (seen.add(k), true);
           });
           if (!exact.length) { clearAll(); return; }
