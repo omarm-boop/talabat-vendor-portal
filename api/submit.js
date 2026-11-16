@@ -14,6 +14,17 @@ function getRedis() {
 }
 
 const { ensureColumns } = require('../lib/sheet-columns');
+const { withRetry } = require('../lib/retry');
+
+// Fewer Google reads per submission (a morning burst of vendors shares one per-minute quota):
+let headersChecked = false;            // the sheet header row only needs checking once per warm instance
+let teamCache = { at: 0, members: null };   // the team list is only used here to pick an assignee
+async function teamForAssign(sheets) {
+  if (teamCache.members && Date.now() - teamCache.at < 120000) return teamCache.members;
+  const members = await withRetry(() => loadTeamMembers(sheets));
+  teamCache = { at: Date.now(), members };
+  return members;
+}
 
 // Sheet1 stores the vendor as "<vendorId>@vendor.portal"; the session email is just "<vendorId>".
 function sameAccount(rowEmail, sessEmail) {
@@ -220,10 +231,11 @@ module.exports = async function handler(req, res) {
     await ensureColumns(sheets, SHEET_ID, TAB, 33); // AC-AG: brand, item type, min weight, contact email, Arabic item name
 
     // Write headers if sheet is empty
-    const peek = await sheets.spreadsheets.values.get({
+    const peek = headersChecked ? { data: { values: [['ok']] } } : await withRetry(() => sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!A1:A1`,
-    });
+    }));
+    if (peek.data.values && peek.data.values.length) headersChecked = true;
     if (!peek.data.values || peek.data.values.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
@@ -256,12 +268,14 @@ module.exports = async function handler(req, res) {
     const chainCheck   = (body.restaurant  || '').trim().toLowerCase();
     const typeCheck    = (body.requestType || '').trim().toLowerCase();
     const barcodeCheck = (body.barcode     || '').trim();
+    let sheetRows = null;   // columns D:U of every row, read once and shared with the auto-assignment below
     if (chainCheck && typeCheck) {
-      const dupResp = await sheets.spreadsheets.values.get({
+      const dupResp = await withRetry(() => sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: `${TAB}!D:T`,
-      });
+        range: `${TAB}!D:U`,
+      }));
       const dupRows = (dupResp.data.values || []).slice(1);
+      sheetRows = dupRows;
       const isDup = dupRows.some(row => {
         const st = String(row[16] || '').trim().toLowerCase();
         if (st !== 'pending' && !st.includes('progress')) return false;
@@ -332,24 +346,24 @@ module.exports = async function handler(req, res) {
       'Pending',                  // T: Status
     ];
 
-    const appendResp = await sheets.spreadsheets.values.append({
+    const appendResp = await withRetry(() => sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: `${TAB}!A:T`,
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
-    });
+    }));
 
     // Auto-assign: find the row number we just wrote and assign it to an agent
     const updatedRange = (appendResp.data.updates && appendResp.data.updates.updatedRange) || '';
     const rowMatch = updatedRange.match(/(\d+)$/);
     if (rowMatch) {
-      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now);
+      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now, sheetRows);
       try {
         const nr = parseInt(rowMatch[1], 10);
-        await sheets.spreadsheets.values.update({
+        await withRetry(() => sheets.spreadsheets.values.update({
           spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AG${nr}`, valueInputOption: 'RAW',
           requestBody: { values: [[brandType, itemType, minWeight, contactEmail, itemNameAr]] },
-        });
+        }));
       } catch (e) { console.warn('brand/item columns write failed (non-fatal):', e.message); }
       if (parentRow) {
         // Link both ways: new row → original (AA), original → new row (AB) + audit entry
@@ -397,7 +411,7 @@ module.exports = async function handler(req, res) {
 // Auto-assign the newly submitted row to the correct agent.
 // Rule 1/2: same chain name → same agent who already handles it.
 // Rule 4: new chain → team member (employee or monitor) with fewest total assignments.
-async function autoAssign(sheets, chainName, newRowNum, now) {
+async function autoAssign(sheets, chainName, newRowNum, now, knownRows) {
   try {
     // Build agentMap: { email → displayName }
     // Always merge TEAM_CREDENTIALS env var + Credentials sheet (Chain ID='0')
@@ -415,7 +429,7 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
 
     // Source 2: the Team tab (and older Credentials rows with Chain ID 0)
     try {
-      for (const m of await loadTeamMembers(sheets)) {
+      for (const m of await teamForAssign(sheets)) {
         if (!m.email || !m.email.includes('@') || agentMap[m.email]) continue;
         agentMap[m.email] = m.name || m.email;
       }
@@ -425,13 +439,13 @@ async function autoAssign(sheets, chainName, newRowNum, now) {
     if (agentEmails.length === 0) return;
 
     // Fetch columns D (Chain Name) through U (Assignee) for all existing rows
-    const dataResp = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${TAB}!D:U`,
-    });
     // D=idx0, E=1, F=2, G=3, H=4, I=5, J=6, K=7, L=8, M=9,
     // N=10, O=11, P=12, Q=13, R=14, S=15, T=16, U=17
-    const allRows = (dataResp.data.values || []).slice(1); // skip header row
+    // The duplicate check already read these rows a moment ago; only read again when it did not run.
+    const allRows = knownRows || ((await withRetry(() => sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${TAB}!D:U`,
+    }))).data.values || []).slice(1); // skip header row
 
     const chainLower = chainName.trim().toLowerCase();
 
