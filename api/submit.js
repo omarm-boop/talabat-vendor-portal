@@ -388,7 +388,9 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('submit.js error:', err.message);
-    return res.status(500).json({ error: 'Server error. Please try again.' });
+    // Say what failed (Google's own message, trimmed) so a failure can be diagnosed from the screenshot alone
+    const why = String(err.message || '').replace(/\s+/g, ' ').slice(0, 220);
+    return res.status(500).json({ error: 'Server error' + (why ? ' (' + why + ')' : '') + '. Please try again.' });
   }
 };
 
