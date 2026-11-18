@@ -212,7 +212,7 @@ module.exports = async function handler(req, res) {
 
     const values = response.data.values || [];
     if (values.length < 2)
-      return res.status(401).json({ error: 'No accounts found. Please sign up first.' });
+      return res.status(401).json({ error: 'Incorrect Chain ID or password.' });
 
     const headers = values[0];
     const rows    = values.slice(1);

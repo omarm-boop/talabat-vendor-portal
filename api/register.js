@@ -21,6 +21,10 @@ async function _handle(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Sign-up is closed: Talabat creates every vendor account and gives the vendor a Chain ID and password.
+  return res.status(403).json({ error: 'Sign-up is closed. Your Chain ID and password are provided by Talabat. Please contact your account manager.' });
+
+  // eslint-disable-next-line no-unreachable
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) {} }
   const { vendorId, chainName, password, vendorEmail } = body || {};
