@@ -6,7 +6,7 @@ const { loadBranchMap } = require('../lib/branches');
 const { brandForChain } = require('../lib/chain-vertical');
 const { loadTeamMembers } = require('../lib/team');
 const { setCors } = require('../lib/cors');
-const { checkLoginLimit } = require('../lib/ratelimit');
+const { checkLoginLimit, clearLoginLimit } = require('../lib/ratelimit');
 
 const TRACKING_SHEET_ID = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const CREDENTIALS_TAB   = 'Credentials';
@@ -163,6 +163,7 @@ module.exports = async function handler(req, res) {
       if (envMatch) {
         const role = String(envMatch.role || '').toLowerCase().trim() === 'monitor' ? 'monitor' : 'agent';  // "Employee" = agent
         const ts   = Date.now();
+        await clearLoginLimit(vendorId);
         return res.json({
           success: true,
           sessionToken: signToken(envMatch.email, role, ts),
@@ -185,6 +186,7 @@ module.exports = async function handler(req, res) {
         if (!matches) continue;
         const role = m.role || 'agent';
         const ts   = Date.now();
+        await clearLoginLimit(vendorId);
         return res.json({
           success: true,
           sessionToken: signToken(m.email, role, ts),
@@ -238,6 +240,7 @@ module.exports = async function handler(req, res) {
 
     const vid = matched['Chain ID'] || matched['Vendor ID'];
     const ts  = Date.now();
+    await clearLoginLimit(vendorId);   // a correct sign-in does not count toward the wrong-password limit
     const autoBrand = await brandForChain(vid);
 
     // An account created by an admin (plain-text password, or the default 123456) must set its own

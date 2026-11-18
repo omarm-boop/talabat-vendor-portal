@@ -170,7 +170,7 @@ module.exports = async function handler(req, res) {
       const current = await getRedis().get(dailyKey);
       if (current !== null && parseInt(current, 10) >= dailyLimit) {
         return res.status(429).json({
-          error: `Daily submission limit reached (${dailyLimit} per day). Please try again tomorrow.`,
+          error: `Daily limit reached: your chain can send ${dailyLimit} "Add Item" requests per day, shared by all its branches. Please try again tomorrow.`,
         });
       }
     } catch (e) {
@@ -269,7 +269,12 @@ module.exports = async function handler(req, res) {
     // Deduplication: block if a Pending/In-Progress row exists for same chain + type + barcode
     const chainCheck   = (body.restaurant  || '').trim().toLowerCase();
     const typeCheck    = (body.requestType || '').trim().toLowerCase();
-    const barcodeCheck = (body.barcode     || '').trim();
+    // Update Barcode sends the barcode as "current barcode", so that counts as its barcode too
+    const barcodeCheck = String(body.barcode || body.currentBarcode || '').trim();
+    // Different branches of one chain never block each other; "All branches" overlaps with every branch
+    const isAllBranches = s => /all branches|كل الفروع|^all$/i.test(String(s || '').trim());
+    const branchLoc = s => String(s || '').trim().toLowerCase().replace(new RegExp('^' + String(body.restaurant || '').trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*-\\s*'), '');
+    const newBranch = branchLoc(body.branch);
     let sheetRows = null;   // columns D:U of every row, read once and shared with the auto-assignment below
     if (chainCheck && typeCheck) {
       const dupResp = await withRetry(() => sheets.spreadsheets.values.get({
@@ -284,10 +289,14 @@ module.exports = async function handler(req, res) {
         if (String(row[0] || '').trim().toLowerCase() !== chainCheck) return false;
         if (String(row[1] || '').trim().toLowerCase() !== typeCheck)  return false;
         if (barcodeCheck) {
-          const rowBarcode = String(row[2] || '').trim();
+          // older Update Barcode rows keep the barcode only in the explanation ("Current barcode: X → New: Y")
+          const rowBarcode = String(row[2] || '').trim()
+            || ((String(row[5] || '').match(/Current barcode:\s*([^\s→]+)/) || [])[1] || '');
           // Different barcode means different item — not a duplicate
           if (rowBarcode !== barcodeCheck) return false;
         }
+        const rowBranch = branchLoc(row[10]);
+        if (rowBranch && newBranch && rowBranch !== newBranch && !isAllBranches(rowBranch) && !isAllBranches(newBranch)) return false;
         return true;
       });
       if (isDup) return res.status(409).json({

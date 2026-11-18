@@ -1626,6 +1626,7 @@
     [/^Withdraw failed: ([\s\S]*)$/, m => 'تعذّر سحب الطلب: ' + _trSub(m[1])],
     [/^Submission failed — ([\s\S]*?) ?Please try again\.$/, m => 'فشل الإرسال — ' + _trSub(m[1].trim()) + ' يرجى المحاولة مرة أخرى.'],
     [/^Daily submission limit reached \((\d+) per day\)\. Please try again tomorrow\.$/, m => 'تم الوصول إلى الحد اليومي للإرسال (' + m[1] + ' يومياً). يرجى المحاولة غداً.'],
+    [/^Daily limit reached: your chain can send (\d+) "Add Item" requests per day, shared by all its branches\. Please try again tomorrow\.$/, m => 'تم الوصول إلى الحد اليومي: يمكن لسلسلتك إرسال ' + m[1] + ' طلبات "إضافة صنف" يومياً لجميع الفروع. يرجى المحاولة غداً.'],
     [/^Add Master File – (.+)$/, m => 'إضافة ملف رئيسي – ' + _arBrand(m[1], false)],
     [/^⬇ Download (.+) Template CSV$/, m => '⬇ تحميل نموذج ' + _arBrand(m[1], true) + ' (CSV)'],
     [/^📄 Template columns:$/, () => '📄 أعمدة النموذج:'],
