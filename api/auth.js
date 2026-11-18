@@ -19,10 +19,11 @@ async function handleBranches(req, res) {
   if (!sess) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const map = await loadBranchMap();
-    return res.json({ success: true, branches: map[String(sess.email).trim()] || [] });
+    const list = map[String(sess.email).trim()] || [];
+    return res.json({ success: true, branches: list, reason: list.length ? '' : 'unknown-chain' });
   } catch (err) {
     console.warn('branch list unavailable (is the sheet shared with the service account?):', err.message);
-    return res.json({ success: true, branches: [] });
+    return res.json({ success: true, branches: [], reason: 'unreadable' });
   }
 }
 

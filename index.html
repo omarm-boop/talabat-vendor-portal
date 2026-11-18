@@ -2063,15 +2063,23 @@
     const sel = $('f-branch-select'), inp = $('f-branch');
     if (!sel || !inp || !currentVendor || currentVendor.chainId === '0') return;
     const vid = currentVendor.vendorId;
-    if (branchCache.vendorId !== vid || branchCache.list === null) {
+    // an empty answer is not remembered, so a temporary failure is retried the next time the form opens
+    if (branchCache.vendorId !== vid || branchCache.list === null || !branchCache.list.length) {
       try {
         const resp = await apiFetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify({ action: 'branches' }) });
         const d = await resp.json();
         branchCache.vendorId = vid; branchCache.list = (d && d.branches) || [];
+        branchCache.reason = (d && d.reason) || '';
       } catch (_) { return; }
     }
     const list = branchCache.list;
-    if (!list.length) { sel.style.display = 'none'; inp.style.display = ''; return; }
+    if (!list.length) {
+      sel.style.display = 'none'; inp.style.display = '';
+      // say why there is no list, so it can be fixed (the vendor can still type the branch)
+      inp.placeholder = branchCache.reason === 'unreadable' ? 'Type the branch (the branch list is unavailable right now)'
+        : branchCache.reason === 'unknown-chain' ? 'Type the branch (no branch list found for ID ' + vid + ')' : inp.placeholder;
+      return;
+    }
     const cur = inp.value.trim().toLowerCase();
     sel.innerHTML = '<option value="">Select branch…</option><option value="All branches">All branches (chain level)</option>'
       + list.map(b => '<option value="' + escHtml(b.name) + '">' + escHtml(b.name) + '</option>').join('');
