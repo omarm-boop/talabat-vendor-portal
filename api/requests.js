@@ -3,6 +3,7 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
+const { withRetry } = require('../lib/retry');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
@@ -68,10 +69,10 @@ module.exports = async function handler(req, res) {
     }
 
     if (!values) {
-      const response = await sheets.spreadsheets.values.get({
+      const response = await withRetry(() => sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: TAB_NAME,
-      });
+      }));
       values = response.data.values || [];
       // Populate both caches
       if (values.length) {
