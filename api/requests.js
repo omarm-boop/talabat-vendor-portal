@@ -19,7 +19,21 @@ function getRedis() {
   return redis;
 }
 
+// Always answers with JSON that says what went wrong: a crash or a slow Google read (Vercel would otherwise
+// cut the function off at 10 s with a bare "500" and no reason).
 module.exports = async function handler(req, res) {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) res.status(504).json({ error: 'The requests sheet took too long to load (over 8 s)', data: [] });
+  }, 8500);
+  try { await handle(req, res); }
+  catch (e) {
+    console.error('requests.js unexpected:', e && e.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Unexpected: ' + String((e && e.message) || e).slice(0, 200), data: [] });
+  }
+  finally { clearTimeout(timer); }
+};
+
+async function handle(req, res) {
   setCors(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
