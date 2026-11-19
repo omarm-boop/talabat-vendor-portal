@@ -4,7 +4,7 @@ const bcrypt      = require('bcryptjs');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis }   = require('@upstash/redis');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, emailConfigured } = require('../lib/email');
 const { ensureColumns } = require('../lib/sheet-columns');
 
 const SHEET_ID  = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
@@ -144,19 +144,22 @@ module.exports = async function handler(req, res) {
 };
 
 async function sendResetEmail(vendorKey, token) {
-  if (!process.env.RESEND_API_KEY || !process.env.GOOGLE_SERVICE_ACCOUNT) return false;
+  if (!emailConfigured() || !process.env.GOOGLE_SERVICE_ACCOUNT) return false;
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
   const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
   const sheets = google.sheets({ version: 'v4', auth });
 
-  const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `${CREDS_TAB}!A:C` });
+  const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `${CREDS_TAB}!A:G` });
   const rows = (resp.data.values || []).slice(1);
   const row  = rows.find(r =>
     String(r[0] || '').toLowerCase().trim() === vendorKey ||
     String(r[2] || '').toLowerCase().trim() === vendorKey
   );
-  const email = row ? String(row[2] || '').trim() : '';
-  if (!email || !email.includes('@')) return false;
+  // the vendor's notification email is column G (column C is the Chain ID); a team account's email is column A
+  const colG  = row ? String(row[6] || '').trim() : '';
+  const colA  = row ? String(row[0] || '').trim() : '';
+  const email = colG.includes('@') ? colG : (colA.includes('@') ? colA : '');
+  if (!email) return false;
 
   return sendEmail(
     email,

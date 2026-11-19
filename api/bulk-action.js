@@ -3,6 +3,7 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { ensureColumns } = require('../lib/sheet-columns');
+const { notifyAssignee, ticketsFromRows } = require('../lib/notify-team');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 
 let redis = null;
@@ -87,6 +88,8 @@ module.exports = async function handler(req, res) {
         requestBody: { valueInputOption: 'RAW', data },
       });
       if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
+      // one email to the new assignee listing all the requests assigned to them
+      if (action === 'assign' && assignee) await notifyAssignee(sheets, assignee, await ticketsFromRows(sheets, SHEET_ID, TAB, rowIndexes), sess.email);
     } else {
       return res.status(400).json({ error: 'Unknown action' });
     }

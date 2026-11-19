@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, emailConfigured } = require('../lib/email');
 const { ensureColumns } = require('../lib/sheet-columns');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 const { Redis } = require('@upstash/redis');
@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
 };
 
 async function notifyVendor(sheets, vendorId, status, rejectionReason, teamNote) {
-  if (!process.env.RESEND_API_KEY || !vendorId) return;
+  if (!emailConfigured() || !vendorId) return;
 
   // Look up the vendor's notification email from Credentials:
   // col A = Vendor ID, col C = Chain ID, col G (index 6) = notification email

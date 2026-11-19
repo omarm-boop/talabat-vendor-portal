@@ -15,6 +15,7 @@ function getRedis() {
 
 const { ensureColumns } = require('../lib/sheet-columns');
 const { withRetry } = require('../lib/retry');
+const { notifyAssignee } = require('../lib/notify-team');
 
 // Fewer Google reads per submission (a morning burst of vendors shares one per-minute quota):
 let headersChecked = false;            // the sheet header row only needs checking once per warm instance
@@ -368,7 +369,8 @@ module.exports = async function handler(req, res) {
     const updatedRange = (appendResp.data.updates && appendResp.data.updates.updatedRange) || '';
     const rowMatch = updatedRange.match(/(\d+)$/);
     if (rowMatch) {
-      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now, sheetRows);
+      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now, sheetRows,
+        { chain: chainName, type: body.requestType || '', item: itemName, branch: branchOnly });
       try {
         const nr = parseInt(rowMatch[1], 10);
         await withRetry(() => sheets.spreadsheets.values.update({
@@ -422,7 +424,7 @@ module.exports = async function handler(req, res) {
 // Auto-assign the newly submitted row to the correct agent.
 // Rule 1/2: same chain name → same agent who already handles it.
 // Rule 4: new chain → team member (employee or monitor) with fewest total assignments.
-async function autoAssign(sheets, chainName, newRowNum, now, knownRows) {
+async function autoAssign(sheets, chainName, newRowNum, now, knownRows, ticket) {
   try {
     // Build agentMap: { email → displayName }
     // Always merge TEAM_CREDENTIALS env var + Credentials sheet (Chain ID='0')
@@ -504,6 +506,8 @@ async function autoAssign(sheets, chainName, newRowNum, now, knownRows) {
         ],
       },
     });
+    // email the person who got the ticket (employee or monitor); never fails the submission
+    if (ticket) await notifyAssignee(sheets, assignedAgent, [ticket]);
   } catch (err) {
     console.error('auto-assign error (non-fatal):', err.message);
   }
