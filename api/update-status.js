@@ -89,19 +89,21 @@ module.exports = async function handler(req, res) {
     const now    = new Date().toISOString();
 
     if (status === 'Rejected') await ensureColumns(sheets, SHEET_ID, TAB, 28);
+    // optional message to the vendor that goes with the status (for example when marking a request Done)
+    const doneNote = String((body && body.note) || '').trim().slice(0, 500);
+    if (doneNote) await ensureColumns(sheets, SHEET_ID, TAB, 35);   // AH = team note, AI = when it was written
 
     // Write status + rejection reason + audit log in one call
+    const writes = [
+      { range: `${TAB}!T${rowIndex}`, values: [[status]] },
+      { range: `${TAB}!V${rowIndex}`, values: [[rejectionReason || '']] },
+      { range: `${TAB}!Z${rowIndex}`, values: [[rejectCodes]] },
+      { range: `${TAB}!Y${rowIndex}`, values: [[`${sess.email} → ${status}${doneNote ? ' (with a note to the vendor)' : ''} at ${now}`]] },
+    ];
+    if (doneNote) writes.push({ range: `${TAB}!AH${rowIndex}`, values: [[doneNote]] }, { range: `${TAB}!AI${rowIndex}`, values: [[now]] });
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SHEET_ID,
-      requestBody: {
-        valueInputOption: 'RAW',
-        data: [
-          { range: `${TAB}!T${rowIndex}`, values: [[status]] },
-          { range: `${TAB}!V${rowIndex}`, values: [[rejectionReason || '']] },
-          { range: `${TAB}!Z${rowIndex}`, values: [[rejectCodes]] },
-          { range: `${TAB}!Y${rowIndex}`, values: [[`${sess.email} → ${status} at ${now}`]] },
-        ],
-      },
+      requestBody: { valueInputOption: 'RAW', data: writes },
     });
 
     // Invalidate cache so next admin refresh sees the update immediately
@@ -109,8 +111,8 @@ module.exports = async function handler(req, res) {
       getRedis().del('sheet:v1:all').catch(() => {});
     }
 
-    // Fire-and-forget vendor notification (non-fatal)
-    notifyVendor(sheets, vendorId, status, rejectionReason).catch(e =>
+    // Vendor notification (non-fatal). Awaited: a serverless function can be stopped as soon as it answers.
+    await notifyVendor(sheets, vendorId, status, rejectionReason, doneNote).catch(e =>
       console.error('notification error (non-fatal):', e.message)
     );
 
@@ -121,7 +123,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function notifyVendor(sheets, vendorId, status, rejectionReason) {
+async function notifyVendor(sheets, vendorId, status, rejectionReason, teamNote) {
   if (!process.env.RESEND_API_KEY || !vendorId) return;
 
   // Look up the vendor's notification email from Credentials:
@@ -150,6 +152,8 @@ async function notifyVendor(sheets, vendorId, status, rejectionReason) {
 
   const reasonHtml = rejectionReason
     ? `<p><strong>Reason:</strong> ${rejectionReason}</p>` : '';
+  const noteHtml = teamNote
+    ? `<p><strong>Note from the Content Team:</strong> ${String(teamNote).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</p>` : '';
 
   await sendEmail(
     email,
@@ -157,6 +161,7 @@ async function notifyVendor(sheets, vendorId, status, rejectionReason) {
     `<p>Dear vendor,</p>
      <p>Your menu update request has been updated to: <strong>${statusLabel}</strong></p>
      ${reasonHtml}
+     ${noteHtml}
      <p>Log in to your vendor portal to see the full details.</p>
      <p style="color:#888;font-size:12px">This is an automated notification from the Talabat Vendor Portal.</p>`
   );

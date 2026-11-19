@@ -2582,7 +2582,7 @@
           ${priorityBtn}
           ${canAct ? `
             ${!isProg ? `<button class="adm-btn adm-btn-prog" onclick="adminUpdateStatus(${rowIdx},'In Progress',this)">⏳ In Progress</button>` : ''}
-            <button class="adm-btn adm-btn-done" onclick="adminUpdateStatus(${rowIdx},'Done',this)">✓ Done</button>
+            <button class="adm-btn adm-btn-done" onclick="showDoneDialogFor(${rowIdx})">✓ Done</button>
             <button class="adm-btn adm-btn-rej"  onclick="openRejectDialog([${rowIdx}])">✗ Reject</button>` : ''}
         </div>`;
 
@@ -3743,22 +3743,44 @@
   }
 
   // "Mark Done" asks for an optional note to the vendor first
-  let doneRows = [];
-  function showDoneDialog() {
-    const checked = document.querySelectorAll('.bulk-cb:checked');
-    if (!checked.length) return;
-    doneRows = Array.from(checked).map(c => +c.dataset.idx);
+  let doneRows = [], doneSingle = false;
+  function openDoneDialog() {
     document.getElementById('dn-note').value = '';
     document.getElementById('dn-count').textContent = doneRows.length > 1 ? `(${doneRows.length} requests)` : '';
     document.getElementById('dn-overlay').style.display = 'flex';
     setTimeout(() => document.getElementById('dn-note').focus(), 50);
   }
-  function closeDoneDialog() { document.getElementById('dn-overlay').style.display = 'none'; doneRows = []; }
+  function showDoneDialog() {   // several requests ticked in the list
+    const checked = document.querySelectorAll('.bulk-cb:checked');
+    if (!checked.length) return;
+    doneRows = Array.from(checked).map(c => +c.dataset.idx); doneSingle = false;
+    openDoneDialog();
+  }
+  function showDoneDialogFor(rowIdx) {   // the Done button of one request
+    doneRows = [rowIdx]; doneSingle = true;
+    openDoneDialog();
+  }
+  function closeDoneDialog() { document.getElementById('dn-overlay').style.display = 'none'; doneRows = []; doneSingle = false; }
+  async function doneOne(rowIdx, note) {
+    const row = adminRequests.find(r => r['_rowIndex'] === rowIdx);
+    try {
+      const resp = await apiFetch('/api/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ rowIndex: rowIdx, status: 'Done', note, vendorId: row?.['Vendor ID'] }),
+      });
+      const json = await resp.json();
+      if (!json.success) throw new Error(json.error || 'Unknown error');
+      if (row) { row['Status'] = 'Done'; if (note) { row['TeamNote'] = note; row['TeamNoteAt'] = new Date().toISOString(); } }
+      updateAdminStats(); renderAdminTable();
+      return true;
+    } catch (e) { alert('Update failed: ' + e.message); return false; }
+  }
   async function confirmDoneDialog() {
     const note = document.getElementById('dn-note').value.trim();
     const btn = document.getElementById('dn-ok'); const label = btn.textContent;
     btn.disabled = true; btn.textContent = '…';
-    const ok = await bulkSetStatus('Done', note);
+    const ok = doneSingle ? await doneOne(doneRows[0], note) : await bulkSetStatus('Done', note);
     btn.disabled = false; btn.textContent = label;
     if (ok) closeDoneDialog();
   }
