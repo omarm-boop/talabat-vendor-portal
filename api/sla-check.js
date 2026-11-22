@@ -1,6 +1,6 @@
 const { google } = require('googleapis');
 const { sendEmail, emailConfigured } = require('../lib/email');
-const { teamDirectory, esc, SITE } = require('../lib/notify-team');
+const { teamDirectory, notifyAndRecord, esc, SITE } = require('../lib/notify-team');
 const { isWorkingDay, workingHoursSince } = require('../lib/sla');
 const { warmCatalog } = require('../lib/catalog');
 
@@ -22,6 +22,26 @@ function ticketTable(list) {
   const more = list.length > 40 ? `<p style="color:#888">…and ${list.length - 40} more.</p>` : '';
   return `<table style="border-collapse:collapse;font-size:13px"><tr style="background:#fff3e8">
     <th align="left" style="padding:6px 10px">Chain</th><th align="left" style="padding:6px 10px">Request</th><th align="left" style="padding:6px 10px">Branch</th><th align="left" style="padding:6px 10px">Item</th><th align="left" style="padding:6px 10px">SLA</th></tr>${rows}</table>${more}`;
+}
+
+async function retryFailedAssignmentEmails(sheets, rows) {
+  if (!emailConfigured()) return { skipped: 'email not set up' };
+  const byWho = new Map();
+  rows.forEach((row, i) => {
+    const st = String(row[19] || '').trim().toLowerCase();
+    if (!(st === 'pending' || st.includes('progress') || st.includes('regional'))) return;   // only requests still open
+    if (!/^failed/i.test(String(row[36] || ''))) return;
+    const who = String(row[20] || '').trim();
+    if (!who) return;
+    if (!byWho.has(who)) byWho.set(who, []);
+    byWho.get(who).push({ row: i + 2, no: String(row[35] || ''), chain: String(row[3] || ''), type: String(row[4] || ''),
+      item: String(row[7] || ''), branch: String(row[13] || ''), priority: String(row[23] || '').toLowerCase() === 'high' ? 'high' : '' });
+  });
+  let sent = 0, failed = 0;
+  for (const [who, tickets] of byWho) {
+    (await notifyAndRecord(sheets, SHEET_ID, TAB, who, tickets)) ? sent++ : failed++;
+  }
+  return { people: byWho.size, sent, failed };
 }
 
 async function sendReminders(sheets, rows) {
@@ -99,14 +119,14 @@ module.exports = async function handler(req, res) {
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
     const auth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],   // write access: the retry below records its result in the sheet
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
     // Read through col X: U = Assignee, W = when it was assigned, X = priority
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!A:X`,
+      range: `${TAB}!A:AK`,
     });
 
     const rows = (resp.data.values || []).slice(1); // skip header
@@ -162,6 +182,11 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Safety net: any assignment email that failed earlier (marked FAILED in column AK) is sent again now
+    let retried = {};
+    try { retried = await retryFailedAssignmentEmails(sheets, rows); }
+    catch (e) { console.error('assignment email retry (non-fatal):', e.message); retried = { error: e.message }; }
+
     let reminders = {};
     try { reminders = await sendReminders(sheets, rows); }
     catch (e) { console.error('reminders error (non-fatal):', e.message); reminders = { error: e.message }; }
@@ -175,6 +200,7 @@ module.exports = async function handler(req, res) {
       checked: rows.length,
       pendingBreaches: pendingBreaches.length,
       inProgressBreaches: inProgressBreaches.length,
+      retried,
       reminders,
       warmedBarcodes,
     });

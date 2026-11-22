@@ -64,7 +64,7 @@
     .btn-refresh:hover { background:#fff8f3; }
     .dash-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
 
-    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px; }
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
     .stat-card { background:#fff; border-radius:20px; padding:28px 20px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,.05); }
     .stat-num { font-size:42px; font-weight:900; margin-bottom:4px; line-height:1; }
     .stat-label { font-size:12px; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:.8px; }
@@ -127,7 +127,10 @@
     .badge { display:inline-block; padding:6px 14px; border-radius:99px; font-size:11px; font-weight:800; white-space:nowrap; flex-shrink:0; }
     .badge-done     { background:#d4f8e8; color:#22a86e; }
     .badge-pending  { background:#fef3cd; color:#b8860b; }
+    .badge-regional { background:#f3e5f5; color:#6a1b9a; }
     .badge-rejected { background:#fde8e8; color:#e74c3c; }
+    .req-no { display:inline-block; font-size:12px; font-weight:800; color:var(--orange); letter-spacing:.5px; margin-bottom:2px; }
+    .adm-reason { white-space:normal; max-width:240px; margin-top:6px; font-size:11px; font-weight:600; color:#c62828; background:#ffebee; border-radius:8px; padding:5px 8px; line-height:1.4; }
 
     /* ── FORM VIEW WRAPPER ── */
     .back-bar { background:#fff; border-bottom:1px solid #f0ebe4; padding:0 36px; height:50px; display:flex; align-items:center; }
@@ -292,7 +295,7 @@
     .adm-out { background:rgba(255,255,255,.2); color:#fff; border:none; padding:7px 18px; border-radius:99px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; }
     .adm-out:hover { background:rgba(255,255,255,.32); }
     .adm-body { padding:24px 28px; flex:1; max-width:1400px; width:100%; margin:0 auto; box-sizing:border-box; }
-    .adm-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:22px; }
+    .adm-stats { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:22px; }
     .adm-stat { background:#fff; border-radius:12px; padding:16px; text-align:center; }
     .adm-stat-num { font-size:30px; font-weight:800; color:var(--orange); line-height:1; }
     .adm-stat-num.s-blue  { color:#1565c0; }
@@ -361,12 +364,15 @@
       .adm-table td[data-label]::before { content:attr(data-label); flex:0 0 78px; text-align:left; font-size:10px; font-weight:800; color:#bbb; text-transform:uppercase; letter-spacing:.7px; }
       .adm-table tbody td.adm-td-cb:nth-child(n) { position:absolute !important; top:8px; right:12px; left:auto !important; width:28px !important; padding:0 !important; display:block; }
       .adm-table td.adm-td-cb input { width:22px; height:22px; }
-      .adm-table tbody td[data-label="Time"]:nth-child(n) { padding-right:38px !important; }
+      .adm-table tbody td[data-label="No. / Time"]:nth-child(n) { padding-right:38px !important; }
       .adm-table tbody td.adm-td-act:nth-child(n) { display:block; padding-top:10px !important; border-top:1px solid #f2ece5; margin-top:6px; text-align:left; }
       .adm-table td.adm-td-act > div { flex-direction:row !important; flex-wrap:wrap; gap:8px !important; min-width:0 !important; }
       .adm-table td.adm-td-act .adm-btn { flex:1 1 calc(50% - 8px); min-height:44px; margin:0; }
       .adm-assign-sel { max-width:60vw; min-height:40px; }
       .adm-table .adm-msg { display:block; text-align:center; }
+      .adm-table td[data-label="Status"] { flex-wrap:wrap; justify-content:flex-end; }
+      .adm-table td[data-label="Status"]::before { flex-basis:78px; margin-right:auto; }
+      .adm-reason { flex-basis:100%; max-width:none; text-align:left; }
       /* the details pop-up: label above value, so long values are readable */
       .detail-modal-ov { padding:12px 8px; }
       .detail-tbl th, .detail-tbl td { display:block; width:auto; }
@@ -378,6 +384,7 @@
     .ab-progress { background:#e3f2fd; color:#1565c0; }
     .ab-done     { background:#e8f5e9; color:#2e7d32; }
     .ab-rejected { background:#ffebee; color:#c62828; }
+    .ab-regional { background:#f3e5f5; color:#6a1b9a; }
     .adm-btn { border:none; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; margin-right:4px; }
     .adm-btn-prog { background:#e3f2fd; color:#1565c0; }
     .adm-btn-done { background:#e8f5e9; color:#2e7d32; }
@@ -610,6 +617,10 @@
           <div class="stat-num" id="cnt-progress" style="color:#1565c0">—</div>
           <div class="stat-label">In Progress</div>
         </div>
+        <div class="stat-card" style="border-top:4px solid #6a1b9a">
+          <div class="stat-num" id="cnt-regional" style="color:#6a1b9a">—</div>
+          <div class="stat-label">Pending Regional Team</div>
+        </div>
         <div class="stat-card stat-rejected">
           <div class="stat-num" id="cnt-rejected">—</div>
           <div class="stat-label" data-i18n="statRejected">Rejected</div>
@@ -632,6 +643,7 @@
           <button class="df-btn active" data-status="" onclick="setDashFilter(this)">All</button>
           <button class="df-btn" data-status="pending" onclick="setDashFilter(this)">Pending</button>
           <button class="df-btn" data-status="in progress" onclick="setDashFilter(this)">In Progress</button>
+          <button class="df-btn" data-status="regional" onclick="setDashFilter(this)">Pending Regional Team</button>
           <button class="df-btn" data-status="done" onclick="setDashFilter(this)">Done</button>
           <button class="df-btn" data-status="rejected" onclick="setDashFilter(this)">Rejected</button>
         </div>
@@ -1027,6 +1039,7 @@
             <div class="sh2" data-i18n="successTitle">Request Submitted!</div>
             <div class="sp" data-i18n="successSub">Our Content Team will review and action your update within 24 hours.</div>
             <div class="s-badge" data-i18n="successBadge">⏱ SLA: within 24 hours</div>
+            <div id="s-reqno" style="display:none;margin:6px 0 0;font-size:18px;font-weight:800;color:#fff"></div>
             <br><br>
             <button class="btn-more" data-i18n="anotherBtn" id="moreBtn" onclick="anotherUpdate()">＋ Submit Another Update</button>
             <button class="btn-more" data-i18n="dashBtn" onclick="showView('dash'); loadDashboard()">View Dashboard</button>
@@ -1058,6 +1071,7 @@
       <div class="adm-stat"><div class="adm-stat-num" id="as-pending">—</div><div class="adm-stat-lbl">Pending</div></div>
       <div class="adm-stat"><div class="adm-stat-num s-blue" id="as-progress">—</div><div class="adm-stat-lbl">In Progress</div></div>
       <div class="adm-stat"><div class="adm-stat-num s-green" id="as-done">—</div><div class="adm-stat-lbl">Done</div></div>
+      <div class="adm-stat"><div class="adm-stat-num" style="color:#6a1b9a" id="as-regional">—</div><div class="adm-stat-lbl">Regional</div></div>
       <div class="adm-stat"><div class="adm-stat-num s-red" id="as-rejected">—</div><div class="adm-stat-lbl">Rejected</div></div>
       <div class="adm-stat"><div class="adm-stat-num s-gray" id="as-total">—</div><div class="adm-stat-lbl">Total</div></div>
     </div>
@@ -1074,6 +1088,7 @@
       <button class="bulk-btn" onclick="bulkAssign()">Assign</button>
       <button class="bulk-btn" onclick="showDoneDialog()">✓ Mark Done</button>
       <button class="bulk-btn" onclick="bulkSetStatus('In Progress')">⏳ In Progress</button>
+      <button class="bulk-btn" onclick="bulkSetStatus('Pending Regional Team')">⏸ Regional Team</button>
       <button class="bulk-btn" style="background:#c62828" onclick="showBulkReject()">✕ Reject</button>
       <button class="bulk-btn cancel" onclick="clearBulk()">✕ Cancel</button>
     </div>
@@ -1094,6 +1109,7 @@
         <option value="">All Status</option>
         <option value="Pending">Pending</option>
         <option value="In Progress">In Progress</option>
+        <option value="Pending Regional Team">Pending Regional Team</option>
         <option value="Done">Done</option>
         <option value="Rejected">Rejected</option>
       </select>
@@ -1137,7 +1153,7 @@
         <thead>
           <tr>
             <th style="text-align:center"><input type="checkbox" id="bulk-all-cb" onchange="toggleAllBulk(this)" style="cursor:pointer"></th>
-            <th>Time</th>
+            <th>Req No / Time</th>
             <th>Vendor ID</th>
             <th>Chain Name</th>
             <th>Request Type</th>
@@ -1471,6 +1487,12 @@
  "Medications, Beverages": "أدوية، مشروبات",
  "All": "الكل",
  "Pending": "قيد الانتظار",
+ "Pending Regional Team": "قيد انتظار الفريق الإقليمي",
+ "⏸ Pending Regional Team": "⏸ قيد انتظار الفريق الإقليمي",
+ "⏸ Regional Team": "⏸ الفريق الإقليمي",
+ "Regional": "الإقليمي",
+ "Request No.": "رقم الطلب",
+ "Request No: ": "رقم الطلب: ",
  "In Progress": "قيد التنفيذ",
  "Done": "تم",
  "Rejected": "مرفوض",
@@ -2346,21 +2368,22 @@
       const rows = json.data || [];
       loadEl.style.display = 'none';
 
-      if (rows.length === 0) { emptyEl.style.display = 'block'; listEl.innerHTML = ''; setStats(0,0,0,0,0); return; }
+      if (rows.length === 0) { emptyEl.style.display = 'block'; listEl.innerHTML = ''; setStats(0,0,0,0,0,0); return; }
 
       rows.sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
 
       checkNotifications(rows, currentVendor.vendorId);
 
-      let done = 0, pending = 0, progress = 0, rejected = 0;
+      let done = 0, pending = 0, progress = 0, regional = 0, rejected = 0;
       rows.forEach(r => {
         const s = (r['Status'] || '').toLowerCase();
         if (s === 'done' || s === 'completed' || s === 'complete') done++;
         else if (s.includes('reject') || s.includes('daily limit')) rejected++;
         else if (s.includes('progress')) progress++;
+        else if (s.includes('regional')) regional++;
         else pending++;
       });
-      setStats(done, pending, progress, rejected, rows.length);
+      setStats(done, pending, progress, rejected, rows.length, regional);
       cachedDashRows = rows;
       renderDashList();
       setRefreshLabel('dash-refresh-ts');
@@ -2373,7 +2396,8 @@
     }
   }
 
-  function setStats(done, pending, progress, rejected, total) {
+  function setStats(done, pending, progress, rejected, total, regional) {
+    document.getElementById('cnt-regional').textContent = regional || 0;
     document.getElementById('cnt-done').textContent     = done;
     document.getElementById('cnt-pending').textContent  = pending;
     document.getElementById('cnt-progress').textContent = progress;
@@ -2443,14 +2467,16 @@
   }
 
   function updateAdminStats() {
-    let pending = 0, progress = 0, done = 0, rejected = 0;
+    let pending = 0, progress = 0, done = 0, rejected = 0, regional = 0;
     adminRequests.forEach(r => {
       const s = (r['Status'] || '').toLowerCase();
       if (s === 'done' || s === 'completed') done++;
       else if (s.includes('progress'))       progress++;
+      else if (s.includes('regional'))       regional++;
       else if (s.includes('reject'))         rejected++;
       else                                   pending++;
     });
+    document.getElementById('as-regional').textContent = regional;
     document.getElementById('as-pending').textContent  = pending;
     document.getElementById('as-progress').textContent = progress;
     document.getElementById('as-done').textContent     = done;
@@ -2462,7 +2488,7 @@
   function renderAgentBreakdown(all) {
     document.getElementById('adm-breakdown').innerHTML = TEAM_AGENTS.map(name => {
       const rows     = all.filter(r => (r['Assignee'] || '') === name);
-      const pending  = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return !s.includes('progress')&&s!=='done'&&s!=='completed'&&!s.includes('reject'); }).length;
+      const pending  = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return !s.includes('progress')&&!s.includes('regional')&&s!=='done'&&s!=='completed'&&!s.includes('reject'); }).length;
       const progress = rows.filter(r => (r['Status']||'').toLowerCase().includes('progress')).length;
       const done     = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return s==='done'||s==='completed'; }).length;
       return `<div class="adm-bd-card">
@@ -2496,9 +2522,10 @@
       const type      = r['Request Type'] || '';
       const status    = (r['Status'] || '').toLowerCase();
       const assignee  = r['Assignee'] || '';
-      const searchStr = [r['Vendor ID'], r['Restaurant'], r['Branch'], r['SKU'], r['Item Name']].join(' ').toLowerCase();
+      const searchStr = [r['RequestNo'], r['Vendor ID'], r['Restaurant'], r['Branch'], r['SKU'], r['Item Name']].join(' ').toLowerCase();
       if (typeFilter     && !type.includes(typeFilter))      return false;
-      if (statusFilter   && !status.includes(statusFilter))  return false;
+      // "Pending" means plain Pending only: Pending Regional Team is its own filter
+      if (statusFilter   && !(statusFilter === 'pending' ? (status.includes('pending') && !status.includes('regional')) : status.includes(statusFilter))) return false;
       if (assigneeFilter && assignee !== assigneeFilter)     return false;
       if (search         && !searchStr.includes(search))     return false;
       if (dateFrom || dateTo) {
@@ -2551,7 +2578,8 @@
       const isDone     = sl === 'done' || sl === 'completed';
       const isRej      = sl.includes('reject');
       const isProg     = sl.includes('progress');
-      const bCls       = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : 'ab-pending';
+      const isRegional = sl.includes('regional');
+      const bCls       = isDone ? 'ab-done' : isRej ? 'ab-rejected' : isProg ? 'ab-progress' : isRegional ? 'ab-regional' : 'ab-pending';
       const ts         = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
       const rowIdx     = r['_rowIndex'];
       const canAct     = !isDone && !isRej;
@@ -2564,14 +2592,22 @@
       const fileLink   = r['Upload file (if needed) / رفع ملف'] || '';
       const fileCell   = fileLink ? `<a href="${escHtml(fileLink)}" target="_blank" style="color:var(--orange)">File</a>` : '—';
 
+      // why a request was rejected, shown right in the list (no need to open the Google Sheet)
+      const rejText = isRej ? String(r['Rejection Reason'] || r['Comment'] || '').trim() : '';
+      const rejReasonHtml = rejText
+        ? `<div class="adm-reason" dir="auto" title="${escHtml(rejText)}"><strong>Reason:</strong> ${rejText.split(' • ').map(x => escHtml(x)).join('<br>')}</div>` : '';
+
       // data-label is the caption shown on phones, where each request becomes a card
       const cell = (val, label) => `<td class="adm-td-clip" data-label="${label}">${escHtml(val || '—')}</td>`;
 
+      // monitors see when the assignment email to the assignee did not go out (it is retried every morning)
+      const mailWarn = (isMonitor && /^failed/i.test(String(r['EmailStatus'] || '')))
+        ? '<div style="font-size:10px;font-weight:700;color:#c62828;margin-top:3px" title="The email to the assignee failed. It is retried every morning.">✉ email not sent</div>' : '';
       const assigneeCell = isMonitor
-        ? `<td data-label="Assignee"><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
+        ? `<td data-label="Assignee"><div><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
              <option value="">Unassigned</option>
              ${TEAM_AGENTS.map(n => `<option value="${n}"${assigned===n?' selected':''}>${escHtml(n)}</option>`).join('')}
-           </select></td>`
+           </select>${mailWarn}</div></td>`
         : `<td data-label="Assignee"><span class="${assigned ? 'adm-assigned' : 'adm-unassigned'}">${escHtml(assigned || 'Unassigned')}</span></td>`;
 
       const priorityBtn = isMonitor
@@ -2582,20 +2618,21 @@
           ${priorityBtn}
           ${canAct ? `
             ${!isProg ? `<button class="adm-btn adm-btn-prog" onclick="adminUpdateStatus(${rowIdx},'In Progress',this)">⏳ In Progress</button>` : ''}
+            ${!isRegional ? `<button class="adm-btn" style="background:#f3e5f5;color:#6a1b9a" onclick="adminUpdateStatus(${rowIdx},'Pending Regional Team',this)">⏸ Pending Regional Team</button>` : ''}
             <button class="adm-btn adm-btn-done" onclick="showDoneDialogFor(${rowIdx})">✓ Done</button>
             <button class="adm-btn adm-btn-rej"  onclick="openRejectDialog([${rowIdx}])">✗ Reject</button>` : ''}
         </div>`;
 
       return `<tr>
         <td class="adm-td-cb" style="text-align:center"><input type="checkbox" class="bulk-cb" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer"></td>
-        <td data-label="Time" style="color:#999;font-size:11px;white-space:nowrap">${ts}</td>
+        <td data-label="No. / Time" style="color:#999;font-size:11px;white-space:nowrap">${r['RequestNo'] ? `<div style="color:var(--orange);font-weight:800;font-size:12px">${escHtml(r['RequestNo'])}</div>` : ''}${ts}</td>
         <td data-label="Vendor ID" style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
         <td class="adm-td-clip" data-label="Chain">${escHtml(r['Restaurant'] || r['Chain Name / اسم السلسة'] || '—')}${priBadge}</td>
         <td class="adm-td-clip" data-label="Request">${escHtml(r['Request Type'] || r['Request Type / نوع الطلب'] || '—')}${r['ResubmitOf'] ? ` <span class="adm-priority" style="background:#fff3e0;color:#e65100" title="Resubmission of row ${escHtml(String(r['ResubmitOf']))}">↻ RESUBMIT</span>` : ''}</td>
         ${cell(r['Branch'] || r['Branch Name / اسم الفرع'], 'Branch')}
         ${cell(r['Item Name'] || r['Item Name / اسم المنتج'], 'Item')}
         ${assigneeCell}
-        <td data-label="Status" style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${slaBadge(assignedAt, status, priority, r['Timestamp'])}</td>
+        <td data-label="Status" style="white-space:nowrap"><span class="adm-badge ${bCls}">${escHtml(status)}</span>${isRegional ? '' : slaBadge(assignedAt, status, priority, r['Timestamp'])}${rejReasonHtml}</td>
         <td class="adm-td-act">${actions}</td>
       </tr>`;
     }).join('');
@@ -3054,6 +3091,11 @@
       btn.disabled = false;
       $('s4').classList.remove('on');
       $('sOK').classList.add('on');
+      const noEl = $('s-reqno');
+      if (noEl) {   // the vendor's reference for this request, e.g. ENGZ07
+        noEl.textContent = json.requestNo ? (lang === 'ar' ? 'رقم الطلب: ' : 'Request No: ') + json.requestNo : '';
+        noEl.style.display = json.requestNo ? 'block' : 'none';
+      }
       $('progBar').style.width = '100%';
       cur = 'done';
       if (getAddCount() >= MAX) $('moreBtn').style.display = 'none';
@@ -3121,6 +3163,7 @@
   function slaBadge(assignedAt, status, priority, submittedAt) {
     const sl = (status || '').toLowerCase();
     if (sl === 'done' || sl === 'completed' || sl.includes('reject')) return '';
+    if (sl.includes('regional')) return '';   // waiting for the regional team: the SLA clock is not shown
     // Use submission time when not yet assigned so the clock runs from day 0
     const clockStart = assignedAt || submittedAt;
     if (!clockStart) return '';
@@ -3226,6 +3269,7 @@
     const fileLink  = r['Upload file (if needed) / رفع ملف'] || '';
 
     const fields = [
+      ['Request No.',     r['RequestNo']],
       ['Time',            ts],
       ['Vendor ID',       r['Vendor ID']],
       ['Chain Name',      r['Restaurant'] || r['Chain Name / اسم السلسة']],
@@ -3244,8 +3288,9 @@
       ['Owner',           r['Owner']],
       ['Assignee',        r['Assignee']],
       ['Assigned At',     at],
+      ['Assignment email', r['EmailStatus']],
       ['Status',          r['Status']],
-      ['Comment',         r['Comment'] || r['Rejection Reason']],
+      ['Rejection reason', r['Rejection Reason'] || r['Comment']],
       ['Message to vendor', r['TeamNote']],
       ['Item Name (Arabic)', r['ItemNameAr']],
       ['Brand Type',      r['BrandType']],
@@ -3294,6 +3339,7 @@
     const note = String(row['TeamNote'] || '').trim();
     const reasons = String(row['Rejection Reason'] || '').trim();
     const fields = [
+      ['Request No.', row['RequestNo']],
       ['Request type', row['Request Type'] || pf.requestType],
       ['Status', row['Status'] || 'Pending'],
       ['Submitted', fmt(row['Timestamp'])],
@@ -3427,8 +3473,12 @@
   function renderDashList() {
     const listEl  = document.getElementById('dash-list');
     const emptyEl = document.getElementById('dash-empty');
+    // "pending" means plain Pending only: Pending Regional Team has its own filter
     const rows = dashStatusFilter
-      ? cachedDashRows.filter(r => (r['Status'] || 'Pending').toLowerCase().includes(dashStatusFilter))
+      ? cachedDashRows.filter(r => {
+          const s = (r['Status'] || 'Pending').toLowerCase();
+          return dashStatusFilter === 'pending' ? (s.includes('pending') && !s.includes('regional')) : s.includes(dashStatusFilter);
+        })
       : cachedDashRows;
     if (rows.length === 0) {
       emptyEl.style.display = 'block';
@@ -3442,7 +3492,8 @@
       const sl       = status.toLowerCase();
       const isDone   = sl === 'done' || sl === 'completed' || sl === 'complete';
       const isRej    = sl.includes('reject') || sl.includes('daily limit');
-      const bClass   = isDone ? 'badge-done' : isRej ? 'badge-rejected' : 'badge-pending';
+      const isRegional = sl.includes('regional');
+      const bClass   = isDone ? 'badge-done' : isRej ? 'badge-rejected' : isRegional ? 'badge-regional' : 'badge-pending';
       const tsRaw    = row['Timestamp'];
       const ts       = tsRaw ? new Date(tsRaw).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
       const itemName = row['Item Name / اسم المنتج'] || row['Item Name'] || '—';
@@ -3451,7 +3502,7 @@
       const noResub    = rCodes.includes(NO_RESUBMIT);
       const reasonHtml = reason && isRej
         ? `<div class="req-reason"><div style="font-size:11px;opacity:.8">السبب · Reason</div>${reason.split(' \u2022 ').map(x => `<div dir="auto" style="margin-top:3px">${escHtml(x)}</div>`).join('')}</div>` : '';
-      const vendorSla   = (!isDone && !isRej) ? slaBadge(row['AssignedAt'] || '', status, row['Priority'] || '', row['Timestamp'] || '') : '';
+      const vendorSla   = (!isDone && !isRej && !isRegional) ? slaBadge(row['AssignedAt'] || '', status, row['Priority'] || '', row['Timestamp'] || '') : '';
       const rowIdx      = row['_rowIndex'];
       const canWithdraw = sl === 'pending' && rowIdx;
       const withdrawBtn = canWithdraw
@@ -3468,6 +3519,7 @@
       const reviewBtn = rowIdx ? `<button class="req-review" onclick="openReviewModal(${rowIdx})">Review</button>` : '';
       return `<div class="req-card" id="req-card-${rowIdx}">
         <div class="req-left">
+          ${row['RequestNo'] ? `<div class="req-no">${escHtml(row['RequestNo'])}</div>` : ''}
           <div class="req-type">${escHtml(reqType)}</div>
           <div class="req-item">Item: ${escHtml(itemName)}</div>
           <div class="req-ts">${ts}</div>
@@ -3680,7 +3732,7 @@
   }
 
   function exportCSV() {
-    const cols = ['Timestamp','Vendor ID','Restaurant','Request Type','Branch','Item Name','Status','Assignee','AssignedAt','Rejection Reason','Priority'];
+    const cols = ['RequestNo','Timestamp','Vendor ID','Restaurant','Request Type','Branch','Item Name','Status','Assignee','AssignedAt','Rejection Reason','Priority'];
     const lines = [cols.join(',')];
     const source = adminFiltered.length ? adminFiltered : adminRequests;
     source.forEach(r => {

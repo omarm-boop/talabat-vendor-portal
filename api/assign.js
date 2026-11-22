@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { loadTeamMembers } = require('../lib/team');
-const { notifyAssignee, ticketsFromRows } = require('../lib/notify-team');
+const { notifyAndRecord, ticketsFromRows } = require('../lib/notify-team');
 const { Redis } = require('@upstash/redis');
 
 let redis = null;
@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
 
     if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
     // tell the new assignee by email (not when the monitor assigns it to themselves)
-    if (assignee) await notifyAssignee(sheets, assignee, await ticketsFromRows(sheets, SHEET_ID, TAB, [rowIndex]), sess.email);
+    if (assignee) await notifyAndRecord(sheets, SHEET_ID, TAB, assignee, await ticketsFromRows(sheets, SHEET_ID, TAB, [rowIndex]), sess.email);
     return res.json({ success: true });
   } catch (err) {
     console.error('assign.js error:', err.message);

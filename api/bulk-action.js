@@ -3,7 +3,8 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { ensureColumns } = require('../lib/sheet-columns');
-const { notifyAssignee, ticketsFromRows } = require('../lib/notify-team');
+const { mayChangeRows } = require('../lib/team-scope');
+const { notifyAndRecord, ticketsFromRows } = require('../lib/notify-team');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 
 let redis = null;
@@ -44,6 +45,8 @@ module.exports = async function handler(req, res) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     const sheets = google.sheets({ version: 'v4', auth });
+    // an employee may only change the requests assigned to them
+    if (!await mayChangeRows(sheets, SHEET_ID, TAB, rowIndexes, sess)) return res.status(403).json({ error: 'Some of these requests are not assigned to you' });
 
     const data = [];
     const now = new Date().toISOString();
@@ -89,7 +92,7 @@ module.exports = async function handler(req, res) {
       });
       if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del('sheet:v1:all').catch(() => {});
       // one email to the new assignee listing all the requests assigned to them
-      if (action === 'assign' && assignee) await notifyAssignee(sheets, assignee, await ticketsFromRows(sheets, SHEET_ID, TAB, rowIndexes), sess.email);
+      if (action === 'assign' && assignee) await notifyAndRecord(sheets, SHEET_ID, TAB, assignee, await ticketsFromRows(sheets, SHEET_ID, TAB, rowIndexes), sess.email);
     } else {
       return res.status(400).json({ error: 'Unknown action' });
     }

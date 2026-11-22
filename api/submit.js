@@ -15,7 +15,8 @@ function getRedis() {
 
 const { ensureColumns } = require('../lib/sheet-columns');
 const { withRetry } = require('../lib/retry');
-const { notifyAssignee } = require('../lib/notify-team');
+const { notifyAndRecord } = require('../lib/notify-team');
+const { nextRequestNo } = require('../lib/request-no');
 
 // Fewer Google reads per submission (a morning burst of vendors shares one per-minute quota):
 let headersChecked = false;            // the sheet header row only needs checking once per warm instance
@@ -291,7 +292,7 @@ module.exports = async function handler(req, res) {
       sheetRows = dupRows;
       const isDup = dupRows.some(row => {
         const st = String(row[16] || '').trim().toLowerCase();
-        if (st !== 'pending' && !st.includes('progress')) return false;
+        if (st !== 'pending' && !st.includes('progress') && !st.includes('regional')) return false;
         if (String(row[0] || '').trim().toLowerCase() !== chainCheck) return false;
         if (String(row[1] || '').trim().toLowerCase() !== typeCheck)  return false;
         if (barcodeCheck) {
@@ -373,14 +374,19 @@ module.exports = async function handler(req, res) {
     // Auto-assign: find the row number we just wrote and assign it to an agent
     const updatedRange = (appendResp.data.updates && appendResp.data.updates.updatedRange) || '';
     const rowMatch = updatedRange.match(/(\d+)$/);
+    let requestNo = '';
     if (rowMatch) {
-      await autoAssign(sheets, chainName, parseInt(rowMatch[1], 10), now, sheetRows,
-        { chain: chainName, type: body.requestType || '', item: itemName, branch: branchOnly });
+      const nr = parseInt(rowMatch[1], 10);
+      // the request number (ENGZ01, ENGZ02 ...); a failure here must not lose the request
+      try { requestNo = await nextRequestNo(sheets, process.env.UPSTASH_REDIS_REST_URL ? getRedis() : null, SHEET_ID, TAB, nr); }
+      catch (e) { console.warn('request number failed (non-fatal):', e.message); }
+      await autoAssign(sheets, chainName, nr, now, sheetRows,
+        { chain: chainName, type: body.requestType || '', item: itemName, branch: branchOnly, no: requestNo, row: nr });
       try {
-        const nr = parseInt(rowMatch[1], 10);
+        // AC brand, AD item type, AE min weight, AF contact email, AG Arabic name, AH/AI (team note, left empty), AJ request number
         await withRetry(() => sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AG${nr}`, valueInputOption: 'RAW',
-          requestBody: { values: [[brandType, itemType, minWeight, contactEmail, itemNameAr]] },
+          spreadsheetId: SHEET_ID, range: `${TAB}!AC${nr}:AJ${nr}`, valueInputOption: 'RAW',
+          requestBody: { values: [[brandType, itemType, minWeight, contactEmail, itemNameAr, '', '', requestNo]] },
         }));
       } catch (e) { console.warn('brand/item columns write failed (non-fatal):', e.message); }
       if (parentRow) {
@@ -416,7 +422,7 @@ module.exports = async function handler(req, res) {
       getRedis().del('sheet:v1:all').catch(() => {});
     }
 
-    return res.json({ success: true });
+    return res.json({ success: true, requestNo });
 
   } catch (err) {
     console.error('submit.js error:', err.message);
@@ -512,7 +518,7 @@ async function autoAssign(sheets, chainName, newRowNum, now, knownRows, ticket) 
       },
     });
     // email the person who got the ticket (employee or monitor); never fails the submission
-    if (ticket) await notifyAssignee(sheets, assignedAgent, [ticket]);
+    if (ticket) await notifyAndRecord(sheets, SHEET_ID, TAB, assignedAgent, [ticket]);
   } catch (err) {
     console.error('auto-assign error (non-fatal):', err.message);
   }

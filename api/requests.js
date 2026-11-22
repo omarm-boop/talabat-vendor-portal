@@ -4,6 +4,7 @@ const { setCors } = require('../lib/cors');
 const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
 const { withRetry } = require('../lib/retry');
+const { agentNames } = require('../lib/team-scope');
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
@@ -186,12 +187,21 @@ async function handle(req, res) {
       // Message from the Talabat team (cols AH, AI)
       obj['TeamNote']     = row[33] !== undefined ? row[33] : '';
       obj['TeamNoteAt']   = row[34] !== undefined ? row[34] : '';
+      // Request number (AJ, e.g. ENGZ07) and the result of the assignment email (AK)
+      obj['RequestNo']    = row[35] !== undefined ? row[35] : '';
+      obj['EmailStatus']  = row[36] !== undefined ? row[36] : '';
 
       // Photo link — col K "Upload Item Picture"
       if (!obj['PhotoLink']) obj['PhotoLink'] = obj['Upload Item Picture (If needed) / تحميل صورة المنتج'] || obj['Upload Item Picture / تحميل صورة المنتج'] || '';
 
       return obj;
     });
+
+    // An employee sees only the requests assigned to them; a monitor sees all of them
+    if (!vendorIdParam && session.role === 'agent') {
+      const mine = await agentNames(sheets, session.email);
+      rows = rows.filter(r => mine.has(String(r['Assignee'] || '').trim().toLowerCase()));
+    }
 
     const vendorId = (req.query.vendorId || '').trim();
     if (vendorId) {

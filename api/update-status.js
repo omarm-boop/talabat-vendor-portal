@@ -3,6 +3,7 @@ const { verifyRequest } = require('../lib/verify');
 const { setCors } = require('../lib/cors');
 const { sendEmail, emailConfigured } = require('../lib/email');
 const { ensureColumns } = require('../lib/sheet-columns');
+const { mayChangeRows } = require('../lib/team-scope');
 const { cleanCodes, composeReason, canResubmit, NO_RESUBMIT } = require('../lib/rejection-reasons');
 const { Redis } = require('@upstash/redis');
 
@@ -40,6 +41,7 @@ module.exports = async function handler(req, res) {
       const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
       const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
       const sheets = google.sheets({ version: 'v4', auth });
+      if (!await mayChangeRows(sheets, SHEET_ID, TAB, [noteRow], sess)) return res.status(403).json({ error: 'This request is not assigned to you' });
       const at = new Date().toISOString();
       await ensureColumns(sheets, SHEET_ID, TAB, 35);   // AH = team note, AI = when it was written
       await sheets.spreadsheets.values.batchUpdate({
@@ -87,6 +89,7 @@ module.exports = async function handler(req, res) {
     });
     const sheets = google.sheets({ version: 'v4', auth });
     const now    = new Date().toISOString();
+    if (!await mayChangeRows(sheets, SHEET_ID, TAB, [rowIndex], sess)) return res.status(403).json({ error: 'This request is not assigned to you' });
 
     if (status === 'Rejected') await ensureColumns(sheets, SHEET_ID, TAB, 28);
     // optional message to the vendor that goes with the status (for example when marking a request Done)
@@ -146,6 +149,7 @@ async function notifyVendor(sheets, vendorId, status, rejectionReason, teamNote)
   if (!email) return;
 
   const statusLabel = status === 'Done' ? '✅ Completed'
+    : /regional/i.test(status) ? '⏸ Pending Regional Team'
     : status === 'Rejected' ? '❌ Rejected'
     : status === 'In Progress' ? '⏳ In Progress'
     : status;
