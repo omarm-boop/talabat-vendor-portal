@@ -2536,11 +2536,16 @@
       return true;
     });
 
+    // Open requests first (Pending, In Progress); finished or parked ones (Done, Rejected, Pending Regional Team) go to the
+    // bottom. Inside each group: high priority first, then the oldest request first.
+    const isClosed = r => { const s = String(r['Status'] || '').toLowerCase(); return s === 'done' || s === 'completed' || s.includes('reject') || s.includes('regional'); };
     filtered.sort((a, b) => {
-      const ap = a['Priority'] === 'high' ? 1 : 0;
-      const bp = b['Priority'] === 'high' ? 1 : 0;
+      const ac = isClosed(a) ? 1 : 0, bc = isClosed(b) ? 1 : 0;
+      if (ac !== bc) return ac - bc;
+      const ap = !ac && a['Priority'] === 'high' ? 1 : 0;
+      const bp = !bc && b['Priority'] === 'high' ? 1 : 0;
       if (bp !== ap) return bp - ap;
-      return new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0);
+      return new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0);
     });
 
     adminPage = 1;
