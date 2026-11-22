@@ -3965,7 +3965,7 @@
           const data = await res.json();
           renderList(data.results || []);
         } catch (_) {}
-      }, 250);
+      }, 150);
     });
 
     inp.addEventListener('change', () => {
@@ -4022,7 +4022,7 @@
       clearTimeout(timer);
       const q = inp.value.trim();
       if (q.length < 3) { close(); return; }
-      timer = setTimeout(async () => { try { render((await search(q)).slice(0, 8)); } catch (_) {} }, 250);
+      timer = setTimeout(async () => { try { render((await search(q)).slice(0, 8)); } catch (_) {} }, 150);
     });
     inp.addEventListener('blur', () => setTimeout(close, 200));
   }
@@ -4117,7 +4117,7 @@
             say(exact.length + ' catalog items share this barcode. Please select the correct one.', '#d97706');
           }
         } catch (_) {}
-      }, 350);
+      }, 200);
     });
     addTitle.addEventListener('input', () => { if (addTitle.value !== autoTitle) autoTitle = ''; });
     if (addAr) addAr.addEventListener('input', () => { if (addAr.value !== autoAr) autoAr = ''; });

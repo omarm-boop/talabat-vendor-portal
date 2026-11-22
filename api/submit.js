@@ -56,7 +56,12 @@ module.exports = async function handler(req, res) {
     try {
       // First choice: ask the catalog sheet for just the matching rows (no IMPORTRANGE, nothing big to download).
       // If that is not possible, the PIM tab below is used as before.
-      try { return res.json({ results: await searchCatalog(q), source: 'catalog' }); }
+      try {
+        const found = await searchCatalog(q);
+        // a found product is served from Vercel's edge for the next vendor who types the same thing (about 30 ms, no function run)
+        if (found.length) res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+        return res.json({ results: found, source: 'catalog' });
+      }
       catch (e) { catalogError = String(e.message || e).slice(0, 460); console.warn('direct catalog lookup unavailable, using the PIM tab:', catalogError); }
 
       const PIM_KEY = 'talabat:pim_catalog_v2';
