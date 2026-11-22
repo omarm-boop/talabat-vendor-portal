@@ -5,6 +5,8 @@ const { Redis } = require('@upstash/redis');
 const { getPacked, setPacked } = require('../lib/cache-zip');
 const { withRetry } = require('../lib/retry');
 const { agentNames } = require('../lib/team-scope');
+const { numberExisting } = require('../lib/request-no');
+let numberingPause = 0;   // time before which older requests are not numbered again
 
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
@@ -61,7 +63,7 @@ async function handle(req, res) {
 
     const auth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],   // write access: older requests get their numbers here
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
@@ -196,6 +198,17 @@ async function handle(req, res) {
 
       return obj;
     });
+
+    // Requests that have no number yet (older ones) are numbered the first time a monitor opens the dashboard
+    if (!vendorIdParam && session.role === 'monitor' && Date.now() > numberingPause && rows.some(r => !r['RequestNo'] && r['Timestamp'])) {
+      numberingPause = Date.now() + 10 * 60 * 1000;   // not again for 10 minutes, even if it fails
+      try {
+        const byRow = await numberExisting(sheets, process.env.UPSTASH_REDIS_REST_URL ? getRedis() : null, SHEET_ID, TAB_NAME);
+        rows.forEach(r => { if (!r['RequestNo'] && byRow[r['_rowIndex']]) r['RequestNo'] = byRow[r['_rowIndex']]; });
+        memCache = null;
+        if (process.env.UPSTASH_REDIS_REST_URL) getRedis().del(CACHE_KEY).catch(() => {});
+      } catch (e) { console.warn('numbering existing requests (non-fatal):', e.message); }
+    }
 
     // An employee sees only the requests assigned to them; a monitor sees all of them
     if (!vendorIdParam && session.role === 'agent') {
