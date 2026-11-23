@@ -3763,13 +3763,29 @@
   }
 
   function exportCSV() {
-    const cols = ['RequestNo','Timestamp','Vendor ID','Restaurant','Request Type','Branch','Item Name','Status','Assignee','AssignedAt','RejectionReason','Priority'];
-    const lines = [cols.join(',')];
+    // Every detail of a request: [column title, field, kind]. kind 'id' = keep leading zeros (barcodes, SKUs, vendor ids)
+    const cols = [
+      ['Request No', 'RequestNo'], ['Time', 'Timestamp'], ['Vendor ID', 'Vendor ID', 'id'], ['Chain', 'Restaurant'],
+      ['Request Type', 'Request Type'], ['Branch', 'Branch'], ['Barcode', 'BarcodeVal', 'id'], ['SKU', 'SkuVal', 'id'],
+      ['Item Name', 'Item Name'], ['Item Name (Arabic)', 'ItemNameAr'],
+      ['Details (names, new SKU, new barcode, notes)', 'DetailsVal'], ['Price', 'PriceVal'],
+      ['Item Type', 'ItemType'], ['Min Weight (kg)', 'MinWeight'], ['Brand', 'BrandType'], ['Contact Email', 'ContactEmail'],
+      ['Photo Link', 'PhotoUrl'], ['File Link', 'FileUrl'], ['Delist Reason', 'DelistReason'],
+      ['Status', 'Status'], ['Assignee', 'Assignee'], ['Assigned At', 'AssignedAt'], ['Priority', 'Priority'],
+      ['Rejection Reason', 'RejectionReason'], ['Message to Vendor', 'TeamNote'], ['Message Time', 'TeamNoteAt'],
+      ['Resubmission of Row', 'ResubmitOf'], ['Resubmitted as Row', 'ResubmittedAs'],
+      ['Assignment Email', 'EmailStatus'], ['Last Action', 'LastAction'],
+    ];
+    const cell = (r, [, key, kind]) => {
+      let s = String(r[key] == null ? '' : r[key]).replace(/\r?\n/g, ' | ');
+      if (kind === 'id' && /^\d+$/.test(s)) return '="' + s + '"';            // opens as text, so 0085… keeps its zeros
+      if (/^[=+\-@]/.test(s)) s = "'" + s;                                       // a cell can never start a formula
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const lines = [cols.map(c => '"' + c[0] + '"').join(',')];
     const source = adminFiltered.length ? adminFiltered : adminRequests;
-    source.forEach(r => {
-      lines.push(cols.map(c => '"' + String(r[c]||'').replace(/"/g,'""') + '"').join(','));
-    });
-    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    source.forEach(r => lines.push(cols.map(c => cell(r, c)).join(',')));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});   // BOM: Arabic opens correctly in Excel
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'requests_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();

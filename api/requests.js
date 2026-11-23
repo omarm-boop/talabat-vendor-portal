@@ -189,6 +189,14 @@ async function handle(req, res) {
       // Message from the Talabat team (cols AH, AI)
       obj['TeamNote']     = row[33] !== undefined ? row[33] : '';
       obj['TeamNoteAt']   = row[34] !== undefined ? row[34] : '';
+      // The request's own details by column position (A timestamp ... P delist reason), for the screens and the CSV export
+      obj['BarcodeVal']   = String(row[5]  !== undefined ? row[5]  : '').trim();
+      obj['SkuVal']       = String(row[6]  !== undefined ? row[6]  : '').trim();
+      obj['DetailsVal']   = String(row[8]  !== undefined ? row[8]  : '').trim();   // notes, current/new names, new SKU and barcode
+      obj['PhotoUrl']     = String(row[10] !== undefined ? row[10] : '').trim();
+      obj['FileUrl']      = String(row[11] !== undefined ? row[11] : '').trim();
+      obj['PriceVal']     = String(row[12] !== undefined ? row[12] : '').trim();
+      obj['DelistReason'] = String(row[15] !== undefined ? row[15] : '').trim();
       // The rejection reason exactly as the team wrote it (column V). The older fields above can pick up other columns by header name
       // (for example a "Comment" header that now sits on the brand column), so the screens use this one.
       obj['RejectionReason'] = String(row[21] !== undefined ? row[21] : '').trim();
