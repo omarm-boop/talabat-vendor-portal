@@ -755,7 +755,7 @@
   <div class="sec-label">Item Identifiers</div>
   <div class="row x2">
     <div class="fg">
-      <label class="lbl">Barcode <span class="req">*</span></label>
+      <label class="lbl">Barcode <span class="req" id="add-bc-star">*</span></label>
       <input type="text" id="f-add-barcode" placeholder="e.g. 6221067002767">
       <div class="ferr" id="e-add-barcode">Barcode is required</div>
     </div>
@@ -2180,6 +2180,10 @@
   function onItemTypeChange() {
     const weighable = !!$('f-add-itemtype') && $('add-grocery-fields').style.display !== 'none' && $('f-add-itemtype').value === 'weighable';
     $('add-minw-wrap').style.display = weighable ? '' : 'none';
+    // a weighable item may be sent without a barcode; a packed item (or any non-grocery item) needs one
+    const star = $('add-bc-star');
+    if (star) { star.textContent = weighable ? '(optional)' : '*'; star.className = weighable ? 'opt' : 'req'; }
+    if (weighable) clr('f-add-barcode', 'e-add-barcode');
     $('lbl-add-price').textContent = weighable ? 'Price per Kilo' : 'Price';
     $('f-add-price').placeholder = weighable ? 'e.g. EGP 120.00 per kg' : 'e.g. EGP 34.00';
     if (!weighable && $('f-add-minw')) $('f-add-minw').value = '';
@@ -2912,7 +2916,7 @@
     }
     if (s === 3) {
       if (reqType === 'add') {
-        if (!req('f-add-barcode','e-add-barcode'))   ok = false;
+        if (!isWeighable() && !req('f-add-barcode','e-add-barcode')) ok = false;   // optional for weighable items
         if (!req('f-add-sku','e-add-sku'))           ok = false;
         if (!req('f-add-name-en','e-add-name-en'))   ok = false;
         if (!req('f-add-name-ar','e-add-name-ar'))   ok = false;
@@ -3175,15 +3179,37 @@
     const elapsed   = workingHoursSince(clockStart);
     if (elapsed === null) return '';
     const slaHours  = priority === 'high' ? 8 : 24;
-    const remaining = slaHours - elapsed;
-    let cls, label;
     const unassignedNote = assignedAt ? '' : ' <span style="opacity:.7;font-size:9px">(unassigned)</span>';
-    if (remaining <= 0)       { cls = 'sla-red';    label = '⚠ SLA Breached'; }
-    else if (remaining <= 4)  { cls = 'sla-red';    label = `⏰ ${remaining.toFixed(1)}h left`; }
-    else if (remaining <= 8)  { cls = 'sla-yellow'; label = `⏳ ${remaining.toFixed(1)}h left`; }
-    else                      { cls = 'sla-green';  label = `✓ ${remaining.toFixed(1)}h left`; }
-    return `<span class="sla-badge ${cls}">${label}${unassignedNote}</span>`;
+    const view = slaView(slaHours - elapsed);
+    // data-sla-* let the clock below tick every second
+    return `<span class="sla-badge ${view.cls}" data-sla-start="${escHtml(String(clockStart))}" data-sla-hours="${slaHours}"><span class="sla-t">${view.label}</span>${unassignedNote}</span>`;
   }
+
+  // The countdown as hours:minutes:seconds (working hours only: Fridays, Saturdays and holidays do not count)
+  function fmtHMS(h) {
+    const s = Math.floor(Math.abs(h) * 3600);
+    const p = n => String(n).padStart(2, '0');
+    return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+  }
+  function slaView(remaining) {
+    const ar = (typeof lang !== 'undefined') && lang === 'ar';
+    if (remaining <= 0) return { cls: 'sla-red', label: (ar ? '⚠ متأخر ' : '⚠ Overdue ') + fmtHMS(remaining) };
+    const icon = remaining <= 4 ? '⏰' : remaining <= 8 ? '⏳' : '✓';
+    const cls  = remaining <= 4 ? 'sla-red' : remaining <= 8 ? 'sla-yellow' : 'sla-green';
+    return { cls, label: ar ? `${icon} متبقي ${fmtHMS(remaining)}` : `${icon} ${fmtHMS(remaining)} left` };
+  }
+  function tickSla() {
+    if (document.hidden) return;
+    document.querySelectorAll('.sla-badge[data-sla-start]').forEach(el => {
+      const elapsed = workingHoursSince(el.dataset.slaStart);
+      if (elapsed === null) return;
+      const view = slaView(Number(el.dataset.slaHours) - elapsed);
+      el.className = 'sla-badge ' + view.cls;
+      const t = el.querySelector('.sla-t');
+      if (t && t.textContent !== view.label) t.textContent = view.label;
+    });
+  }
+  setInterval(tickSla, 1000);
 
   // ═══════════════ FILE UPLOAD ═══════════════
   async function fuCompress(file) {

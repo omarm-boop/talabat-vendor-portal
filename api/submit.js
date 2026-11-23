@@ -237,6 +237,10 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // A new item needs a barcode, except a weighable grocery item (it can be sent without one)
+    if (isAddItem && !String(body.barcode || '').trim() && !(brandType === 'grocery' && itemType === 'weighable'))
+      return res.status(400).json({ error: 'Barcode is required (only weighable items can be sent without one)' });
+
     await ensureColumns(sheets, SHEET_ID, TAB, 33); // AC-AG: brand, item type, min weight, contact email, Arabic item name
 
     // Write headers if sheet is empty
@@ -295,6 +299,10 @@ module.exports = async function handler(req, res) {
         if (st !== 'pending' && !st.includes('progress') && !st.includes('regional')) return false;
         if (String(row[0] || '').trim().toLowerCase() !== chainCheck) return false;
         if (String(row[1] || '').trim().toLowerCase() !== typeCheck)  return false;
+        if (!barcodeCheck && isAddItem) {
+          // a weighable item sent without a barcode is told apart by its name
+          if (String(row[4] || '').trim().toLowerCase() !== String(body.itemName || body.itemNameEn || '').trim().toLowerCase()) return false;
+        }
         if (barcodeCheck) {
           // older Update Barcode rows keep the barcode only in the explanation ("Current barcode: X → New: Y")
           const rowBarcode = String(row[2] || '').trim()
