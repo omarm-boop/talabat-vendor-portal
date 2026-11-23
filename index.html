@@ -2607,7 +2607,7 @@
 
       // monitors see when the assignment email to the assignee did not go out (it is retried every morning)
       const mailWarn = (isMonitor && /^failed/i.test(String(r['EmailStatus'] || '')))
-        ? '<div style="font-size:10px;font-weight:700;color:#c62828;margin-top:3px" title="The email to the assignee failed. It is retried every morning.">✉ email not sent</div>' : '';
+        ? '<div style="font-size:10px;font-weight:700;color:#c62828;margin-top:3px" title="' + escHtml(String(r['EmailStatus'] || '')) + ' (retried every morning)">✉ email not sent</div>' : '';
       const assigneeCell = isMonitor
         ? `<td data-label="Assignee"><div><select class="adm-assign-sel" onchange="adminAssign(${rowIdx},this.value,this)">
              <option value="">Unassigned</option>
