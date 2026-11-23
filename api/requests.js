@@ -189,6 +189,9 @@ async function handle(req, res) {
       // Message from the Talabat team (cols AH, AI)
       obj['TeamNote']     = row[33] !== undefined ? row[33] : '';
       obj['TeamNoteAt']   = row[34] !== undefined ? row[34] : '';
+      // The rejection reason exactly as the team wrote it (column V). The older fields above can pick up other columns by header name
+      // (for example a "Comment" header that now sits on the brand column), so the screens use this one.
+      obj['RejectionReason'] = String(row[21] !== undefined ? row[21] : '').trim();
       // Request number (AJ, e.g. ENGZ07) and the result of the assignment email (AK)
       obj['RequestNo']    = row[35] !== undefined ? row[35] : '';
       obj['EmailStatus']  = row[36] !== undefined ? row[36] : '';

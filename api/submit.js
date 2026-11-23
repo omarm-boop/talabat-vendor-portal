@@ -320,6 +320,9 @@ module.exports = async function handler(req, res) {
       body.currentDesc && body.newDesc ? `Current: ${body.currentDesc} → New: ${body.newDesc}` : null,
       body.currentName && body.newName ? `Current name: ${body.currentName} → New: ${body.newName}` : null,
       body.currentBarcode && body.newBarcode ? `Current barcode: ${body.currentBarcode} → New: ${body.newBarcode}` : null,
+      // Update Item Name also sends a new SKU and a new barcode: keep them with the request so the team can see them
+      body.newSku && /^update item name$/i.test(String(body.requestType || '').trim()) ? `New SKU: ${body.newSku}` : null,
+      body.newBarcode && !body.currentBarcode && /^update item name$/i.test(String(body.requestType || '').trim()) ? `New barcode: ${body.newBarcode}` : null,
     ].filter(Boolean).join('\n');
 
     // Strip chain name prefix from branch to get location only
