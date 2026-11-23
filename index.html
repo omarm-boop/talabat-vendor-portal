@@ -2495,13 +2495,17 @@
       const pending  = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return !s.includes('progress')&&!s.includes('regional')&&s!=='done'&&s!=='completed'&&!s.includes('reject'); }).length;
       const progress = rows.filter(r => (r['Status']||'').toLowerCase().includes('progress')).length;
       const done     = rows.filter(r => { const s=(r['Status']||'').toLowerCase(); return s==='done'||s==='completed'; }).length;
+      const regional = rows.filter(r => (r['Status']||'').toLowerCase().includes('regional')).length;
+      const rejected = rows.filter(r => (r['Status']||'').toLowerCase().includes('reject')).length;
       return `<div class="adm-bd-card">
         <div class="adm-bd-name">${escHtml(name)}</div>
         <div class="adm-bd-nums">
           <div class="adm-bd-num"><div class="adm-bd-n">${rows.length}</div><div class="adm-bd-lbl">Total</div></div>
           <div class="adm-bd-num"><div class="adm-bd-n">${pending}</div><div class="adm-bd-lbl">Pending</div></div>
           <div class="adm-bd-num"><div class="adm-bd-n s-blue">${progress}</div><div class="adm-bd-lbl">In Prog</div></div>
+          <div class="adm-bd-num"><div class="adm-bd-n" style="color:#6a1b9a">${regional}</div><div class="adm-bd-lbl">Regional</div></div>
           <div class="adm-bd-num"><div class="adm-bd-n s-green">${done}</div><div class="adm-bd-lbl">Done</div></div>
+          <div class="adm-bd-num"><div class="adm-bd-n" style="color:#c62828">${rejected}</div><div class="adm-bd-lbl">Rejected</div></div>
         </div>
       </div>`;
     }).join('');
