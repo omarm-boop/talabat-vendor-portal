@@ -307,6 +307,8 @@
     .adm-sel { border:1px solid #e0d8ce; border-radius:8px; padding:9px 12px; font-size:13px; font-family:'Poppins',sans-serif; background:#fff; color:#411517; cursor:pointer; }
     .adm-search { border:1px solid #e0d8ce; border-radius:8px; padding:9px 14px; font-size:13px; font-family:'Poppins',sans-serif; background:#fff; flex:1; min-width:180px; }
     .adm-sel:focus,.adm-search:focus { outline:none; border-color:var(--orange); }
+    .adm-dt { display:flex; flex-direction:column; gap:2px; }
+    .adm-dt > span { font-size:10px; font-weight:800; color:#aaa; text-transform:uppercase; letter-spacing:.7px; }
     .adm-refresh { background:var(--orange); color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap; }
     .adm-refresh:hover { background:#e05000; }
     .adm-table-wrap { background:#fff; border-radius:12px; overflow-x:auto; border:1px solid #e8e0d8; }
@@ -346,10 +348,15 @@
       .adm-stats { grid-template-columns:repeat(3,1fr); gap:8px; }
       .adm-stat { padding:12px 6px; }
       .adm-stat-num { font-size:24px; }
-      .adm-breakdown { grid-template-columns:repeat(2,1fr) !important; }
+      /* one card per row; its six numbers sit in two rows of three, so nothing runs off the screen */
+      .adm-breakdown { grid-template-columns:1fr !important; }
+      .adm-bd-card { min-width:0; }
+      .adm-bd-nums { display:grid; grid-template-columns:repeat(3,1fr); gap:12px 6px; }
+      .adm-bd-lbl { font-size:10px; }
+      .adm-toolbar .adm-dt { flex:1 1 calc(50% - 10px); }
       .adm-toolbar > * { flex:1 1 calc(50% - 10px); min-width:0; box-sizing:border-box; }
       .adm-toolbar .adm-search { flex-basis:100%; }
-      .adm-toolbar input[type="date"] { width:auto !important; min-height:44px; }
+      .adm-toolbar input[type="date"] { width:100% !important; min-height:44px; box-sizing:border-box; }
       .adm-toolbar #adm-refresh-ts { flex-basis:100%; text-align:center; }
       .adm-refresh, .adm-sel { min-height:44px; }
       .adm-table-wrap { overflow:visible; background:none; border:none; }
@@ -1117,8 +1124,8 @@
         <option value="">All Agents</option>
       </select>
       <input class="adm-search" id="a-search" placeholder="Search vendor, restaurant, SKU…" oninput="renderAdminTable()">
-      <input type="date" class="adm-sel" id="a-date-from" onchange="renderAdminTable()" title="From date" style="width:130px;cursor:pointer">
-      <input type="date" class="adm-sel" id="a-date-to"   onchange="renderAdminTable()" title="To date"   style="width:130px;cursor:pointer">
+      <label class="adm-dt"><span>From</span><input type="date" class="adm-sel" id="a-date-from" onchange="renderAdminTable()" title="From date" style="width:130px;cursor:pointer"></label>
+      <label class="adm-dt"><span>To</span><input type="date" class="adm-sel" id="a-date-to"   onchange="renderAdminTable()" title="To date"   style="width:130px;cursor:pointer"></label>
       <button class="adm-refresh" style="background:#e0d8ce;color:#411517" onclick="clearDateFilter()" title="Clear date filter">✕ Date</button>
       <button class="adm-refresh" onclick="loadAdminRequests()">↻ Refresh</button>
       <span id="adm-refresh-ts" style="font-size:11px;color:#aaa;margin-left:2px"></span>
@@ -3303,6 +3310,18 @@
     const photoLink = r['PhotoLink'] || r['Upload Item Picture (If needed) / تحميل صورة المنتج'] || '';
     const fileLink  = r['Upload file (if needed) / رفع ملف'] || '';
 
+    // Barcodes and SKUs. For a change request they are shown as current / new (the new ones are kept inside the request's details).
+    const typeText = String(r['Request Type'] || r['Request Type / نوع الطلب'] || '');
+    const isRenameReq = /update item name/i.test(typeText), isBarcodeReq = /update barcode/i.test(typeText);
+    const det  = String(r['DetailsVal'] || r['Notes'] || '');
+    const grab = re => ((det.match(re) || [])[1] || '').trim();
+    const newSku     = grab(/New SKU:\s*([^\n|]+)/i);
+    const newBarcode = grab(/New barcode:\s*([^\n|]+)/i) || grab(/Current barcode:[^\n→]*→\s*New:\s*([^\n|]+)/i);
+    const curBarcode = String(r['BarcodeVal'] || r['Barcode / الباركود'] || '').trim() || grab(/Current barcode:\s*([^\s→|]+)/i);
+    const curSku     = String(r['SkuVal'] || r['SKU/ الباركود الداخلى'] || '').trim();
+    const idRows = (isRenameReq || isBarcodeReq)
+      ? [['Current barcode', curBarcode], ['Current SKU', curSku], ['New barcode', newBarcode || (isRenameReq ? 'not recorded' : '')], ['New SKU', newSku || (isRenameReq ? 'not recorded' : '')]]
+      : [['Barcode', curBarcode], ['SKU', curSku]];
     const fields = [
       ['Request No.',     r['RequestNo']],
       ['Time',            ts],
@@ -3310,10 +3329,9 @@
       ['Chain Name',      r['Restaurant'] || r['Chain Name / اسم السلسة']],
       ['Request Type',    r['Request Type'] || r['Request Type / نوع الطلب']],
       ['Branch Name',     r['Branch'] || r['Branch Name / اسم الفرع']],
-      ['Barcode',         r['Barcode / الباركود']],
-      ['SKU',             r['SKU/ الباركود الداخلى']],
+      ...idRows,
       ['Item Name',       r['Item Name'] || r['Item Name / اسم المنتج']],
-      ['Explain Request', r['Notes'] || r['Explain your request (if needed) / توضيح الطلب']],
+      ['Explain Request', r['DetailsVal'] || r['Notes'] || r['Explain your request (if needed) / توضيح الطلب']],
       ['Price',           r['Price/ السعر']],
       ['Items Weight',    r['Items Weight / وزن المنتج']],
       ['Delist Reason',   r['يرجى ذكر السبب فى حالة طلب "حذف منتج" / Kindly mention the reason for delisted cases']],
