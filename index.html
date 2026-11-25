@@ -341,6 +341,7 @@
     .adm-table thead th { background:#fff8f4; padding:11px 14px; text-align:left; font-size:11px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:.9px; border-bottom:1px solid #e8e0d8; white-space:nowrap; }
     .adm-table tbody tr:not(:last-child) { border-bottom:1px solid #f2ece5; }
     .adm-table tbody tr:hover { background:#fdf9f6; }
+    .adm-table tbody tr.adm-chain-start > td { border-top:3px solid #ffd9c2; }   /* a new chain begins */
     /* ── ADMIN ON A PHONE: each request is a card with all its details and buttons (no sideways scrolling) ── */
     @media(max-width:700px){
       .adm-top { padding:12px 16px; }
@@ -377,6 +378,7 @@
       .adm-table td.adm-td-act .adm-btn { flex:1 1 calc(50% - 8px); min-height:44px; margin:0; }
       .adm-assign-sel { max-width:60vw; min-height:40px; }
       .adm-table .adm-msg { display:block; text-align:center; }
+      .adm-table tbody tr.adm-chain-start { margin-top:22px; border-top:3px solid #ff5900; }
       .adm-table td[data-label="Status"] { flex-wrap:wrap; justify-content:flex-end; }
       .adm-table td[data-label="Status"]::before { flex-basis:78px; margin-right:auto; }
       .adm-reason { flex-basis:100%; max-width:none; text-align:left; }
@@ -2337,16 +2339,20 @@
   // ═══════════════ DASHBOARD ═══════════════
   // IMPORTANT: Set the tracking sheet to "Anyone with link can view" in Google Sheets → Share
 
-  async function loadDashboard() {
+  // silent = the automatic refresh: keep what is on screen until the new list arrives, and stay quiet if it fails
+  async function loadDashboard(silent) {
+    silent = silent === true;
     const listEl  = document.getElementById('dash-list');
     const loadEl  = document.getElementById('dash-loading');
     const emptyEl = document.getElementById('dash-empty');
     const errEl   = document.getElementById('dash-err');
-    listEl.innerHTML = '';
-    loadEl.style.display = 'block';
-    emptyEl.style.display = 'none';
-    errEl.style.display = 'none';
-    ['cnt-done','cnt-pending','cnt-progress','cnt-rejected','cnt-total'].forEach(id => document.getElementById(id).textContent = '—');
+    if (!silent) {
+      listEl.innerHTML = '';
+      loadEl.style.display = 'block';
+      emptyEl.style.display = 'none';
+      errEl.style.display = 'none';
+      ['cnt-done','cnt-pending','cnt-progress','cnt-rejected','cnt-total','cnt-regional'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '—'; });
+    }
 
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'PASTE_YOUR_APPS_SCRIPT_URL_HERE') {
       loadEl.style.display = 'none';
@@ -2402,6 +2408,7 @@
       setRefreshLabel('dash-refresh-ts');
 
     } catch(err) {
+      if (silent && !/HTTP 40[13]/.test(String(err.message))) return;   // a passing hiccup in the automatic refresh: keep the list as it is
       loadEl.style.display = 'none';
       errEl.style.display = 'block';
       errEl.className = 'dash-err';
@@ -2464,17 +2471,30 @@
     }
   }
 
-  async function loadAdminRequests() {
-    document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
+  // silent = the automatic refresh. It never disturbs work in progress: it waits while a box is open, rows are ticked,
+  // or an assignee list is being used, keeps the page the person is on, and stays quiet if it fails.
+  async function loadAdminRequests(silent) {
+    silent = silent === true;
+    if (silent) {
+      const open = ['dn-overlay', 'rj-overlay', 'reset-modal'].some(id => { const e = document.getElementById(id); return e && e.style.display && e.style.display !== 'none'; })
+        || document.getElementById('detail-modal').classList.contains('on')
+        || document.querySelector('.bulk-cb:checked')
+        || (document.activeElement && /^(SELECT|INPUT|TEXTAREA)$/.test(document.activeElement.tagName) && document.activeElement.closest('#adm-requests-view'));
+      if (open) return;
+    } else {
+      document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Loading requests…</td></tr>';
+    }
     try {
       const resp = await apiFetch('/api/requests?t=' + Date.now(), { headers: getAuthHeaders() });
       const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || ('HTTP ' + resp.status));
       const all = (json.data || []).sort((a, b) => new Date(b['Timestamp'] || '') - new Date(a['Timestamp'] || ''));
       adminRequests = all;
       updateAdminStats();
-      renderAdminTable();
+      renderAdminTable(silent);
       setRefreshLabel('adm-refresh-ts');
     } catch(e) {
+      if (silent) return;
       document.getElementById('a-tbody').innerHTML = '<tr><td colspan="10" class="adm-msg">Failed to load: ' + escHtml(e.message) + '</td></tr>';
     }
   }
@@ -2526,7 +2546,7 @@
     renderAdminTable();
   }
 
-  function renderAdminTable() {
+  function renderAdminTable(keep) {
     const typeFilter     = document.getElementById('a-filter-type').value;
     const statusFilter   = document.getElementById('a-filter-status').value.toLowerCase();
     const assigneeFilter = document.getElementById('a-filter-assignee').value;
@@ -2554,21 +2574,27 @@
     });
 
     // Open requests first (Pending, In Progress); finished or parked ones (Done, Rejected, Pending Regional Team) go to the
-    // bottom. Inside each group: high priority first, then the oldest request first.
-    const isClosed = r => { const s = String(r['Status'] || '').toLowerCase(); return s === 'done' || s === 'completed' || s.includes('reject') || s.includes('regional'); };
+    // bottom. Inside each group: high priority first; then one chain after another (A to Z) with all of a chain's requests
+    // together, the oldest request first.
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
     filtered.sort((a, b) => {
-      const ac = isClosed(a) ? 1 : 0, bc = isClosed(b) ? 1 : 0;
+      const ac = adminIsClosed(a) ? 1 : 0, bc = adminIsClosed(b) ? 1 : 0;
       if (ac !== bc) return ac - bc;
       const ap = !ac && a['Priority'] === 'high' ? 1 : 0;
       const bp = !bc && b['Priority'] === 'high' ? 1 : 0;
       if (bp !== ap) return bp - ap;
+      const byChain = collator.compare(adminChain(a), adminChain(b));
+      if (byChain !== 0) return byChain;
       return new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0);
     });
 
-    adminPage = 1;
+    const keepPage = keep === true ? adminPage : 1;   // the automatic refresh stays on the page the person is looking at
+    adminPage = keepPage;
     adminFiltered = filtered;
     renderAdminPage();
   }
+  function adminIsClosed(r) { const s = String(r['Status'] || '').toLowerCase(); return s === 'done' || s === 'completed' || s.includes('reject') || s.includes('regional'); }
+  function adminChain(r) { return String(r['Restaurant'] || r['Chain Name / اسم السلسة'] || '').trim(); }
 
   function renderAdminPage() {
     const isMonitor = currentAdminUser.role === 'monitor';
@@ -2594,6 +2620,7 @@
       return;
     }
 
+    let prevChainKey = null;
     document.getElementById('a-tbody').innerHTML = slice.map(r => {
       const status     = r['Status'] || 'Pending';
       const sl         = status.toLowerCase();
@@ -2645,7 +2672,10 @@
             <button class="adm-btn adm-btn-rej"  onclick="openRejectDialog([${rowIdx}])">✗ Reject</button>` : ''}
         </div>`;
 
-      return `<tr>
+      const chainKey = (adminIsClosed(r) ? 'c|' : 'o|') + adminChain(r).toLowerCase();
+      const chainStart = prevChainKey !== null && chainKey !== prevChainKey;   // a new chain begins: draw a divider
+      prevChainKey = chainKey;
+      return `<tr${chainStart ? ' class="adm-chain-start"' : ''}>
         <td class="adm-td-cb" style="text-align:center"><input type="checkbox" class="bulk-cb" data-idx="${rowIdx}" onchange="updateBulkBar()" style="cursor:pointer"></td>
         <td data-label="No. / Time" style="color:#999;font-size:11px;white-space:nowrap">${r['RequestNo'] ? `<div style="color:var(--orange);font-weight:800;font-size:12px">${escHtml(r['RequestNo'])}</div>` : ''}${ts}</td>
         <td data-label="Vendor ID" style="font-weight:700">${escHtml(r['Vendor ID'] || '—')}</td>
@@ -2769,7 +2799,7 @@
         const row = adminRequests.find(r => r['_rowIndex'] === idx);
         if (row) { row['Status'] = 'Rejected'; row['Rejection Reason'] = text; row['RejectionReason'] = text; row['RejectCodes'] = stored; }
       });
-      closeRejectDialog(); clearBulk(); updateAdminStats(); renderAdminTable();
+      closeRejectDialog(); clearBulk(); updateAdminStats(); renderAdminTable(true);
     } catch(e) {
       alert('Reject failed: ' + e.message);
     } finally {
@@ -2791,7 +2821,7 @@
       if (!json.success) throw new Error(json.error || 'Unknown error');
       if (row) { row['Status'] = status; if (rejectionReason) { row['Rejection Reason'] = rejectionReason; row['RejectionReason'] = rejectionReason; } }
       updateAdminStats();
-      renderAdminTable();
+      renderAdminTable(true);
     } catch(e) {
       btn.textContent = orig; btn.disabled = false;
       alert('Update failed: ' + e.message);
@@ -2815,7 +2845,7 @@
         if (!assignee) row['AssignedAt'] = '';
       }
       renderAgentBreakdown(adminRequests);
-      renderAdminTable();
+      renderAdminTable(true);
     } catch(e) {
       alert('Assign failed: ' + e.message);
     } finally {
@@ -3344,10 +3374,7 @@
       ['New SKU',         r['الكود الداخلى الجديد اذا وجد / New SKU If Found']],
       ['New Item Name',   r['New Item Name / اسم المنتج الجديد']],
       ['Owner',           r['Owner']],
-      ['Assignee',        r['Assignee']],
-      ['Assigned At',     at],
-      ['Assignment email', r['EmailStatus']],
-      ['Status',          r['Status']],
+      // Assignee, assigned time, assignment email, status and last action are not repeated here: they are in the list and the sheet
       ['Rejection reason', r['RejectionReason']],
       ['Message to vendor', r['TeamNote']],
       ['Item Name (Arabic)', r['ItemNameAr']],
@@ -3357,7 +3384,6 @@
       ['Contact Email',   r['ContactEmail']],
       ['Resubmission of row', r['ResubmitOf']],
       ['Resubmitted as row',  r['ResubmittedAs']],
-      ['Last Action',     r['LastAction']],
     ];
 
     const rows = fields
@@ -3475,10 +3501,12 @@
 
   function startVendorRefresh() {
     stopVendorRefresh();
+    // every 20 seconds while the page is open and visible (and straight away when the vendor comes back to the tab),
+    // so a status the team changes shows up without pressing Refresh
     vendorTimer = setInterval(() => {
       if (document.hidden) return;
-      if (document.getElementById('view-dash').style.display !== 'none') loadDashboard();
-    }, 60000);
+      if (document.getElementById('view-dash').style.display !== 'none') loadDashboard(true);
+    }, 20000);
   }
   function stopVendorRefresh() { if (vendorTimer) { clearInterval(vendorTimer); vendorTimer = null; } }
 
@@ -3486,9 +3514,15 @@
     stopAdminRefresh();
     adminTimer = setInterval(() => {
       if (document.hidden) return;
-      loadAdminRequests();
-    }, 60000);
+      loadAdminRequests(true);
+    }, 15000);
   }
+  // coming back to the tab refreshes at once, for vendors and for the team
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (adminTimer) loadAdminRequests(true);
+    else if (vendorTimer && document.getElementById('view-dash').style.display !== 'none') loadDashboard(true);
+  });
   function stopAdminRefresh() { if (adminTimer) { clearInterval(adminTimer); adminTimer = null; } }
 
   // ═══════════════ VENDOR WITHDRAW ═══════════════
@@ -3858,7 +3892,7 @@
         const row = adminRequests.find(r => r['_rowIndex'] === idx);
         if (row) { row['Assignee'] = agent; if (!row['AssignedAt']) row['AssignedAt'] = now; }
       });
-      clearBulk(); renderAgentBreakdown(adminRequests); renderAdminTable();
+      clearBulk(); renderAgentBreakdown(adminRequests); renderAdminTable(true);
     } catch(e) { alert('Bulk assign failed: ' + e.message); }
   }
 
@@ -3898,7 +3932,7 @@
       const json = await resp.json();
       if (!json.success) throw new Error(json.error || 'Unknown error');
       if (row) { row['Status'] = 'Done'; if (note) { row['TeamNote'] = note; row['TeamNoteAt'] = new Date().toISOString(); } }
-      updateAdminStats(); renderAdminTable();
+      updateAdminStats(); renderAdminTable(true);
       return true;
     } catch (e) { alert('Update failed: ' + e.message); return false; }
   }
@@ -3923,7 +3957,7 @@
         const row = adminRequests.find(r => r['_rowIndex'] === idx);
         if (row) { row['Status'] = status; if (note) { row['TeamNote'] = note; row['TeamNoteAt'] = new Date().toISOString(); } }
       });
-      clearBulk(); updateAdminStats(); renderAdminTable();
+      clearBulk(); updateAdminStats(); renderAdminTable(true);
       return true;
     } catch(e) { alert('Bulk status update failed: ' + e.message); return false; }
   }

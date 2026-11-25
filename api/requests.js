@@ -11,7 +11,7 @@ let numberingPause = 0;   // time before which older requests are not numbered a
 const SHEET_ID     = '1MlxEtSPmPcc4Usq13w9CWedvNMws0Un2XD6QNaazSiQ';
 const TAB_NAME     = 'Sheet1';
 const CACHE_KEY    = 'sheet:v1:all';
-const CACHE_TTL    = 30; // seconds
+const CACHE_TTL    = 5;  // seconds: short, so a status change reaches the vendor and the team within seconds
 
 // In-memory fallback cache (works within a warm Vercel instance)
 let memCache = null; // { values, expiresAt }
