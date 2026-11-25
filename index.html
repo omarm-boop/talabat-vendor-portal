@@ -777,7 +777,7 @@
     <label class="lbl">Product Title (English) [productTitle::en_EG] <span class="req">*</span></label>
     <input type="text" id="f-add-name-en" placeholder="e.g. Paracetamol 500mg, 20 Tablets">
     <div class="field-hint">Please provide a fully and accurate item name to update correctly and lead to accurate action.</div>
-    <div class="ferr" id="e-add-name-en">Item name in English is required</div>
+    <div class="ferr" id="e-add-name-en">Item name in English is required (write it in English letters, the Arabic name goes in the field below)</div>
   </div>
   <div class="fg">
     <label class="lbl">Item Name (Arabic) <span class="req">*</span></label>
@@ -1495,6 +1495,8 @@
  "All": "الكل",
  "Pending": "قيد الانتظار",
  "Pending Regional Team": "قيد انتظار الفريق الإقليمي",
+ "Item name in English is required (write it in English letters, the Arabic name goes in the field below)": "اسم المنتج بالإنجليزية مطلوب (اكتبه بحروف إنجليزية، والاسم العربي في الحقل أسفله)",
+ "Item name in English must be written in English letters (the Arabic name goes in the Arabic field)": "يجب كتابة اسم المنتج بالإنجليزية بحروف إنجليزية (الاسم العربي في الحقل العربي)",
  "⏸ Pending Regional Team": "⏸ قيد انتظار الفريق الإقليمي",
  "⏸ Regional Team": "⏸ الفريق الإقليمي",
  "Regional": "الإقليمي",
@@ -2846,6 +2848,8 @@
   const $  = id => document.getElementById(id);
   const v  = id => $(id) ? $(id).value.trim() : '';
 
+  // The English item name must be written in English letters: no Arabic letters, and at least one Latin letter
+  const isEnglishName = s => !/[؀-ۿ]/.test(s) && /[A-Za-z]/.test(s);
   function err(fid, eid) { if($(fid)) $(fid).classList.add('bad'); if($(eid)) $(eid).classList.add('on'); }
   function clr(fid, eid) { if($(fid)) $(fid).classList.remove('bad'); if($(eid)) $(eid).classList.remove('on'); }
   function req(fid, eid) { if (!v(fid)) { err(fid,eid); return false; } clr(fid,eid); return true; }
@@ -2930,6 +2934,7 @@
         if (!isWeighable() && !req('f-add-barcode','e-add-barcode')) ok = false;   // optional for weighable items
         if (!req('f-add-sku','e-add-sku'))           ok = false;
         if (!req('f-add-name-en','e-add-name-en'))   ok = false;
+        else if (!isEnglishName(v('f-add-name-en'))) { err('f-add-name-en','e-add-name-en'); ok = false; }   // Arabic in the English field
         if (!req('f-add-name-ar','e-add-name-ar'))   ok = false;
         else if (!/[\u0600-\u06FF]/.test(v('f-add-name-ar'))) { err('f-add-name-ar','e-add-name-ar'); ok = false; }
         if (!req('f-add-price','e-add-price'))       ok = false;
@@ -4194,7 +4199,8 @@
     // chosen = the vendor picked this product in the dropdown, so it replaces the names; automatic = only fill what is empty
     function apply(hit, chosen) {
       say('✓ Found in the catalog: ' + hit.name, '#16a34a');
-      if (hit.name && (chosen || !addTitle.value.trim() || addTitle.value === autoTitle)) {
+      // the catalog sometimes has only an Arabic name: that must not go into the English field
+      if (hit.name && isEnglishName(hit.name) && (chosen || !addTitle.value.trim() || addTitle.value === autoTitle)) {
         addTitle.value = hit.name; autoTitle = hit.name; clr('f-add-name-en', 'e-add-name-en');
       }
       if (addAr && hit.nameAr && (chosen || !addAr.value.trim() || addAr.value === autoAr)) {
@@ -4240,7 +4246,11 @@
         } catch (_) {}
       }, 200);
     });
-    addTitle.addEventListener('input', () => { if (addTitle.value !== autoTitle) autoTitle = ''; });
+    addTitle.addEventListener('input', () => {
+      if (addTitle.value !== autoTitle) autoTitle = '';
+      // tell the vendor at once when Arabic letters are typed into the English field
+      if (/[؀-ۿ]/.test(addTitle.value)) err('f-add-name-en', 'e-add-name-en'); else clr('f-add-name-en', 'e-add-name-en');
+    });
     if (addAr) addAr.addEventListener('input', () => { if (addAr.value !== autoAr) autoAr = ''; });
   }
 })();

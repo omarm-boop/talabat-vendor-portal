@@ -220,6 +220,12 @@ module.exports = async function handler(req, res) {
     const itemNameAr = String(body.itemNameAr || '').trim();
     if (/^urgent add item$/i.test(reqTypeText) && !/[\u0600-\u06FF]/.test(itemNameAr))
       return res.status(400).json({ error: 'Item name in Arabic is required (please write it in Arabic letters)' });
+    // the English item name must be in English letters (Arabic belongs in the Arabic field)
+    if (isAddItem) {
+      const enName = String(body.itemName || body.itemNameEn || '').trim();
+      if (/[؀-ۿ]/.test(enName) || !/[A-Za-z]/.test(enName))
+        return res.status(400).json({ error: 'Item name in English must be written in English letters (the Arabic name goes in the Arabic field)' });
+    }
     if (/^remove an item$/i.test(reqTypeText) && !String(body.fileLink || '').trim() && !String(body.barcode || '').trim())
       return res.status(400).json({ error: 'Barcode and reason for delisting are required' });
     if (/^remove an item$/i.test(reqTypeText) && !String(body.reason || '').trim())
